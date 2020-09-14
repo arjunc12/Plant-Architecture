@@ -15,10 +15,12 @@ def write_arbor_file_condensed(output_fname, points):
 
 def write_arbor_file_full(output_fname, root_points, lateral_roots):
     with open(output_fname, 'w') as f:
+        # write the main root points
         f.write('main root\n')
         for x, y in root_points:
             f.write('%f, %f\n' % (x, y))
 
+        # loop through each lateral root, and write the points for that lateral root
         for lateral_root, points in lateral_roots.items():
             f.write('%s\n' % lateral_root)
             for x, y in points:
@@ -47,18 +49,24 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
                                                     image_day, root_order, root_ontology):
         if order == 0:
             assert ontology == 'Root'
+            # check if we've found a the main root for a new arbor
             if curr_name != name:
+                # check if this is not the first arbor
                 if curr_lateral_roots != None and len(curr_lateral_roots) > 1:
+                    # if not the first main root, write the architecture file for the previous arbor
                     write_arbor_file_full(curr_fname, curr_root_points, curr_lateral_roots)
 
+                # reset the points associated with the current (new) arbor
                 curr_name = name
                 reconstruction_fname = '%s_%s' % (name, day)
                 curr_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
                 curr_root_points = [(x, y)]
                 curr_lateral_roots = defaultdict(list)
             else:
+                # the next point is associated with our current arbor's main root
                 curr_root_points.append((x, y))
         else:
+            # the next point is associated with a lateral root for our current arbor
             assert ontology == 'Lateral root'
             curr_lateral_roots[id].append((x, y))
 
@@ -78,17 +86,28 @@ def write_arbor_files_condensed(raw_data_fname, reconstruction_dir):
     for name, length, order, ontology, position, angle, day in\
         zip(root_name, root_length, root_order, root_ontology, insertion_position,\
             insertion_angle, image_day):
+
+        # check if the current line is a main root for a new arbor, or a lateral root for the current arbor
         if order == 0:
+            # 0 should correspond to a  main root point
             assert ontology == "Root"
+
+            # check if this is not our first arbor
             if curr_fname != None:
+                '''
+                if this not our first arbor, and if the current arbor has more than one
+                point, write the arbor to an new architecture file
+                '''
                 assert curr_points != None
                 if len(curr_points) > 1:
                     write_arbor_file_condensed(curr_fname, curr_points)
 
+            # reset the points associated with the current arbor
             reconstruction_fname = '%s_%s' % (name, day)
             curr_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
             curr_points = [(0, 0, position, 0)]
         else:
+            # use trigonometry to obtain the x/y coordinates of the lateral root tip
             assert ontology == 'Lateral root'
             x = length * sin(angle)
             y = position + length * cos(angle)
