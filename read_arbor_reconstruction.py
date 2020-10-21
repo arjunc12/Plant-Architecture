@@ -1,42 +1,76 @@
 import networkx as nx
 from scipy.spatial.distance import euclidean
-from utils import connect_insertions, toy_network, draw_arbor
+from utils import *
 from constants import RECONSTRUCTIONS_DIR, DRAWINGS_DIR
 import os
 import pandas as pd
 
+def check_root_points(root_points):
+    '''
+    Checks that the root points are sorted in ascending order by y-coordinate
+    '''
+    for i in range(1, len(root_points)):
+        y0 = root_points[i - 1][1]
+        y1 = root_points[i][1]
+        assert y1 >= y0
+
 def connect_lateral_roots(G, root_points, lateral_starts):
-    root_points = sorted(root_points, key = lambda p: p[1])
+    '''
+    Method for connecting the start of each lateral root to the closest main root point.
+
+
+    G - the network consisting of disconnected main and lateral roots
+
+    root_points - the (x, y) coordinates for the points on the main root tracing
+
+    lateral_starts - the (x, y) coordinates for the points at the start of every lateral root
+    '''
+
+    # loop through each lateral root starting point to find the closest root point
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
         closest_dist = float("inf")
         closest_point = None
         y_lateral = lateral_start[1]
 
+        '''
+        loop through the main root points to find the main root point closest to the current
+        lateral root
+        '''
         for root_point in root_points:
-            y_root = root_point[1]
-            if y_root > y_lateral:
-                assert closest_point != None
-                break
-            else:
-                dist = euclidean(lateral_start, root_point)
-                if dist < closest_dist:
-                    closest_dist = dist
-                    closest_point = root_point
+            '''
+            Check if root_point is closer to lateral_start than the the previously
+            considered  root points
+            '''
+            dist = euclidean(lateral_start, root_point)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_point = root_point
 
+        # we should have found a closest root point, if not something's wrong
         assert closest_point != None
         assert G.has_node(closest_point)
-        assert G.node[closest_point]['label'] == 'main root'
+        assert G.nodes[closest_point]['label'] == 'main root'
         assert not G.has_edge(closest_point, lateral_start)
 
+        # connect lateral_start to the closest root point
         G.add_edge(closest_point, lateral_start)
         G[closest_point][lateral_start]['length'] = closest_dist
 
 def read_arbor_full(fname):
+    '''
+    Read the arbor reconstruction corresponding to a full arbor tracing. First, this
+    method individually reconstructs the main root and lateral roots separately. Afterwards,
+    each lateral root is connected to the closest main root point
+    '''
     G = nx.Graph()
     G.graph['arbor name'] = fname.strip('.csv')
+
+    # keep track of where the previous point was, and which root it is part of
     prev_point = None
     curr_root = None
+
+    # keep track of all points along the main root, and all points where a lateral root started growing
     root_points = []
     lateral_starts = []
 
@@ -45,33 +79,37 @@ def read_arbor_full(fname):
             line = line.strip('\n')
             line = line.split(',')
             if len(line) == 1:
+                # we've found a new main or lateral root
+                # reset the root that we are traversing
                 curr_root = line[0]
                 prev_point = None
             else:
                 point = tuple(map(float, line))
                 if prev_point == None:
+                    # this is the first point on the current root
                     G.add_node(point)
                     lateral_starts.append(point)
                     if curr_root == 'lateral root':
                         lateral_starts.append(point)
                 else:
+                    # connect this point to the previous point on the same root
                     G.add_edge(prev_point, point)
                     G[prev_point][point]['length'] = euclidean(prev_point, point)
-                    print(curr_root, prev_point, point)
 
+                # label the newly added node
                 if curr_root == 'main root':
-                    G.node[point]['label'] = 'main root'
+                    G.nodes[point]['label'] = 'main root'
                     root_points.append(point)
                 else:
-                    G.node[point]['label'] = 'lateral root'
+                    G.nodes[point]['label'] = 'lateral root'
 
                 prev_point = point
 
+    # connect the first point in each lateral root to the closest point along the main root
     connect_lateral_roots(G, root_points, lateral_starts)
 
-    for u in G.nodes():
-        if G.node[u]['label'] == 'lateral root' and G.degree(u) == 1:
-            G.node[u]['label'] = 'lateral root tip'
+    # re-label the base of the main root and tips of the lateral roots
+    relabel_nodes(G)
 
     return G
 
@@ -88,27 +126,27 @@ def read_arbor_condensed(fname):
     for order, x, y, insertion in zip(root_order, x_coord, y_coord, insertion_point):
         p1 = (x, y)
         p2 = (0, insertion)
+        # check if order is 0 (main root) or 1 (lateral root)
         if order == 0:
             G.add_node(p1)
-            G.node[p1]['label'] = 'main root'
-            G.graph['main root'] = p1
+            G.nodes[p1]['label'] = 'main root base'
+            G.graph['main root base'] = p1
 
         elif order == 1:
             G.add_edge(p1, p2)
-            G.node[p1]['label'] = 'lateral root'
-            G.node[p2]['label'] = 'insertion point'
+            G.nodes[p1]['label'] = 'lateral root tip'
+            G.nodes[p2]['label'] = 'main root'
 
             G[p1][p2]['length'] = euclidean(p1, p2)
 
-
-    connect_insertions(G)
+    connect_main_root(G)
 
     return G
 
 def main():
-    G =read_arbor_full('272_3_S_day3.csv')
-    #G =read_arbor_full('165_3_S_day3.csv')
-    draw_arbor(G, DRAWINGS_DIR)
+    for arbor_name in os.listdir(RECONSTRUCTIONS_DIR):
+        print(arbor_name)
+        G =read_arbor_full(arbor_name)
 
 if __name__ == '__main__':
     main()
