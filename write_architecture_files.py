@@ -13,8 +13,15 @@ def write_arbor_file_condensed(output_fname, points):
         for root_type, x, y, insertion in points:
             f.write('%d, %f, %f, %f\n' % (root_type, x, y, insertion))
 
-def write_arbor_file_full(output_fname, root_points, lateral_roots):
+def write_arbor_file_full(output_fname, root_points, lateral_roots, day, root_name,
+                          image_number, root_condition):
     with open(output_fname, 'w') as f:
+        # write the metadata
+        f.write('name: %s\n' % name)
+        f.write('day: %s\n' %  day)
+        f.write('image number: %s\n' % image_number)
+        f.write('root condition: %s\n' % root_condition)
+
         # write the main root points
         f.write('main root\n')
         for x, y in root_points:
@@ -30,6 +37,15 @@ def get_day(image_name):
     day_pos = image_name.index('day')
     return image_name[day_pos:day_pos + 4]
 
+def get_image_num(image_name):
+    image_name = image_name.strip('_')
+    image_name = image_name.split('_')
+    return int(image_name[3])
+
+def get_condition(root_name):
+    root_name = root_name.split('_')
+    return root_name[2]
+
 def write_arbor_files_full(raw_data_fname, reconstruction_dir):
     df = pd.read_csv(raw_data_fname, skipinitialspace=True)
     root_id = df['root']
@@ -39,14 +55,16 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
     root_order = df['root_order']
     root_ontology = df['root_ontology']
     image_day = df['image'].apply(get_day)
+    image_number = df['image'].apply(get_image_num)
+    root_condition = df['root_name'].apply(get_condition)
 
     curr_name = None
     curr_fname = None
     curr_root_points = None
     curr_lateral_roots = None
 
-    for id, name, x, y, day, order, ontology in zip(root_id, root_name, x_pos, y_pos,\
-                                                    image_day, root_order, root_ontology):
+    for id, name, x, y, day, number, condition, order, ontology in zip(root_id, root_name,
+        x_pos, y_pos, image_day, image_number, root_condition, root_order, root_ontology):
         if order == 0:
             assert ontology == 'Root'
             # check if we've found a the main root for a new arbor
@@ -54,7 +72,8 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
                 # check if this is not the first arbor
                 if curr_lateral_roots != None and len(curr_lateral_roots) > 1:
                     # if not the first main root, write the architecture file for the previous arbor
-                    write_arbor_file_full(curr_fname, curr_root_points, curr_lateral_roots)
+                    write_arbor_file_full(curr_fname, curr_root_points, curr_lateral_roots,\
+                                          name, day, number, condition)
 
                 # reset the points associated with the current (new) arbor
                 curr_name = name
