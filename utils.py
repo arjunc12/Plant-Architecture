@@ -2,29 +2,74 @@ from scipy.spatial.distance import euclidean
 import networkx as nx
 import pylab
 import os
+import re
 
-NODE_SIZE = {'main root' : 30, 'lateral root' : 10, 'insertion point' : 10, 'lateral root tip' : 30}
-NODE_COLOR = {'main root' : 'm', 'lateral root' : 'b', 'insertion point' : 'r', 'lateral root tip' : 'k'}
+NODE_SIZE = {'main root' : 30, 'main root base' : 30, 'lateral root' : 10, 'insertion point' : 10, 'lateral root tip' : 30}
+NODE_COLOR = {'main root' : 'm' , 'main root base' : 'k', 'lateral root' : 'b', 'insertion point' : 'r', 'lateral root tip' : 'k'}
+
+def closest_main_root_point(G, lateral_root_tip):
+    '''
+    Given an arbor and a lateral root tip, find the closest point on the main root
+    '''
+    curr = lateral_root_tip
+    while not is_on_main_root(G, curr):
+        neighbors = G.neighbors(curr)
+        assert len(neighbors) == 1
+        curr = neighbors[0]
+
+    return curr
+
+def relabel_nodes(G):
+    '''
+    relabels all lateral root tips, as well as the base of the main root
+    '''
+
+    # variables to keep track of the lowest point on the main root
+    min_main_root_point = None
+    min_main_root_y = float("inf")
+    for u in G.nodes():
+        if G.nodes[u]['label'] == 'main root':
+            # check if this point is the new lowest point on the main root
+            x, y = u
+            if y < min_main_root_y:
+                min_main_root_y = y
+                min_main_root_point = u
+
+        elif G.nodes[u]['label'] == 'lateral root' and G.degree(u) == 1:
+            # degree 1 lateral root is a tip
+            G.nodes[u]['label'] = 'lateral root tip'
+
+    G.nodes[min_main_root_point]['label'] = 'main root base'
+    G.graph['main root base'] = min_main_root_point
 
 def connect_points(G, u, v):
     G.add_edge(u, v)
     G[u][v]['length'] = euclidean(u, v)
 
-def connect_insertions(G):
-    insertions = []
+def is_on_main_root(G, u):
+    return any(re.findall(r'(main root.*)|(insertion point.*)', G.nodes[u]['label']))
+
+def sort_by_y_coord(points):
+    return sorted(points, key = lambda p: p[1])
+
+def connect_main_root(G):
+    '''
+    Method to connect every insertion point to the previous insertion
+    '''
+    root_points = []
     for u in G.nodes():
-        if G.node[u]['label'] in ['main root', 'insertion point']:
+        if is_on_main_root(G, u):
             insertions.append(u)
 
-    insertions = sorted(insertions)
+    root_points = sort_by_y_coord(root_points)
 
-    for i in range(len(insertions) - 1):
-        insertion1 = insertions[i]
-        insertion2 = insertions[i + 1]
-        assert G.has_node(insertion1)
-        assert G.has_node(insertion2)
-        assert not G.has_edge(insertion1, insertion2)
-        connect_points(G, insertion1, insertion2)
+    for i in range(len(root_points) - 1):
+        root_point1 = root_points[i]
+        root_point2 = root_points[i + 1]
+        assert G.has_node(root_point1)
+        assert G.has_node(root_point2)
+        assert not G.has_edge(root_point1, root_point2)
+        connect_points(G, root_point1, root_point2)
 
 def draw_arbor(G, outdir):
     pos = {}
@@ -32,6 +77,7 @@ def draw_arbor(G, outdir):
     node_size = []
     node_color = []
 
+    # variables for setting the bounds of the drawing
     xmin = float("inf")
     xmax = float("-inf")
     ymin = float("inf")
@@ -47,8 +93,8 @@ def draw_arbor(G, outdir):
         ymax = max(ymax, y)
 
         nodelist.append(u)
-        node_size.append(NODE_SIZE[G.node[u]['label']])
-        node_color.append(NODE_COLOR[G.node[u]['label']])
+        node_size.append(NODE_SIZE[G.nodes[u]['label']])
+        node_color.append(NODE_COLOR[G.nodes[u]['label']])
 
     pylab.figure()
     nx.draw_networkx_nodes(G, pos=pos, nodelist=nodelist, node_color=node_color, node_size=node_size)
@@ -65,22 +111,26 @@ def draw_arbor(G, outdir):
     pylab.close()
 
 def toy_network():
-    root = (0, -1)
-    insertion1 = (0, 1)
-    lateral1 = (1, 1)
+
+    root_base = (0, 0)
+    root1 = (0, 1)
+    root2 = (0, 2)
+    lateral = (4, 3)
+    lateral2 = (-1, 5)
 
     G = nx.Graph()
 
-    for u, label in zip([root, insertion1, lateral1],\
-                        ['main root', 'insertion point', 'lateral root']):
+    for u, label in zip([root_base, root1, root2, lateral, lateral2],\
+                        ['main root', 'main root', 'main root', 'lateral root', 'lateral root']):
         G.add_node(u)
-        G.node[u]['label'] = label
+        G.nodes[u]['label'] = label
 
-    G.graph['main root'] = root
+    connect_points(G, root_base, root1)
+    connect_points(G, root1, root2)
+    connect_points(G, root_base, lateral)
+    connect_points(G, root_base, lateral2)
 
-    connect_insertions(G)
-
-    connect_points(G, insertion1, lateral1)
+    relabel_nodes(G)
 
     G.graph['arbor name'] = 'toy-network'
 
