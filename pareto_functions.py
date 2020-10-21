@@ -1,20 +1,29 @@
 from math import sqrt
-from utils import connect_insertions, draw_arbor, toy_network, connect_points
+from utils import *
 import networkx as nx
 from scipy.spatial.distance import euclidean
 import numpy as np
-from readArborReconstruction import readArbor
+from read_arbor_reconstruction import read_arbor_full
 from constants import DEFAULT_ALPHAS
 from optimal_midpoint import optimal_midpoint_approx
+from collections import defaultdict
 
 def wiring_cost(G):
+    # wiring cost is simply the sum of all edge lengths
     wiring = 0
     for u, v in G.edges():
-        if 'lateral root' in [G.node[u]['label'], G.node[v]['label']]:
-            wiring += G[u][v]['length']
+        wiring += G[u][v]['length']
     return wiring
 
 def conduction_delay(G):
+    '''
+    use a bread-first search to compute the distance to from the root to each point
+
+    when we encounter a visit node for the first time, we record its distance to the root
+    (which is the sum of its parent's distance, plus the length of the edge from the parent
+    to the current node').  We keep a running total of the total distances from the root
+    to each node.
+    '''
     droot = {}
     queue = []
     curr = None
@@ -28,26 +37,32 @@ def conduction_delay(G):
     delay = 0
     while len(queue) > 0:
         curr = queue.pop(0)
+        # we should never visit a node twice
         assert curr not in visited
         visited.add(curr)
-        if G.node[curr]['label'] == 'lateral root':
+        # we only measure delay for the lateral root tips
+        if G.nodes[curr]['label'] == 'lateral root tip':
             delay += droot[curr]
         for u in G.neighbors(curr):
             if u not in visited:
                 queue.append(u)
                 droot[u] = droot[curr] + G[curr][u]['length']
 
+    # make sure we visited every node
     assert len(visited) == G.number_of_nodes()
 
     return delay
 
 def pareto_costs(G):
+    '''
+    perform a breadth-first search that simultaneously computers wiring cost and conduction delay
+    '''
     droot = {}
     queue = []
     curr = None
     visited = set()
 
-    root = G.graph['main root']
+    root = G.graph['main root base']
     queue.append(root)
     droot[root] = 0
 
@@ -55,86 +70,116 @@ def pareto_costs(G):
     delay = 0
     while len(queue) > 0:
         curr = queue.pop(0)
+        # we should never visit a node twice
         assert curr not in visited
         visited.add(curr)
-        if G.node[curr]['label'] == 'lateral root':
+        # we only measure delay for the lateral root tips
+        if G.nodes[curr]['label'] == 'lateral root tip':
             delay += droot[curr]
 
         for u in G.neighbors(curr):
             if u not in visited:
                 queue.append(u)
                 length = G[curr][u]['length']
-                if 'lateral root' in [G.node[curr]['label'], G.node[u]['label']]:
-                    wiring += length
+                wiring += length
                 droot[u] = droot[curr] + length
 
+    # check that we visited every node
     assert len(visited) == G.number_of_nodes()
 
     return wiring, delay
 
+def prune_lateral_roots(G):
+    for u in list(G.nodes()):
+        label = G.nodes[u]['label']
+        if label == 'lateral root tip':
+            for n in list(G.neighbors(u)):
+                G.remove_edge(u, n)
+        elif not is_on_main_root(G, u):
+            G.remove_node(u)
+
 def satellite_tree(G):
-    S = nx.Graph()
-    root = G.graph['main root']
-    S.add_node(root)
-    S.graph['main root'] = root
-    S.node[root]['label'] = 'main root'
+    S = G.copy()
+    prune_lateral_roots(S)
 
-
+    root = G.graph['main root base']
     for u in G.nodes():
-        if G.node[u]['label'] == 'lateral root':
-            S.add_node(u)
-            S.node[u]['label'] = 'lateral root'
+        label = G.nodes[u]['label']
+        if label == 'lateral root tip':
             connect_points(S, u, root)
 
     return S
-
-def opt_epsilon(x, y, alpha, max_epsilon=None):
-    assert alpha > 0
-    numerator = x * (1 - alpha)
-    denominator = sqrt(1 - ((1 - alpha) ** 2))
-    epsilon = numerator / denominator
-    epsilon = min(epsilon, max_epsilon)
-    return epsilon
 
 def opt_arbor(G, alpha):
     if alpha == 0:
         return satellite_tree(G)
 
-    root_x, root_y = G.graph['main root']
+    root_x, root_y = G.graph['main root base']
 
-    P = nx.Graph()
-    lateral_roots = []
+    P = G.copy()
+    prune_lateral_roots(P)
+
+    P.graph['arbor name'] = '%s alpha = %f' % (G.graph['arbor name'], alpha)
+    lateral_root_tips = []
     for u in G.nodes():
-        if G.node[u]['label'] == 'main root':
+        if is_on_main_root(G, u):
             P.add_node(u)
-            P.node[u]['label'] = 'main root'
-            P.graph['main root'] = u
-        elif G.node[u]['label'] == 'lateral root':
-            lateral_roots.append(u)
+            P.nodes[u]['label'] = 'main root'
+            if G.nodes[u]['label'] == 'main root base':
+                P.graph['main root base'] = u
+        elif G.nodes[u]['label'] == 'lateral root tip':
+            P.add_node(u)
+            P.nodes[u]['label'] = 'lateral root tip'
+            lateral_root_tips.append(u)
 
-    for root in lateral_roots:
-        x, y = root
-        max_epsilon = y - root_y
-        epsilon = opt_epsilon(x, y, alpha, max_epsilon=max_epsilon)
-        insertion = y - epsilon
-        print(G.graph['arbor name'], y, epsilon, insertion, root_y)
-        insertion = max(insertion, root_y)
-        insertion = min(insertion, y)
+    main_root_segments = []
+    for u, v in G.edges():
+        # check if both u and v are on the main root
+        if is_on_main_root(G, u) and is_on_main_root(G, v):
+            main_root_segments.append((u, v))
 
-        print(insertion, root_y)
-        assert insertion >= root_y
-        assert insertion <= y
+    # sort root segments based on the y-coordinate in the first point of the segment
+    main_root_segments = sorted(main_root_segments, key = lambda s: s[0][1])
 
-        insertion = (0, insertion)
-        P.add_node(root)
-        P.node[root]['label'] = 'lateral root'
-        P.add_node(insertion)
-        P.node[insertion]['label'] = 'insertion point'
+    best_midpoints = defaultdict(list)
 
-        P.add_edge(root, insertion)
-        P[root][insertion]['length'] = euclidean(root, insertion)
+    for lateral_root in lateral_root_tips:
+        best_cost = float("inf")
+        best_midpoint = None
+        best_p0 = None
+        best_p1 = None
+        best_delta = None
+        for p0, p1 in main_root_segments:
+            cost, midpoint, delta = optimal_midpoint_approx(p0, p1, lateral_root, alpha)
+            if cost < best_cost:
+                best_cost = cost
+                best_midpoint = midpoint
+                best_p0 = p0
+                best_p1 = p1
+                best_delta = delta
 
-    connect_insertions(P)
+                if delta < 1:
+                    break
+        if best_delta == 1:
+            assert best_midpoint == best_p1
+            connect_points(P, lateral_root, best_p1)
+        else:
+            best_midpoints[(best_p0, best_p1)].append((best_delta, best_midpoint, lateral_root))
+
+    for (p0, p1), midpoints in best_midpoints.items():
+        P.remove_edge(p0, p1)
+        prev_point = p0
+        for best_delta, best_midpoint, lateral_root in sorted(midpoints):
+            if best_midpoint != prev_point and not P.has_node(best_midpoint):
+                P.add_node(best_midpoint)
+                P.nodes[best_midpoint]['label'] = 'main root'
+                connect_points(P, prev_point, best_midpoint)
+            connect_points(P, best_midpoint, lateral_root)
+            prev_point = best_midpoint
+
+        if prev_point != p1:
+            connect_points(P, prev_point, p1)
+
     return P
 
 def pareto_front(G, alphas=DEFAULT_ALPHAS):
@@ -161,14 +206,20 @@ def pareto_dist(G, alphas, wiring_costs, conduction_delays):
             closest_dist = pareto_dist
             closest_alpha = alpha
 
-    return closest_dist, alpha
+    return closest_dist, closest_alpha
 
 def main():
     G = toy_network()
+    #G = read_arbor_full('136_3_S_day1.csv')
 
-    wiring_costs, conduction_delays = pareto_front(G)
-    for wiring, delay in zip(wiring_costs, conduction_delays):
-        print(wiring, delay)
+    alphas = DEFAULT_ALPHAS
+
+    wiring_costs, conduction_delays = pareto_front(G, alphas=alphas)
+    for alpha, wiring, delay in zip(alphas, wiring_costs, conduction_delays):
+        print(alpha, wiring, delay)
+
+    print(pareto_costs(G))
+    print(pareto_dist(G, alphas, wiring_costs, conduction_delays))
 
 if __name__ == '__main__':
     main()
