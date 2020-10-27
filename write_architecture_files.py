@@ -114,7 +114,7 @@ def write_arbor_files_condensed(raw_data_fname, reconstruction_dir):
 
 def main():
     for fname in os.listdir(RAW_DATA_DIR):
-        if 'full-tracing' in raw_data_fname:
+        if 'full-tracing' in fname and fname.endswith('.csv'):
             raw_data_fname = '%s/%s' % (RAW_DATA_DIR, fname)
             write_arbor_files_full(raw_data_fname, RECONSTRUCTIONS_DIR)
 
