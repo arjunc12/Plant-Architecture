@@ -3,9 +3,10 @@ import csv
 import pandas as pd
 from math import sin, cos
 import numpy as np
-from constants import *
+from constants import RAW_DATA_DIR, RECONSTRUCTIONS_DIR
 import os
 from collections import defaultdict
+import utils
 
 def write_arbor_file_condensed(output_fname, points):
     with open(output_fname, 'w') as f:
@@ -26,26 +27,6 @@ def write_arbor_file_full(output_fname, root_points, lateral_roots):
             for x, y in points:
                 f.write('%f, %f\n' % (x, y))
 
-def root_name_metadata(root_name):
-    root_name = root_name.split('_')
-    genotype = root_name[0]
-    replicate = root_name[1]
-    condition = root_name[2]
-    return genotype, replicate, condition
-
-def image_metadata(image):
-    image = image.strip('_')
-    image = image.strip('.rsml')
-
-    image = image.split('_')
-    day = image[1]
-    picture_num = image[3]
-
-def get_day(image):
-    image = image.strip('_')
-    image_items = image.split('_')
-    return image_items[1]
-
 def write_arbor_files_full(raw_data_fname, reconstruction_dir):
     df = pd.read_csv(raw_data_fname, skipinitialspace=True)
     images = df['image']
@@ -55,6 +36,7 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
     y_pos = df['y']
     root_orders = df['root_order']
 
+    curr_image = None
     curr_name = None
     curr_day = None
     curr_root_points = None
@@ -69,13 +51,14 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
                 # check if this is not the first arbor
                 if curr_lateral_roots != None and len(curr_lateral_roots) > 1:
                     # if not the first main root, write the architecture file for the previous arbor
-                    reconstruction_fname = '%s_%s' % (curr_name, curr_day)
+                    reconstruction_fname = utils.arbor_name(curr_image, curr_name)
                     output_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
                     write_arbor_file_full(output_fname, curr_root_points, curr_lateral_roots)
 
                 # reset the points associated with the current (new) arbor
+                curr_image = image
                 curr_name = root_name
-                curr_day = get_day(image)
+                curr_day = utils.get_day(image)
                 curr_root_points = [(x, y)]
                 curr_lateral_roots = defaultdict(list)
             else:
@@ -130,8 +113,10 @@ def write_arbor_files_condensed(raw_data_fname, reconstruction_dir):
             curr_points.append((1, x, y, position))
 
 def main():
-    raw_data_fname = '%s/%s' % (RAW_DATA_DIR, 'pimpiBig2_D0D1D2-full-tracing.csv')
-    write_arbor_files_full(raw_data_fname, RECONSTRUCTIONS_DIR)
+    for fname in os.listdir(RAW_DATA_DIR):
+        if 'full-tracing' in raw_data_fname:
+            raw_data_fname = '%s/%s' % (RAW_DATA_DIR, fname)
+            write_arbor_files_full(raw_data_fname, RECONSTRUCTIONS_DIR)
 
 if __name__ == '__main__':
     main()
