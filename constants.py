@@ -4,6 +4,7 @@ DATA_DIR = 'data'
 ARCHITECTURE_DIR = '%s/architecture-data' % DATA_DIR
 RAW_DATA_DIR = '%s/raw-data' % ARCHITECTURE_DIR
 RECONSTRUCTIONS_DIR = '%s/arbor-reconstructions' % ARCHITECTURE_DIR
+METADATA_DIR = '%s/metadata' % DATA_DIR
 
 RESULTS_DIR = '%s/results' % DATA_DIR
 PARETO_FRONTS_DIR = '%s/pareto-fronts' % RESULTS_DIR
