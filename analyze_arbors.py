@@ -25,10 +25,23 @@ def get_pareto_front(G, alphas):
 
 def analyze_arbors():
     alphas = DEFAULT_ALPHAS
-    with open('%s/arbor_stats.csv' % STATISTICS_DIR, 'w') as f:
-        f.write('arbor name, pareto front distance, pareto front location\n')
+    fname = '%s/arbor_stats.csv' % STATISTICS_DIR
+    first_time = not os.path.exists(fname)
+
+    prev_arbors = []
+    if not first_time:
+        df = pd.read_csv(fname, skipinitialspace=True)
+        prev_arbors = list(df['arbor name'])
+
+    with open(fname, 'a') as f:
+        if first_time:
+            f.write('arbor name, pareto front distance, pareto front location\n')
+
         for arbor_fname in os.listdir(RECONSTRUCTIONS_DIR):
+            if arbor_fname.strip('.csv') in prev_arbors:
+                continue
             print(arbor_fname)
+
             G = read_arbor_full(arbor_fname)
             arbor_name = G.graph['arbor name']
 
