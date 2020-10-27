@@ -135,3 +135,34 @@ def toy_network():
     G.graph['arbor name'] = 'toy-network'
 
     return G
+
+def image_metadata(image):
+    image = image.strip('_')
+    image = image.strip('.rsml')
+
+    image_items = image.split('_')
+
+    day = image_items[1]
+    day = day.strip('day')
+
+    picture_num = image_items[-1]
+
+    return day, picture_num
+
+def root_name_metadata(root_name):
+    root_name_items = root_name.split("_")
+
+    genotype = root_name_items[0]
+    replicate = root_name_items[1]
+    condition = root_name_items[2]
+
+    return genotype, replicate, condition
+
+def get_day(image):
+    image = image.strip('_')
+    image_items = image.split('_')
+    return image_items[1]
+
+def arbor_name(image, root_name):
+    day = get_day(image)
+    return '%s_%s' % (root_name, day)
