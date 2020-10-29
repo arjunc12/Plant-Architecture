@@ -55,31 +55,7 @@ def midpoint_cost(p0, q, midpoint, alpha):
     cost = (alpha * wiring) + ((1 - alpha) * delay)
     return cost
 
-def critical_values_wolfram_alpha(x, y, z, gamma):
-    critical_values = []
-
-    sqrt_subterm1 = ((gamma ** 2) * (x ** 3) * z)
-    sqrt_subterm2 = ((gamma ** 2) * (x ** 2) * (y ** 2))
-    sqrt_subterm3 = (gamma * (x ** 3) * z)
-    sqrt_subterm4 = (gamma * (x ** 2) * (y ** 2))
-    sqrt_term = -sqrt_subterm1 + sqrt_subterm2 + sqrt_subterm3 - sqrt_subterm4
-
-    denom_term = (gamma * (x ** 2)) - (x ** 2)
-
-    if sqrt_term >= 0 and denom_term != 0:
-        num_term1 = sqrt_term ** 0.5
-        num_term2 = gamma * x * y
-        num_term3 = x * y
-
-        t1 = (num_term1 + num_term2 - num_term3) / denom_term
-        critical_values.append(t1)
-
-        t2 = (-num_term1 + num_term2 - num_term3) / denom_term
-        critical_values.append(t2)
-
-    return critical_values
-
-def critical_values_arjun(x, y, z, gamma):
+def critical_values(x, y, z, gamma):
     critical_values = []
 
     a = (x ** 2) - (gamma * (x ** 2))
@@ -106,7 +82,7 @@ def intermediate_variables(m, q, alpha):
 
     return x, y, z, gamma
 
-def optimal_midpoint_exact(p0, p1, q, alpha, method="wolfram"):
+def optimal_midpoint_exact(p0, p1, q, alpha):
     p0_shift, p1_shift, q_shift = translate_to_origin(p0, p1, q)
 
     candidate_times = [0, 1]
@@ -115,13 +91,9 @@ def optimal_midpoint_exact(p0, p1, q, alpha, method="wolfram"):
 
     x, y, z, gamma = intermediate_variables(m, q_shift, alpha)
 
-    critical_values = []
-    if method == "wolfram":
-        critical_values = critical_values_wolfram_alpha(x, y, z, gamma)
-    elif method == "arjun":
-        critical_values = critical_values_arjun(x, y, z, gamma)
-    critical_values = filter(lambda x : 0 <= x <= 1, critical_values)
-    candidate_times += critical_values
+    crit_values = critical_values(x, y, z, gamma)
+    crit_values = filter(lambda x : 0 <= x <= 1, crit_values)
+    candidate_times += crit_values
 
     best_cost = float("inf")
     best_midpoint = None
@@ -219,15 +191,16 @@ def main():
 
         x, y, z, gamma = intermediate_variables(m, q, alpha)
 
-        wolfram_cost, wolfram_midpoint, wolfram_delta = optimal_midpoint_exact(p0, p1, q, alpha, method="wolfram")
-        arjun_cost, arjun_midpoint, arjun_delta = optimal_midpoint_exact(p0, p1, q, alpha, method="arjun")
+        exact_cost, exact_midpoint, exact_delta = optimal_midpoint_exact(p0, p1, q, alpha)
         approx_cost, approx_midpoint, approx_delta = optimal_midpoint_approx(p0, p1, q, alpha)
 
-        if approx_cost < arjun_cost:
+        if approx_cost < exact_cost:
             print("-----------------------------------")
+            print("APPROXIMATION BEAT EXACT")
             print("alpha = ", alpha)
             print("approx cost", approx_cost)
-            print("arjun cost", arjun_cost)
+            print("arjun cost", exact_cost)
+            assert approx_cost >= exact_cost
             print("-----------------------------------")
 
     # for alpha in np.arange(0.01, 1, 0.01):
