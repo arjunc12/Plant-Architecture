@@ -1,7 +1,7 @@
 import os
 import utils
 import pandas as pd
-from constants import RAW_DATA_DIR, METADATA_DIR
+from constants import CLEANED_ROOT_NODES_DIR, METADATA_DIR
 import os
 import sys
 
@@ -43,9 +43,9 @@ def write_metadata(tracing_fname, output_fname):
 
 def main():
     output_fname = '%s/%s' % (METADATA_DIR, 'metadata.csv')
-    for fname in os.listdir(RAW_DATA_DIR):
-        if 'full-tracing' in fname and fname.endswith('.csv'):
-            raw_data_fname = '%s/%s' % (RAW_DATA_DIR, fname)
+    for fname in os.listdir(CLEANED_ROOT_NODES_DIR):
+        if 'Root_Nodes' in fname and fname.endswith('.csv'):
+            raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)
             print(raw_data_fname)
             write_metadata(raw_data_fname, output_fname)
 
