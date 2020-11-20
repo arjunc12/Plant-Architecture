@@ -3,7 +3,7 @@ import csv
 import pandas as pd
 from math import sin, cos
 import numpy as np
-from constants import RAW_DATA_DIR, RECONSTRUCTIONS_DIR
+from constants import CLEANED_ROOT_NODES_DIR, RECONSTRUCTIONS_DIR
 import os
 from collections import defaultdict
 import utils
@@ -14,11 +14,11 @@ def write_arbor_file_condensed(output_fname, points):
         for root_type, x, y, insertion in points:
             f.write('%d, %f, %f, %f\n' % (root_type, x, y, insertion))
 
-def write_arbor_file_full(output_fname, root_points, lateral_roots):
+def write_arbor_file_full(output_fname, main_root_points, lateral_roots):
     with open(output_fname, 'w') as f:
         # write the main root points
         f.write('main root\n')
-        for x, y in root_points:
+        for x, y in main_root_points:
             f.write('%f, %f\n' % (x, y))
 
         # loop through each lateral root, and write the points for that lateral root
@@ -37,33 +37,34 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
     root_orders = df['root_order']
 
     curr_image = None
-    curr_name = None
     curr_day = None
-    curr_root_points = None
+    curr_main_root_points = None
+    curr_main_root_name = None
     curr_lateral_roots = None
 
-    for image, root_id, root_name, x, y, root_order in\
-        zip(images, root_ids, root_names, x_pos, y_pos, root_orders):
+    for image, root_id, root_name, x, y, root_order in zip(images, root_ids, root_names, x_pos, y_pos, root_orders):
+        # check if we've found a new image
+        if image != curr_image:
+            # if this is not the first image, write the arbor file for the previous image
+            if curr_main_root_name != None and len(curr_lateral_roots) > 0:
+                reconstruction_fname = utils.arbor_name(curr_image, curr_main_root_name)
+                output_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
+                write_arbor_file_full(output_fname, curr_main_root_points, curr_lateral_roots)
 
+            # reset the points for the current (new) image
+            curr_image = image
+            curr_day = utils.get_day(image)
+            curr_main_root_name = None
+            curr_main_root_points = []
+            curr_lateral_roots = defaultdict(list)
+
+        # check if this is part of the main root
         if root_order == 0:
-            # check if we've found a the main root for a new arbor
-            if root_name != curr_name:
-                # check if this is not the first arbor
-                if curr_lateral_roots != None and len(curr_lateral_roots) > 1:
-                    # if not the first main root, write the architecture file for the previous arbor
-                    reconstruction_fname = utils.arbor_name(curr_image, curr_name)
-                    output_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
-                    write_arbor_file_full(output_fname, curr_root_points, curr_lateral_roots)
-
-                # reset the points associated with the current (new) arbor
-                curr_image = image
-                curr_name = root_name
-                curr_day = utils.get_day(image)
-                curr_root_points = [(x, y)]
-                curr_lateral_roots = defaultdict(list)
-            else:
-                # the next point is associated with our current arbor's main root
-                curr_root_points.append((x, y))
+            # reset the current root name
+            if curr_main_root_name == None:
+                curr_main_root_name = root_name
+            # the next point is associated with our current arbor's main root
+            curr_main_root_points.append((x, y))
         else:
             # the next point is associated with a lateral root for our current arbor
             curr_lateral_roots[root_id].append((x, y))
@@ -113,9 +114,9 @@ def write_arbor_files_condensed(raw_data_fname, reconstruction_dir):
             curr_points.append((1, x, y, position))
 
 def main():
-    for fname in os.listdir(RAW_DATA_DIR):
-        if 'full-tracing' in fname and fname.endswith('.csv'):
-            raw_data_fname = '%s/%s' % (RAW_DATA_DIR, fname)
+    for fname in os.listdir(CLEANED_ROOT_NODES_DIR):
+        if 'Root_Nodes' in fname and fname.endswith('.csv'):
+            raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)
             write_arbor_files_full(raw_data_fname, RECONSTRUCTIONS_DIR)
 
 if __name__ == '__main__':
