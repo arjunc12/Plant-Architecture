@@ -2,8 +2,13 @@ import numpy as np
 
 DATA_DIR = 'data'
 ARCHITECTURE_DIR = '%s/architecture-data' % DATA_DIR
+
 RAW_DATA_DIR = '%s/raw-data' % ARCHITECTURE_DIR
+ORIGINAL_ROOT_NODES_DIR = '%s/root-nodes-original' % RAW_DATA_DIR
+CLEANED_ROOT_NODES_DIR = '%s/root-nodes-cleaned' % RAW_DATA_DIR
+
 RECONSTRUCTIONS_DIR = '%s/arbor-reconstructions' % ARCHITECTURE_DIR
+
 METADATA_DIR = '%s/metadata' % DATA_DIR
 
 RESULTS_DIR = '%s/results' % DATA_DIR
@@ -16,4 +21,6 @@ PLOTS_DIR = '%s/plots' % FIGS_DIR
 
 PARETO_FRONT_DELTA = 0.01
 DEFAULT_ALPHAS = np.arange(0, 1 + PARETO_FRONT_DELTA, PARETO_FRONT_DELTA)
+
+SCORING_DATA_DIR = '%s/scoring-data' % DATA_DIR
 
