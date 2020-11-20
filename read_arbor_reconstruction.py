@@ -87,10 +87,10 @@ def read_arbor_full(fname):
                 point = tuple(map(float, line))
                 if prev_point == None:
                     # this is the first point on the current root
-                    G.add_node(point)
-                    lateral_starts.append(point)
-                    if curr_root == 'lateral root':
-                        lateral_starts.append(point)
+                    if not G.has_node(point):
+                        G.add_node(point)
+                        if curr_root != 'main root':
+                            lateral_starts.append(point)
                 else:
                     # connect this point to the previous point on the same root
                     G.add_edge(prev_point, point)
@@ -110,6 +110,8 @@ def read_arbor_full(fname):
 
     # re-label the base of the main root and tips of the lateral roots
     relabel_nodes(G)
+
+    assert nx.is_tree(G)
 
     return G
 
@@ -144,9 +146,8 @@ def read_arbor_condensed(fname):
     return G
 
 def main():
-    for arbor_name in os.listdir(RECONSTRUCTIONS_DIR):
-        print(arbor_name)
-        G =read_arbor_full(arbor_name)
+    G = read_arbor_full('065_3_S_day2.csv')
+    draw_arbor(G, outdir=DRAWINGS_DIR)
 
 if __name__ == '__main__':
     main()
