@@ -5,7 +5,7 @@ from scipy.spatial.distance import euclidean
 import numpy as np
 from read_arbor_reconstruction import read_arbor_full
 from constants import DEFAULT_ALPHAS
-from optimal_midpoint import optimal_midpoint_approx
+from optimal_midpoint import optimal_midpoint, optimal_midpoint_approx, optimal_midpoint_alpha1
 from collections import defaultdict
 
 def wiring_cost(G):
@@ -110,11 +110,34 @@ def satellite_tree(G):
 
     return S
 
+def root_distances(G):
+    distances = {}
+    root = G.graph['main root base']
+    prev = root
+    queue = [root]
+
+    while len(queue) > 0:
+        curr = queue.pop()
+
+        prev_distance = 0
+        if prev in distances:
+            prev_distance = distances[prev]
+        distances[curr] = euclidean(curr, prev) + prev_distance
+
+        for n in G.neighbors(curr):
+            if G.nodes[n]['label'] == 'main root' and n != prev:
+                queue.append(n)
+
+        prev = curr
+
+    return distances
+
 def opt_arbor(G, alpha):
     if alpha == 0:
         return satellite_tree(G)
 
     root_x, root_y = G.graph['main root base']
+    root_distance = root_distances(G)
 
     P = G.copy()
     prune_lateral_roots(P)
@@ -150,7 +173,12 @@ def opt_arbor(G, alpha):
         best_p1 = None
         best_delta = None
         for p0, p1 in main_root_segments:
-            cost, midpoint, delta = optimal_midpoint_approx(p0, p1, lateral_root, alpha)
+            droot = root_distance[p0]
+            cost, midpoint, delta = None, None, None
+            if alpha == 1:
+                cost, midpoint, delta = optimal_midpoint_alpha1(p0, p1, lateral_root)
+            else:
+                cost, midpoint, delta = optimal_midpoint(p0, p1, lateral_root, alpha, droot)
             if cost < best_cost:
                 best_cost = cost
                 best_midpoint = midpoint
@@ -158,8 +186,6 @@ def opt_arbor(G, alpha):
                 best_p1 = p1
                 best_delta = delta
 
-                if delta < 1:
-                    break
         if best_delta == 1:
             assert best_midpoint == best_p1
             connect_points(P, lateral_root, best_p1)
@@ -209,8 +235,7 @@ def pareto_dist(G, alphas, wiring_costs, conduction_delays):
     return closest_dist, closest_alpha
 
 def main():
-    G = toy_network()
-    #G = read_arbor_full('136_3_S_day1.csv')
+    G = read_arbor_full('065_3_S_day2.csv')
 
     alphas = DEFAULT_ALPHAS
 
@@ -218,8 +243,6 @@ def main():
     for alpha, wiring, delay in zip(alphas, wiring_costs, conduction_delays):
         print(alpha, wiring, delay)
 
-    print(pareto_costs(G))
-    print(pareto_dist(G, alphas, wiring_costs, conduction_delays))
 
 if __name__ == '__main__':
     main()
