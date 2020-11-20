@@ -19,28 +19,15 @@ def closest_main_root_point(G, lateral_root_tip):
 
     return curr
 
-def relabel_nodes(G):
+def relabel_lateral_root_tips(G):
     '''
-    relabels all lateral root tips, as well as the base of the main root
+    relabels all lateral root tips
     '''
-
     # variables to keep track of the lowest point on the main root
-    min_main_root_point = None
-    min_main_root_y = float("inf")
     for u in G.nodes():
-        if G.nodes[u]['label'] == 'main root':
-            # check if this point is the new lowest point on the main root
-            x, y = u
-            if y < min_main_root_y:
-                min_main_root_y = y
-                min_main_root_point = u
-
-        elif G.nodes[u]['label'] == 'lateral root' and G.degree(u) == 1:
+        if G.nodes[u]['label'] == 'lateral root' and G.degree(u) == 1:
             # degree 1 lateral root is a tip
             G.nodes[u]['label'] = 'lateral root tip'
-
-    G.nodes[min_main_root_point]['label'] = 'main root base'
-    G.graph['main root base'] = min_main_root_point
 
 def connect_points(G, u, v):
     G.add_edge(u, v)
@@ -130,7 +117,8 @@ def toy_network():
     connect_points(G, root_base, lateral)
     connect_points(G, root_base, lateral2)
 
-    relabel_nodes(G)
+    G.nodes[root_base]['label'] = 'main root base'
+    relabel_lateral_root_tips(G)
 
     G.graph['arbor name'] = 'toy-network'
 
@@ -163,14 +151,14 @@ def get_day(image):
     image_items = image.split('_')
     return image_items[1]
 
-def arbor_name(image, root_name):
+def arbor_name(image, main_root_name):
     day = get_day(image)
-    return '%s_%s' % (root_name, day)
+    return '%s_%s' % (main_root_name, day)
 
 def get_experiment(fname):
     fname_items = fname.split('_')
 
-    experiment = fname_items[0].lower()
-    experiment = experiment.replace('pimpi', 'Pimpi')
-    experiment = experiment.replace('big', 'Big')
-    return experiment
+    pimpi = fname_items[0]
+    big = fname_items[1]
+
+    return '%s_%s' % (pimpi, big)
