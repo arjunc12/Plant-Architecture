@@ -29,6 +29,11 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     # loop through each lateral root starting point to find the closest root point
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
+
+        # some lateral roots overlap, I don't want any node connected to the main root twice
+        if G.degree(lateral_start) > 1:
+            continue
+
         closest_dist = float("inf")
         closest_point = None
         y_lateral = lateral_start[1]
@@ -50,7 +55,7 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         # we should have found a closest root point, if not something's wrong
         assert closest_point != None
         assert G.has_node(closest_point)
-        assert G.nodes[closest_point]['label'] == 'main root'
+        assert G.nodes[closest_point]['label'] in ['main root', 'main root base']
         assert not G.has_edge(closest_point, lateral_start)
 
         # connect lateral_start to the closest root point
@@ -105,11 +110,16 @@ def read_arbor_full(fname):
 
                 prev_point = point
 
+    # label the base of the main root
+    main_root_base = root_points[0]
+    G.nodes[main_root_base]['label'] = 'main root base'
+    G.graph['main root base'] = main_root_base
+
     # connect the first point in each lateral root to the closest point along the main root
     connect_lateral_roots(G, root_points, lateral_starts)
 
     # re-label the base of the main root and tips of the lateral roots
-    relabel_nodes(G)
+    relabel_lateral_root_tips(G)
 
     assert nx.is_tree(G)
 
@@ -146,7 +156,7 @@ def read_arbor_condensed(fname):
     return G
 
 def main():
-    G = read_arbor_full('065_3_S_day2.csv')
+    G = read_arbor_full('087_1_C_day4.csv')
     draw_arbor(G, outdir=DRAWINGS_DIR)
 
 if __name__ == '__main__':
