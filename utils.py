@@ -166,3 +166,11 @@ def get_day(image):
 def arbor_name(image, root_name):
     day = get_day(image)
     return '%s_%s' % (root_name, day)
+
+def get_experiment(fname):
+    fname_items = fname.split('_')
+
+    experiment = fname_items[0].lower()
+    experiment = experiment.replace('pimpi', 'Pimpi')
+    experiment = experiment.replace('big', 'Big')
+    return experiment
