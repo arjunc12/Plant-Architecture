@@ -47,11 +47,11 @@ def midpoint(p0, m, t):
     for i in range(len(p0)):
         midpoint.append(p0[i] + (m[i] * t))
 
-    return midpoint
+    return tuple(midpoint)
 
-def midpoint_cost(p0, q, midpoint, alpha):
+def midpoint_cost(p0, q, midpoint, alpha, droot):
     wiring =  euclidean(midpoint, q)
-    delay = euclidean(midpoint, q) + euclidean(p0, midpoint)
+    delay = euclidean(midpoint, q) + euclidean(p0, midpoint) + droot
     cost = (alpha * wiring) + ((1 - alpha) * delay)
     return cost
 
@@ -82,7 +82,7 @@ def intermediate_variables(m, q, alpha):
 
     return x, y, z, gamma
 
-def optimal_midpoint_exact(p0, p1, q, alpha):
+def optimal_midpoint_exact(p0, p1, q, alpha, droot):
     p0_shift, p1_shift, q_shift = translate_to_origin(p0, p1, q)
 
     candidate_times = [0, 1]
@@ -101,7 +101,7 @@ def optimal_midpoint_exact(p0, p1, q, alpha):
 
     for delta in candidate_times:
         mp = midpoint(p0, m, delta)
-        cost = midpoint_cost(p0, q, mp, alpha)
+        cost = midpoint_cost(p0, q, mp, alpha, droot)
         if cost < best_cost:
             best_cost = cost
             best_delta = delta
@@ -109,7 +109,7 @@ def optimal_midpoint_exact(p0, p1, q, alpha):
 
     return best_cost, best_midpoint, best_delta
 
-def optimal_midpoint_approx(p0, p1, q, alpha):
+def optimal_midpoint_approx(p0, p1, q, alpha, droot):
     '''
     approximates the optimal point to insert a point onto a line segment. This method uses
     brute force to try all possible midpoints, within a certain granularity.
@@ -128,15 +128,11 @@ def optimal_midpoint_approx(p0, p1, q, alpha):
     '''
     assert len(p0) == len(p1) == len(q)
 
-    p0 = np.array(p0)
-    p1 = np.array(p1)
-    q = np.array(q)
-
     '''
     compute the slope between p1 and p1. the line segment can be defined by y = mx + b
     = p0 + m*t, with 0 <= t <= 1
     '''
-    m = p1 - p0
+    m = slope_vector(p0, p1)
 
     '''
     try all possible 0 <= t <= 1, to  see which midpoint on the line segment minimizes
@@ -144,7 +140,7 @@ def optimal_midpoint_approx(p0, p1, q, alpha):
     accuraately.
     '''
     delta = 0.01
-    best_cost = None
+    best_cost = float("inf")
     best_midpoint = None
     best_delta = None
     for t in np.arange(0, 1 + delta, delta):
@@ -156,12 +152,11 @@ def optimal_midpoint_approx(p0, p1, q, alpha):
             midpoint = p1
             t = int(t)
         else:
-            midpoint = p0 + m * t
-        wiring =  euclidean(midpoint, q)
-        delay = euclidean(midpoint, q) + euclidean(p0, midpoint)
-        cost = (alpha * wiring) + ((1 - alpha) * delay)
+            mp = midpoint(p0, m, t)
 
-        if best_cost == None or cost < best_cost:
+        cost = midpoint_cost(p0, q, mp, alpha, droot)
+
+        if cost < best_cost:
             best_cost = cost
             best_midpoint = midpoint
             best_delta = t
@@ -170,47 +165,38 @@ def optimal_midpoint_approx(p0, p1, q, alpha):
 
     return best_cost, best_midpoint, best_delta
 
-def optimal_midpoint(p0, p1, q, alpha):
-    return optimal_midpoint_exact(p0, p1, q, alpha)
+def optimal_midpoint(p0, p1, q, alpha, droot):
+    return optimal_midpoint_exact(p0, p1, q, alpha, droot)
+
+def optimal_midpoint_alpha1(p0, p1, q):
+    p0_shift, p1_shift, q_shift = translate_to_origin(p0, p1, q)
+
+    m = slope_vector(p0_shift, p1_shift)
+
+    t = (np.dot(q_shift, m)) / (np.dot(m, m))
+
+    if t < 0:
+        t = 0
+    if t > 1:
+        t = 1
+
+    mp = midpoint(p0, m, t)
+    cost = euclidean(q, mp)
+    return cost, mp, t
 
 def main():
-    #p0 = (0, 0)
-    #p1 = (0.07, 1)
-    #q = (-1.2, 0.75)
+   #  p0 = (7.023415, 4.434017)
+#     p1 = (6.94346, 4.763061)
+#     q = (6.63524, 4.597408)
+#
+#     print(optimal_midpoint(p0, p1, q, alpha=0.99))
+#     print(optimal_midpoint(p0, p1, q, alpha=1))
+#     print(optimal_midpoint_alpha1(p0, p1, q))
 
     p0 = (0, 0)
-    print(p0)
-    p1 = (random.uniform(0, 10), random.uniform(0, 10))
-    print(p1)
-    q = (random.uniform(0, 10), random.uniform(0, 10))
-    print(q)
-
-    m = slope_vector(p0, p1)
-
-    for alpha in np.arange(0.01, 1, 0.01):
-
-        x, y, z, gamma = intermediate_variables(m, q, alpha)
-
-        exact_cost, exact_midpoint, exact_delta = optimal_midpoint_exact(p0, p1, q, alpha)
-        approx_cost, approx_midpoint, approx_delta = optimal_midpoint_approx(p0, p1, q, alpha)
-
-        if approx_cost < exact_cost:
-            print("-----------------------------------")
-            print("APPROXIMATION BEAT EXACT")
-            print("alpha = ", alpha)
-            print("approx cost", approx_cost)
-            print("arjun cost", exact_cost)
-            assert approx_cost >= exact_cost
-            print("-----------------------------------")
-
-    # for alpha in np.arange(0.01, 1, 0.01):
-#         exact_cost, exact_midpoint, exact_delta = optimal_midpoint_exact(p0, p1, q, alpha)
-#         approx_cost, approx_midpoint, approx_delta = optimal_midpoint_approx(p0, p1, q, alpha)
-#         if approx_cost < exact_cost:
-#             print("alpha = ", alpha)
-#             print("exact cost:", exact_cost)
-#             print("approx cost:", approx_cost)
-#             print("------------------------------")
+    p1 = (1, 1)
+    q = (0.7, 0.69)
+    print(optimal_midpoint_alpha1(p0, p1, q))
 
 if __name__ == '__main__':
     main()
