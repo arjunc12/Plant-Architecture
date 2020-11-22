@@ -30,13 +30,12 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
 
-        # some lateral roots overlap, I don't want any node connected to the main root twice
-        if G.degree(lateral_start) > 1:
-            continue
-
         closest_dist = float("inf")
         closest_point = None
         y_lateral = lateral_start[1]
+
+        # variable to track whether lateral_start is already connected to the main root
+        is_connected = False
 
         '''
         loop through the main root points to find the main root point closest to the current
@@ -44,13 +43,24 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         '''
         for root_point in root_points:
             '''
-            Check if root_point is closer to lateral_start than the the previously
+            If lateral_start already has a path to root_point then it doesn't need to be
+            connected to the main root
+            '''
+            if nx.has_path(G, root_point, lateral_start):
+                is_connected = True
+                break
+            '''
+            Otherwise Check if root_point is closer to lateral_start than the the previously
             considered  root points
             '''
             dist = euclidean(lateral_start, root_point)
             if dist < closest_dist:
                 closest_dist = dist
                 closest_point = root_point
+
+        if is_connected:
+            # lateral_start already connected to main root; we don't want to add more edges
+            continue
 
         # we should have found a closest root point, if not something's wrong
         assert closest_point != None
@@ -156,7 +166,7 @@ def read_arbor_condensed(fname):
     return G
 
 def main():
-    G = read_arbor_full('087_1_C_day4.csv')
+    G = read_arbor_full('060_3_C_day5.csv')
     draw_arbor(G, outdir=DRAWINGS_DIR)
 
 if __name__ == '__main__':
