@@ -166,7 +166,7 @@ def read_arbor_condensed(fname):
     return G
 
 def main():
-    G = read_arbor_full('060_3_C_day5.csv')
+    G = read_arbor_full('087_1_C_day4.csv')
     draw_arbor(G, outdir=DRAWINGS_DIR)
 
 if __name__ == '__main__':
