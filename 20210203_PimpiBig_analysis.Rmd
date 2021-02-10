@@ -1,0 +1,2571 @@
+---
+title: "Analysis of ALL Pimp BIG experiment"
+output: html_notebook
+---
+
+# file preparation
+
+PimpBig2 experiment analysis - loading the data   
+
+```{r}
+setwd("/Users/magdalena/Dropbox/DataAndAnalysis/Tomato/PimpiBIG csv raw files/")
+list.files()
+Big1_D0D1 <- read.csv("pimpi_Big1_D0_D1.csv")
+Big1_D2D3 <- read.csv("pimpi_Big1_D2_D3.csv")
+Big1_D4D5 <- read.csv("pimpi_Big1_D4_D5.csv")
+
+Big2_D0D1 <- read.csv("pimpi_Big2_D0_D1.csv")
+Big2_D2D3 <- read.csv("pimpi_Big2_D2_D3.csv")
+Big2_D4D5 <- read.csv("pimpi_Big2_D4_D5.csv")
+
+Big3_D0D1 <- read.csv("pimpi_Big3_D0_D1.csv")
+Big3_D2D3 <- read.csv("pimpi_Big3_D2_D3.csv")
+Big3_D4D5 <- read.csv("pimpi_Big3_D4_D5.csv")
+
+Big4_D0D1 <- read.csv("pimpi_Big4_D0_D1.csv")
+Big4_D0_FU <- read.csv("pimpi_Big4_D0_FU.csv")
+Big4_D2D3 <- read.csv("pimpi_Big4_D2_D3.csv")
+Big4_D4D5 <- read.csv("pimpi_Big4_D4_D5.csv")
+
+head(Big4_D0D1)
+head(Big4_D0_FU)
+# Need to add this because otherwise we have images that are called exactly the same and it is causing problems later on 
+Big4_D0_FU$image <- gsub(".rsml", "_FU.rsml", Big4_D0_FU$image)
+head(Big4_D0_FU)
+head(Big4_D2D3)
+head(Big4_D4D5)
+```
+
+Let's fuse all the files into one big file per experiment
+
+```{r}
+Big1 <- rbind(Big1_D0D1, Big1_D2D3)
+Big1 <- rbind(Big1, Big1_D4D5)
+
+Big2 <- rbind(Big2_D0D1, Big2_D2D3)
+Big2 <- rbind(Big2, Big2_D4D5)
+
+Big3 <- rbind(Big3_D0D1, Big3_D2D3)
+Big3 <- rbind(Big3, Big3_D4D5)
+
+Big4 <- rbind(Big4_D0D1, Big4_D0_FU)
+Big4 <- rbind(Big4, Big4_D2D3)
+Big4 <- rbind(Big4, Big4_D4D5)
+```
+
+Let's make sure we have a collumn indicating the experimental batch as well:
+
+```{r}
+Big1$experiment <- "Big01"
+Big2$experiment <- "Big02"
+Big3$experiment <- "Big03"
+Big4$experiment <- "Big04"
+```
+
+There is an issue with the images from Big02 also being in Big04 - so we have to make sure that we have only images from particular experiment in there. So - we need to make a collumn for everyone with "date" to make sure we only have the following days
+
+Big 1 experiment:
+```{r}
+Big1$info <- strsplit(Big1$image, "_")
+dim(Big1)
+Big1$date <- "none"
+for(i in 1:8555){
+  Big1$date[i] <- sapply(Big1$info[i], function(x){
+  x[4]})
+}
+unique(Big1$date)
+```
+
+Big 2 experiment:
+```{r}
+Big2$info <- strsplit(Big2$image, "_")
+dim(Big2)
+Big2$date <- "none"
+for(i in 1:13695){
+  Big2$date[i] <- sapply(Big2$info[i], function(x){
+  x[4]})
+}
+unique(Big2$date)
+```
+
+Big 3 experiment:
+```{r}
+Big3$info <- strsplit(Big3$image, "_")
+dim(Big3)
+Big3$date <- "none"
+for(i in 1:13232){
+  Big3$date[i] <- sapply(Big3$info[i], function(x){
+  x[4]})
+}
+unique(Big3$date)
+```
+
+Big 4 experiment:
+```{r}
+Big4$info <- strsplit(Big4$image, "_")
+dim(Big4)
+Big4$date <- "none"
+for(i in 1:13346){
+  Big4$date[i] <- sapply(Big4$info[i], function(x){
+  x[4]})
+}
+unique(Big4$date)
+```
+
+Now we can fuse all the data into one:
+
+```{r}
+all_data <- rbind(Big1, Big2)
+all_data <- rbind(all_data, Big3)
+all_data <- rbind(all_data, Big4)
+dim(all_data)
+```
+
+Then - we need to check how many "Root" values we have per unique image and how many "Lateral root" values we have. This will save us heaps of headache in the future
+
+In total we have X many images
+```{r}
+length(unique(all_data$image))
+```
+
+and we have X many Main Roots - which *should* be the same as image number...
+
+```{r}
+onlyMr <- subset(all_data, all_data$root_order == 0)
+dim(onlyMr)
+```
+
+... but it isn't - so let's figure which images have more MR per image than 1 and remove these specific values (or decide which one to remove :)
+
+We need to make a file where:
+Col. A > image 
+Col. B > # Root
+Col. C > # Lateral Root
+
+```{r}
+names <- c(text="image", "MR.no", "LR.no")
+check_table <- data.frame()
+
+for (k in names) check_table[[k]] <- as.character()
+```
+
+Then - we will subset the entire dataset for one image and calculate how many MR and LR are there and integrate it into the table
+
+```{r}
+i=1
+
+uni <- subset(all_data, all_data$image == unique(all_data$image)[i])
+uni
+MR <- subset(uni, uni$root_order == 0)
+LR <- subset(uni, uni$root_order == 1)
+
+check_table[i,1] <- as.character(unique(uni$image))
+check_table[i,2] <- dim(MR)[1]
+check_table[i,3] <- dim(LR)[1]
+check_table
+```
+Cool - now let's loop it for all the images:
+```{r}
+
+for (i in 2:5521) {
+  uni <- subset(all_data, all_data$image == unique(all_data$image)[i])
+  uni
+  MR <- subset(uni, uni$root_order == 0)
+  LR <- subset(uni, uni$root_order == 1)
+  
+  check_table[i,1] <- as.character(unique(uni$image))
+  check_table[i,2] <- dim(MR)[1]
+  check_table[i,3] <- dim(LR)[1]
+}
+
+check_table
+```
+
+Cool - now let's fish out all the images where we have multiple MR:
+
+```{r}
+suspicious <- subset(check_table, check_table$MR.no > 1)
+dim(suspicious)
+suspicious
+```
+
+Let's have a closer look at these suspicious images:
+
+```{r}
+closer_look <- subset(all_data, all_data$image == suspicious$image[100])
+closer_look2 <- subset(closer_look, closer_look$root_order == 0)
+closer_look2
+```
+
+It looks like these double roots are just duplications - let's see what happens when we remove exact duplicates using tidyverse package
+
+```{r}
+library(tidyverse)
+all_data2 <- all_data %>% distinct()
+length(unique((all_data2$image)))
+
+onlyMr2 <- subset(all_data2, all_data2$root_order == 0)
+dim(onlyMr2)
+```
+
+cool - so now we have majority of the images where the MR is simply duplicated - so let's repeat the exercise from above again to identify what other images we have left over which have two MR:
+
+```{r}
+names <- c(text="image", "MR.no", "LR.no")
+check_table2 <- data.frame()
+
+for (k in names) check_table2[[k]] <- as.character()
+
+for (i in 1:5521) {
+  uni <- subset(all_data2, all_data2$image == unique(all_data2$image)[i])
+  MR <- subset(uni, uni$root_order == 0)
+  LR <- subset(uni, uni$root_order == 1)
+  
+  check_table2[i,1] <- as.character(unique(uni$image))
+  check_table2[i,2] <- dim(MR)[1]
+  check_table2[i,3] <- dim(LR)[1]
+}
+
+suspicious <- subset(check_table2, check_table2$MR.no > 1)
+suspicious
+```
+
+Let's have a closer look at these images and their MRs:
+```{r}
+closer_look <- subset(all_data2, all_data2$image == suspicious$image[1])
+closer_look1 <- subset(closer_look, closer_look$root_order == 0)
+closer_look1
+
+closer_look <- subset(all_data2, all_data2$image == suspicious$image[22])
+closer_look2 <- subset(closer_look, closer_look$root_order == 0)
+closer_look2
+```
+
+OK - so clearly - we  have something that wasnt classified as LR properly (as in case of closer_look1).
+
+We can recognize the "mistake MR" by saying that the name would start with root_ but let's see if this is the case for many of them:
+
+```{r}
+onlyMr <- subset(all_data2, all_data2$root_order == 0)
+unique(onlyMr$root_name)
+```
+
+ok - so then we have to split the root name into individual tiers and select MR which start with "root_":
+
+```{r}
+all_data2$root_info <- strsplit(all_data2$root_name, "_")
+dim(all_data2)
+
+for(i in 1:41317){
+  all_data2$genotype[i] <- sapply(all_data2$root_info[i], function(x){
+  x[1]})
+  all_data2$rep[i] <- sapply(all_data2$root_info[i], function(x){
+  x[2]})
+  all_data2$cond[i] <- sapply(all_data2$root_info[i], function(x){
+  x[3]})
+}
+
+head(all_data2)
+```
+
+Now we have to subset for Mr and look at their individual genotype information
+
+```{r}
+onlyMr <- subset(all_data2, all_data2$root_order == 0)
+dim(onlyMr)
+unique(onlyMr$genotype)
+onlyMr$genotype <- gsub(" ", "", onlyMr$genotype)
+unique(onlyMr$genotype)
+onlyMr2 <- subset(onlyMr, onlyMr$genotype != "root")
+dim(onlyMr2)
+unique(onlyMr2$genotype)
+```
+
+Now - lets get rid of these bad MR from the original all_data2 file:
+
+```{r}
+badMr <- subset(onlyMr, onlyMr$genotype == "root")
+badMr
+wrong_MR <- badMr$root
+wrong_MR
+
+all_data2_single_MR <- all_data2[!(all_data2$root %in% wrong_MR),]
+dim(all_data2_single_MR)
+dim(all_data2)
+
+length(unique((all_data2_single_MR$image)))
+
+onlyMr3 <- subset(all_data2_single_MR, all_data2_single_MR$root_order == 0)
+dim(onlyMr3)
+```
+
+So we still have 7 images that supposedly contain more than 2 roots
+
+Let's look at these images:
+
+```{r}
+names <- c(text="image", "MR.no", "LR.no")
+check_table2 <- data.frame()
+
+for (k in names) check_table2[[k]] <- as.character()
+
+for (i in 1:5520) {
+  uni <- subset(all_data2_single_MR, all_data2_single_MR$image == unique(all_data2_single_MR$image)[i])
+  MR <- subset(uni, uni$root_order == 0)
+  LR <- subset(uni, uni$root_order == 1)
+  
+  check_table2[i,1] <- as.character(unique(uni$image))
+  check_table2[i,2] <- dim(MR)[1]
+  check_table2[i,3] <- dim(LR)[1]
+}
+
+suspicious <- subset(check_table2, check_table2$MR.no > 1)
+suspicious
+```
+
+```{r}
+closer_look <- subset(all_data2_single_MR, all_data2_single_MR$image == suspicious$image[1])
+closer_look1 <- subset(closer_look, closer_look$root_order == 0)
+closer_look1
+
+closer_look <- subset(all_data2_single_MR, all_data2_single_MR$image == suspicious$image[2])
+closer_look2 <- subset(closer_look, closer_look$root_order == 0)
+closer_look2
+```
+
+from the look of it - it seems we have two cases where we have exported twice the exact same root but one longer than the other (I presume longer is correct one). Problem is that their root and image are both identical. 
+
+After inspecting the images - it seems that:
+_set1_day3_20191002_238.tiff has > 2 lateral roots 
+_set1_day3_20191002_001 has > 3 lateral roots
+
+so in both cases - the 2nd Main Root is better. I am affraid that we will also get some oddness with positions of lateral roots. So maybe let's inspect all the data belonging to these two images:
+
+```{r}
+odd_stuff01 <- subset(all_data2_single_MR, all_data2_single_MR$image == "_set1_day3_20191002_238.rsml")
+odd_stuff02 <- subset(all_data2_single_MR, all_data2_single_MR$image == "_set1_day3_20191002_001.rsml")
+odd_stuff01
+odd_stuff02
+```
+
+ok - so based on this data - it seems like:
+- the first 3 rows in odd_stuff01 are containing faulty data, and thus should be removed
+- the first 4 rows in odd_stuff02 are containing faulty data, and thus should be removed
+
+So let's remove these columns from individual odd_stuff files, remove the entire picture from the all_data2_single_MR, and then rbind() the odd_stuff together back into the all_data2_single_MR:
+
+```{r}
+odd_stuff01 <- odd_stuff01[4:13,]
+odd_stuff01
+
+odd_stuff02 <- odd_stuff02[5:14,]
+odd_stuff02
+
+bye <- c("_set1_day3_20191002_238.rsml", "_set1_day3_20191002_001.rsml")
+all_data3 <- subset(all_data2_single_MR, !(all_data2_single_MR$image %in% bye))
+all_data3 <- rbind(all_data3, odd_stuff01)
+all_data3 <- rbind(all_data3, odd_stuff02)
+```
+
+Let's do a final check if we have NO other images that have two MR now:
+
+```{r}
+length(unique(all_data3$image))
+names <- c(text="image", "MR.no", "LR.no")
+check_table2 <- data.frame()
+
+for (k in names) check_table2[[k]] <- as.character()
+
+for (i in 1:5520) {
+  uni <- subset(all_data3, all_data3$image == unique(all_data3$image)[i])
+  MR <- subset(uni, uni$root_order == 0)
+  LR <- subset(uni, uni$root_order == 1)
+  
+  check_table2[i,1] <- as.character(unique(uni$image))
+  check_table2[i,2] <- dim(MR)[1]
+  check_table2[i,3] <- dim(LR)[1]
+}
+
+suspicious <- subset(check_table2, check_table2$MR.no > 1)
+suspicious
+```
+
+Great - no suspicious images anymore - so we can move on :)
+
+# calculating desired traits:
+
+Let's now get rid of all the traits like volume and diameter that we are not directly interested in:
+
+```{r}
+head(all_data3)
+colnames(all_data3)
+final <- all_data3[,c(1:3, 20, 22, 24:26, 4, 9, 11, 12,14,17,19)]
+head(final)
+```
+then - we need to create a file that has all MR:
+
+```{r}
+only_MR <- subset(final, final$root_ontology == unique(final$root_ontology)[1])
+colnames(only_MR)[9] <- "MRL"
+head(only_MR)
+```
+
+and since we dont need to calculate any LR related phenotypes for the plants that dont have LR - we need to subset our MR file a bit further:
+
+```{r}
+no_LR_MR <- subset(only_MR, only_MR$n_child < 1)
+only_MR <- subset(only_MR, only_MR$n_child > 0)
+head(only_MR)
+head(no_LR_MR)
+```
+
+Cool - there are now quite a lot of unneccessary information now - so let's get to bare necessities:
+
+```{r}
+colnames(only_MR)
+only_MR <- only_MR[,c(1:9,13:15)]
+no_LR_MR <- no_LR_MR[,c(1:9,13:15)]
+dim(only_MR)
+head(only_MR)
+```
+We have the same root ID occurring multiple times - as we are tracing individual plants accross the time and transferring the data from one image to another - therefore - let's check if it all adds up:
+
+```{r}
+all_MR <- unique(only_MR$root)
+length(all_MR)
+all_img <- unique(only_MR$image)
+length(all_img)
+
+length(all_img) / length(all_MR)
+
+only_MR$image_id <- paste(only_MR$image, "_", only_MR$root_name, sep="")
+head(only_MR)
+
+all_img_id <- unique(only_MR$image_id)
+length(all_img_id)
+```
+
+Almost - but we will deal with it later.
+
+So we have in total 4460 unique images - we will have to examine the LR belonging to each MR in each image by extracting them based on the "date":
+
+```{r}
+MR_now <- all_img[4460]
+MR_now
+
+head(final)
+
+super_temp <- subset(final, final$image %in% MR_now)
+super_temp
+```
+
+Then - we need to create some info about the length of individual zones - for this we need info on MR_length:
+
+```{r}
+MR_length <- subset(only_MR, only_MR$image %in% MR_now)
+MR_length <- MR_length$MRL
+MR_length
+```
+
+Length of Apical zone is basically equal to position of first lateral root Branched zone length is the position of last LR - position of first LR Basal zone is the MR length - position of last LR thus:
+
+```{r}
+super_temp <- subset(super_temp, super_temp$root_ontology == unique(super_temp$root_ontology)[2])
+super_temp
+Apical <- min(super_temp$insertion_position)
+Branched <- (max(super_temp$insertion_position) - Apical)
+Basal <- MR_length - max(super_temp$insertion_position)
+Apical
+Branched
+Basal
+```
+
+Another thing that I am interested in is the distribution of LRL across the MR and how quickly that decreases across the MRL
+
+```{r}
+super_temp
+#super_temp$adj_position <- super_temp$insertion_position + 0.0000001
+plot(super_temp$length ~ super_temp$insertion_position)
+abline(lm(super_temp$length ~ super_temp$insertion_position))
+model <- lm(super_temp$length ~ super_temp$insertion_position)
+summary(model)
+model$coefficients
+LRL.dec <- model$coefficients[[2]]
+LRL.dec.R2 <- summary(model)$r.squared
+LRL.dec.R2
+LRL.dec
+```
+
+
+Then - we can calculate the % of LR across the MR length - by dividing the MR into 4 or 10 parts
+
+```{r}
+super_temp$LR_in_10_perc <- 0
+super_temp$LR_in_20_perc <- 0
+super_temp$LR_in_30_perc <- 0
+super_temp$LR_in_40_perc <- 0
+super_temp$LR_in_50_perc <- 0
+super_temp$LR_in_60_perc <- 0
+super_temp$LR_in_70_perc <- 0
+super_temp$LR_in_80_perc <- 0
+super_temp$LR_in_90_perc <- 0
+super_temp$LR_in_100_perc <- 0
+
+
+for(e in 1:nrow(super_temp)){
+   if (super_temp$insertion_position[e] < (MR_length/10)){
+    super_temp$LR_in_10_perc[e] <- 1
+   } else {super_temp$LR_in_10_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 2*(MR_length/10) & super_temp$insertion_position[e] > (MR_length/10)){
+    super_temp$LR_in_20_perc[e] <- 1
+  } else {super_temp$LR_in_20_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 3*(MR_length/10) & super_temp$insertion_position[e] > 2*(MR_length/10)){
+    super_temp$LR_in_30_perc[e] <- 1
+  } else {super_temp$LR_in_30_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 4*(MR_length/10) & super_temp$insertion_position[e] > 3*(MR_length/10)){
+    super_temp$LR_in_40_perc[e] <- 1
+  } else {super_temp$LR_in_40_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 5*(MR_length/10) & super_temp$insertion_position[e] > 4*(MR_length/10)){
+    super_temp$LR_in_50_perc[e] <- 1
+  } else {super_temp$LR_in_50_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 6*(MR_length/10) & super_temp$insertion_position[e] > 5*(MR_length/10)){
+    super_temp$LR_in_60_perc[e] <- 1
+  } else {super_temp$LR_in_60_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 7*(MR_length/10) & super_temp$insertion_position[e] > 6*(MR_length/10)){
+    super_temp$LR_in_70_perc[e] <- 1
+  } else {super_temp$LR_in_70_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 8*(MR_length/10) & super_temp$insertion_position[e] > 7*(MR_length/10)){
+    super_temp$LR_in_80_perc[e] <- 1
+  } else {super_temp$LR_in_80_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 9*(MR_length/10) & super_temp$insertion_position[e] > 8*(MR_length/10)){
+    super_temp$LR_in_90_perc[e] <- 1
+  } else {super_temp$LR_in_90_perc[e] <- 0}
+  if (super_temp$insertion_position[e] < 10*(MR_length/10) & super_temp$insertion_position[e] > 9*(MR_length/10)){
+    super_temp$LR_in_100_perc[e] <- 1
+  } else {super_temp$LR_in_100_perc[e] <- 0}
+}
+
+super_temp
+```
+
+so after classifying each LR to its respective portion of MR, we can then summarize them and calculate total LR length in this fragment:
+
+```{r}
+super_temp$LRL_in_10_perc <- super_temp$length * super_temp$LR_in_10_perc
+super_temp$LRL_in_20_perc <- super_temp$length * super_temp$LR_in_20_perc
+super_temp$LRL_in_30_perc <- super_temp$length * super_temp$LR_in_30_perc
+super_temp$LRL_in_40_perc <- super_temp$length * super_temp$LR_in_40_perc
+super_temp$LRL_in_50_perc <- super_temp$length * super_temp$LR_in_50_perc
+super_temp$LRL_in_60_perc <- super_temp$length * super_temp$LR_in_60_perc
+super_temp$LRL_in_70_perc <- super_temp$length * super_temp$LR_in_70_perc
+super_temp$LRL_in_80_perc <- super_temp$length * super_temp$LR_in_80_perc
+super_temp$LRL_in_90_perc <- super_temp$length * super_temp$LR_in_90_perc
+super_temp$LRL_in_100_perc <- super_temp$length * super_temp$LR_in_100_perc
+
+LR_no_10_100 <- sum(super_temp$LR_in_10_perc)
+LR_no_20_100 <- sum(super_temp$LR_in_20_perc)
+LR_no_30_100 <- sum(super_temp$LR_in_30_perc)
+LR_no_40_100 <- sum(super_temp$LR_in_40_perc)
+LR_no_50_100 <- sum(super_temp$LR_in_50_perc)
+LR_no_60_100 <- sum(super_temp$LR_in_60_perc)
+LR_no_70_100 <- sum(super_temp$LR_in_70_perc)
+LR_no_80_100 <- sum(super_temp$LR_in_80_perc)
+LR_no_90_100 <- sum(super_temp$LR_in_90_perc)
+LR_no_100_100 <- sum(super_temp$LR_in_100_perc)
+
+LRL_10_100 <- sum(super_temp$LRL_in_10_perc)
+LRL_20_100 <- sum(super_temp$LRL_in_20_perc)
+LRL_30_100 <- sum(super_temp$LRL_in_30_perc)
+LRL_40_100 <- sum(super_temp$LRL_in_40_perc)
+LRL_50_100 <- sum(super_temp$LRL_in_50_perc)
+LRL_60_100 <- sum(super_temp$LRL_in_60_perc)
+LRL_70_100 <- sum(super_temp$LRL_in_70_perc)
+LRL_80_100 <- sum(super_temp$LRL_in_80_perc)
+LRL_90_100 <- sum(super_temp$LRL_in_90_perc)
+LRL_100_100 <- sum(super_temp$LRL_in_100_perc)
+```
+
+OK - last but not least - we should calculate the center of gravity for LR:
+
+```{r}
+super_temp$momentum <- (super_temp$insertion_position * super_temp$length)
+all_momentum <- sum(super_temp$momentum)
+all_momentum
+all_length <- sum(super_temp$length)
+all_length
+CoG <- (all_momentum / all_length)
+CoG
+```
+
+Finally - let’s add all these values into our MR_only table
+
+First we need to create needed columns:
+```{r}
+only_MR$Apical <- 0
+only_MR$Branched <- 0
+only_MR$Basal <- 0
+
+only_MR$Apical_perc <- 0
+only_MR$Branched_perc <- 0
+only_MR$Basal_perc <- 0
+only_MR$LR_no_10_100 <- 0
+only_MR$LR_no_20_100 <- 0
+only_MR$LR_no_30_100 <- 0
+only_MR$LR_no_40_100 <- 0
+only_MR$LR_no_50_100 <- 0
+only_MR$LR_no_60_100 <- 0
+only_MR$LR_no_70_100 <- 0
+only_MR$LR_no_80_100 <- 0
+only_MR$LR_no_90_100 <- 0
+only_MR$LR_no_100_100 <- 0
+
+only_MR$LRL_10_100 <- 0
+only_MR$LRL_20_100 <- 0
+only_MR$LRL_30_100 <- 0
+only_MR$LRL_40_100 <- 0
+only_MR$LRL_50_100 <- 0
+only_MR$LRL_60_100 <- 0
+only_MR$LRL_70_100 <- 0
+only_MR$LRL_80_100 <- 0
+only_MR$LRL_90_100 <- 0
+only_MR$LRL_100_100 <- 0
+
+only_MR$CoG <- 0
+only_MR$LRL.dec <- 0
+only_MR$LRL.dec.R2 <- 0
+head(only_MR)
+```
+
+then add values to these columns:
+
+```{r}
+only_MR$Apical[1] <- Apical
+only_MR$Branched[1] <- Branched
+only_MR$Basal[1] <- Basal
+
+only_MR$Apical_perc[1] <- (Apical / MR_length)
+only_MR$Branched_perc[1] <- (Branched / MR_length)
+only_MR$Basal_perc[1] <- (Basal / MR_length)
+only_MR$LR_no_10_100[1] <- LR_no_10_100
+only_MR$LR_no_20_100[1] <- LR_no_20_100
+only_MR$LR_no_30_100[1] <- LR_no_30_100
+only_MR$LR_no_40_100[1] <- LR_no_40_100
+only_MR$LR_no_50_100[1] <- LR_no_50_100
+only_MR$LR_no_60_100[1] <- LR_no_60_100
+only_MR$LR_no_70_100[1] <- LR_no_70_100
+only_MR$LR_no_80_100[1] <- LR_no_80_100
+only_MR$LR_no_90_100[1] <- LR_no_90_100
+only_MR$LR_no_100_100[1] <- LR_no_100_100
+
+only_MR$LRL_10_100[1] <- LRL_10_100
+only_MR$LRL_20_100[1] <- LRL_20_100
+only_MR$LRL_30_100[1] <- LRL_30_100
+only_MR$LRL_40_100[1] <- LRL_40_100
+only_MR$LRL_50_100[1] <- LRL_50_100
+only_MR$LRL_60_100[1] <- LRL_60_100
+only_MR$LRL_70_100[1] <- LRL_70_100
+only_MR$LRL_80_100[1] <- LRL_80_100
+only_MR$LRL_90_100[1] <- LRL_90_100
+only_MR$LRL_100_100[1] <- LRL_100_100
+
+only_MR$CoG[1] <- CoG
+
+only_MR$LRL.dec[1] <- LRL.dec
+only_MR$LRL.dec.R2[1] <- LRL.dec.R2  
+
+head(only_MR)
+```
+cool - looks good. Let's loop it:
+
+
+```{r}
+dim(final)
+length(all_img)
+```
+
+```{r}
+for(i in c(2:4460)){
+  MR_now <- all_img[i]
+  super_temp <- subset(final, final$image %in% MR_now)
+  MR_length <- subset(only_MR, only_MR$image %in% MR_now)
+  MR_length <- MR_length$MRL
+  super_temp <- subset(super_temp, super_temp$root_ontology == unique(super_temp$root_ontology)[2])
+  Apical <- min(super_temp$insertion_position)
+  Branched <- (max(super_temp$insertion_position) - Apical)
+  Basal <- MR_length - max(super_temp$insertion_position)
+  
+  super_temp$LR_in_10_perc <- 0
+  super_temp$LR_in_20_perc <- 0
+  super_temp$LR_in_30_perc <- 0
+  super_temp$LR_in_40_perc <- 0
+  super_temp$LR_in_50_perc <- 0
+  super_temp$LR_in_60_perc <- 0
+  super_temp$LR_in_70_perc <- 0
+  super_temp$LR_in_80_perc <- 0
+  super_temp$LR_in_90_perc <- 0
+  super_temp$LR_in_100_perc <- 0
+
+  for(e in 1:nrow(super_temp)){
+     if (super_temp$insertion_position[e] < (MR_length/10)){
+      super_temp$LR_in_10_perc[e] <- 1
+     } else {super_temp$LR_in_10_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 2*(MR_length/10) & super_temp$insertion_position[e] > (MR_length/10)){
+      super_temp$LR_in_20_perc[e] <- 1
+    } else {super_temp$LR_in_20_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 3*(MR_length/10) & super_temp$insertion_position[e] > 2*(MR_length/10)){
+      super_temp$LR_in_30_perc[e] <- 1
+    } else {super_temp$LR_in_30_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 4*(MR_length/10) & super_temp$insertion_position[e] > 3*(MR_length/10)){
+      super_temp$LR_in_40_perc[e] <- 1
+    } else {super_temp$LR_in_40_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 5*(MR_length/10) & super_temp$insertion_position[e] > 4*(MR_length/10)){
+      super_temp$LR_in_50_perc[e] <- 1
+    } else {super_temp$LR_in_50_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 6*(MR_length/10) & super_temp$insertion_position[e] > 5*(MR_length/10)){
+      super_temp$LR_in_60_perc[e] <- 1
+    } else {super_temp$LR_in_60_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 7*(MR_length/10) & super_temp$insertion_position[e] > 6*(MR_length/10)){
+      super_temp$LR_in_70_perc[e] <- 1
+    } else {super_temp$LR_in_70_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 8*(MR_length/10) & super_temp$insertion_position[e] > 7*(MR_length/10)){
+      super_temp$LR_in_80_perc[e] <- 1
+    } else {super_temp$LR_in_80_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 9*(MR_length/10) & super_temp$insertion_position[e] > 8*(MR_length/10)){
+      super_temp$LR_in_90_perc[e] <- 1
+    } else {super_temp$LR_in_90_perc[e] <- 0}
+    if (super_temp$insertion_position[e] < 10*(MR_length/10) & super_temp$insertion_position[e] > 9*(MR_length/10)){
+      super_temp$LR_in_100_perc[e] <- 1
+    } else {super_temp$LR_in_100_perc[e] <- 0}
+  } 
+
+  super_temp$LRL_in_10_perc <- super_temp$length * super_temp$LR_in_10_perc
+  super_temp$LRL_in_20_perc <- super_temp$length * super_temp$LR_in_20_perc
+  super_temp$LRL_in_30_perc <- super_temp$length * super_temp$LR_in_30_perc
+  super_temp$LRL_in_40_perc <- super_temp$length * super_temp$LR_in_40_perc
+  super_temp$LRL_in_50_perc <- super_temp$length * super_temp$LR_in_50_perc
+  super_temp$LRL_in_60_perc <- super_temp$length * super_temp$LR_in_60_perc
+  super_temp$LRL_in_70_perc <- super_temp$length * super_temp$LR_in_70_perc
+  super_temp$LRL_in_80_perc <- super_temp$length * super_temp$LR_in_80_perc
+  super_temp$LRL_in_90_perc <- super_temp$length * super_temp$LR_in_90_perc
+  super_temp$LRL_in_100_perc <- super_temp$length * super_temp$LR_in_100_perc
+  
+  LR_no_10_100 <- sum(super_temp$LR_in_10_perc)
+  LR_no_20_100 <- sum(super_temp$LR_in_20_perc)
+  LR_no_30_100 <- sum(super_temp$LR_in_30_perc)
+  LR_no_40_100 <- sum(super_temp$LR_in_40_perc)
+  LR_no_50_100 <- sum(super_temp$LR_in_50_perc)
+  LR_no_60_100 <- sum(super_temp$LR_in_60_perc)
+  LR_no_70_100 <- sum(super_temp$LR_in_70_perc)
+  LR_no_80_100 <- sum(super_temp$LR_in_80_perc)
+  LR_no_90_100 <- sum(super_temp$LR_in_90_perc)
+  LR_no_100_100 <- sum(super_temp$LR_in_100_perc)
+  
+  LRL_10_100 <- sum(super_temp$LRL_in_10_perc)
+  LRL_20_100 <- sum(super_temp$LRL_in_20_perc)
+  LRL_30_100 <- sum(super_temp$LRL_in_30_perc)
+  LRL_40_100 <- sum(super_temp$LRL_in_40_perc)
+  LRL_50_100 <- sum(super_temp$LRL_in_50_perc)
+  LRL_60_100 <- sum(super_temp$LRL_in_60_perc)
+  LRL_70_100 <- sum(super_temp$LRL_in_70_perc)
+  LRL_80_100 <- sum(super_temp$LRL_in_80_perc)
+  LRL_90_100 <- sum(super_temp$LRL_in_90_perc)
+  LRL_100_100 <- sum(super_temp$LRL_in_100_perc)
+  
+  super_temp$momentum <- (super_temp$insertion_position * super_temp$length)
+  all_momentum <- sum(super_temp$momentum)
+  all_length <- sum(super_temp$length)
+  CoG <- (all_momentum / all_length)  
+  
+  if(dim(super_temp)[1] > 2){
+  model <- lm(super_temp$length ~ super_temp$insertion_position)
+  LRL.dec <- model$coefficients[[2]]
+  LRL.dec.R2 <- summary(model)$r.squared
+  } else {
+    LRL.dec <- "n.a."
+    LRL.dec.R2 <- "n.a."
+  }
+  
+  
+  only_MR$Apical[i] <- Apical
+  only_MR$Branched[i] <- Branched
+  only_MR$Basal[i] <- Basal
+  
+  only_MR$Apical_perc[i] <- (Apical / MR_length)
+  only_MR$Branched_perc[i] <- (Branched / MR_length)
+  only_MR$Basal_perc[i] <- (Basal / MR_length)
+  only_MR$LR_no_10_100[i] <- LR_no_10_100
+  only_MR$LR_no_20_100[i] <- LR_no_20_100
+  only_MR$LR_no_30_100[i] <- LR_no_30_100
+  only_MR$LR_no_40_100[i] <- LR_no_40_100
+  only_MR$LR_no_50_100[i] <- LR_no_50_100
+  only_MR$LR_no_60_100[i] <- LR_no_60_100
+  only_MR$LR_no_70_100[i] <- LR_no_70_100
+  only_MR$LR_no_80_100[i] <- LR_no_80_100
+  only_MR$LR_no_90_100[i] <- LR_no_90_100
+  only_MR$LR_no_100_100[i] <- LR_no_100_100
+  
+  only_MR$LRL_10_100[i] <- LRL_10_100
+  only_MR$LRL_20_100[i] <- LRL_20_100
+  only_MR$LRL_30_100[i] <- LRL_30_100
+  only_MR$LRL_40_100[i] <- LRL_40_100
+  only_MR$LRL_50_100[i] <- LRL_50_100
+  only_MR$LRL_60_100[i] <- LRL_60_100
+  only_MR$LRL_70_100[i] <- LRL_70_100
+  only_MR$LRL_80_100[i] <- LRL_80_100
+  only_MR$LRL_90_100[i] <- LRL_90_100
+  only_MR$LRL_100_100[i] <- LRL_100_100
+  
+  only_MR$CoG[i] <- CoG
+  only_MR$LRL.dec[i] <- LRL.dec
+  only_MR$LRL.dec.R2[i] <- LRL.dec.R2  
+}
+
+```
+
+let's have a look at the entire table:
+
+```{r}
+head(only_MR)
+tail(only_MR)
+```
+
+then- we need to fuse all the main roots that dont own LR
+
+Make sure that the data structure is the same as for the only_MR file
+
+```{r}
+head(no_LR_MR)
+```
+let's add missing collumns:
+
+```{r}
+no_LR_MR$Apical <- "n.a."
+no_LR_MR$Branched <- "n.a."
+no_LR_MR$Basal <- "n.a."
+
+no_LR_MR$Apical_perc <- "n.a."
+no_LR_MR$Branched_perc <- "n.a."
+no_LR_MR$Basal_perc <- "n.a."
+
+no_LR_MR$LR_no_10_100 <- 0
+no_LR_MR$LR_no_20_100 <- 0
+no_LR_MR$LR_no_30_100 <- 0
+no_LR_MR$LR_no_40_100 <- 0
+no_LR_MR$LR_no_50_100 <- 0
+no_LR_MR$LR_no_60_100 <- 0
+no_LR_MR$LR_no_70_100 <- 0
+no_LR_MR$LR_no_80_100 <- 0
+no_LR_MR$LR_no_90_100 <- 0
+no_LR_MR$LR_no_100_100 <- 0
+
+no_LR_MR$LRL_10_100 <- 0
+no_LR_MR$LRL_20_100 <- 0
+no_LR_MR$LRL_30_100 <- 0
+no_LR_MR$LRL_40_100 <- 0
+no_LR_MR$LRL_50_100 <- 0
+no_LR_MR$LRL_60_100 <- 0
+no_LR_MR$LRL_70_100 <- 0
+no_LR_MR$LRL_80_100 <- 0
+no_LR_MR$LRL_90_100 <- 0
+no_LR_MR$LRL_100_100 <- 0
+
+no_LR_MR$CoG <- 0
+no_LR_MR$LRL.dec <- "n.a."
+no_LR_MR$LRL.dec.R2 <- "n.a."
+```
+
+finally - let’s fuse the two files together:
+
+
+```{r}
+colnames(only_MR)
+colnames(no_LR_MR)
+
+only_MR <- only_MR[,c(1:12,14:42)]
+```
+
+
+```{r}
+all_MR <- rbind(only_MR, no_LR_MR)
+head(all_MR)
+dim(all_MR)
+length(unique(all_MR$root_name))
+length(unique(all_MR$image))
+
+length(unique(all_MR$image))/length(unique(all_MR$root_name))
+```
+Let's add some more interesting columns:
+
+```{r}
+all_MR$LRL <- (all_MR$LRL_10_100 + all_MR$LRL_20_100 + all_MR$LRL_30_100 + all_MR$LRL_40_100 + all_MR$LRL_50_100 + all_MR$LRL_60_100 + all_MR$LRL_70_100 + all_MR$LRL_80_100 + all_MR$LRL_90_100 + all_MR$LRL_100_100)
+all_MR$LRno <- (all_MR$LR_no_10_100 + all_MR$LR_no_20_100 + all_MR$LR_no_30_100 + all_MR$LR_no_40_100 + all_MR$LR_no_50_100 + all_MR$LR_no_60_100 + all_MR$LR_no_70_100 + all_MR$LR_no_80_100 + all_MR$LR_no_90_100 + all_MR$LR_no_100_100)
+all_MR$aLRL <- all_MR$LRL / all_MR$LRno
+all_MR$TRS <- all_MR$MRL + all_MR$LRL
+head(all_MR)
+```
+
+# data visualization
+
+OK - now we have all the traits calculated - but we are still missing the DAY information - as in DAY after stress. So let's calculate it per experiment:
+
+```{r}
+head(all_MR)
+unique(all_MR[,c("experiment", "date")])
+```
+
+based on the above - we have the following
+
+day      Big01      Big02     Big03      Big04
+day 0 - 20190909   20190923  20190930  20191008
+day 1 - 20190910   20190924  20191001  20191009
+day 2 - 20190911   20190925  20191002  20191010
+day 3 - 20190912   20190926  20191003  20191011
+day 4 - 20190913   20190927  20191004  20191012
+
+So now we have to do conditional formating for DAS (Days After Stress):
+
+```{r}
+all_MR$DAS <- all_MR$date
+all_MR$DAS <- gsub("20190909", "0", all_MR$DAS)
+all_MR$DAS <- gsub("20190923", "0", all_MR$DAS)
+all_MR$DAS <- gsub("20190930", "0", all_MR$DAS)
+all_MR$DAS <- gsub("20191008", "0", all_MR$DAS)
+
+all_MR$DAS <- gsub("20190910", "1", all_MR$DAS)
+all_MR$DAS <- gsub("20190924", "1", all_MR$DAS)
+all_MR$DAS <- gsub("20191001", "1", all_MR$DAS)
+all_MR$DAS <- gsub("20191009", "1", all_MR$DAS)
+
+all_MR$DAS <- gsub("20190911", "2", all_MR$DAS)
+all_MR$DAS <- gsub("20190925", "2", all_MR$DAS)
+all_MR$DAS <- gsub("20191002", "2", all_MR$DAS)
+all_MR$DAS <- gsub("20191010", "2", all_MR$DAS)
+
+all_MR$DAS <- gsub("20190912", "3", all_MR$DAS)
+all_MR$DAS <- gsub("20190926", "3", all_MR$DAS)
+all_MR$DAS <- gsub("20191003", "3", all_MR$DAS)
+all_MR$DAS <- gsub("20191011", "3", all_MR$DAS)
+
+all_MR$DAS <- gsub("20190913", "4", all_MR$DAS)
+all_MR$DAS <- gsub("20190927", "4", all_MR$DAS)
+all_MR$DAS <- gsub("20191004", "4", all_MR$DAS)
+all_MR$DAS <- gsub("20191012", "4", all_MR$DAS)
+
+unique(all_MR[,c("experiment", "DAS")])
+```
+
+
+before we go any further - let's clean up this data and add whatever else missing traits:
+
+```{r}
+colnames(all_MR)
+dim(all_MR)
+all_MR2 <- all_MR[,c(1:4, 46, 6:9, 13:45)]
+head(all_MR2)
+all_MR2$MRL.p.TRS <- all_MR2$MRL / all_MR2$TRS
+all_MR2$aLRL.p.TRS <- all_MR2$aLRL / all_MR2$TRS
+all_MR2$LRL_10_perc <- all_MR2$LRL_10_100 / all_MR2$LRL
+all_MR2$LRL_20_perc <- all_MR2$LRL_20_100 / all_MR2$LRL
+all_MR2$LRL_30_perc <- all_MR2$LRL_30_100 / all_MR2$LRL
+all_MR2$LRL_40_perc <- all_MR2$LRL_40_100 / all_MR2$LRL
+all_MR2$LRL_50_perc <- all_MR2$LRL_50_100 / all_MR2$LRL
+all_MR2$LRL_60_perc <- all_MR2$LRL_60_100 / all_MR2$LRL
+all_MR2$LRL_70_perc <- all_MR2$LRL_70_100 / all_MR2$LRL
+all_MR2$LRL_80_perc <- all_MR2$LRL_80_100 / all_MR2$LRL
+all_MR2$LRL_90_perc <- all_MR2$LRL_90_100 / all_MR2$LRL
+all_MR2$LRL_100_perc <- all_MR2$LRL_100_100 / all_MR2$LRL
+
+all_MR2$LRno_10_perc <- all_MR2$LR_no_10_100 / all_MR2$LRno
+all_MR2$LRno_20_perc <- all_MR2$LR_no_20_100 / all_MR2$LRno
+all_MR2$LRno_30_perc <- all_MR2$LR_no_30_100 / all_MR2$LRno
+all_MR2$LRno_40_perc <- all_MR2$LR_no_40_100 / all_MR2$LRno
+all_MR2$LRno_50_perc <- all_MR2$LR_no_50_100 / all_MR2$LRno
+all_MR2$LRno_60_perc <- all_MR2$LR_no_60_100 / all_MR2$LRno
+all_MR2$LRno_70_perc <- all_MR2$LR_no_70_100 / all_MR2$LRno
+all_MR2$LRno_80_perc <- all_MR2$LR_no_80_100 / all_MR2$LRno
+all_MR2$LRno_90_perc <- all_MR2$LR_no_90_100 / all_MR2$LRno
+all_MR2$LRno_100_perc <- all_MR2$LR_no_100_100 / all_MR2$LRno
+
+head(all_MR2)
+```
+
+Just before we start plotting the data - let's also check the genotype information whether this all makes sense and if we are not missing any info:
+
+```{r}
+unique(all_MR2$genotype)
+unique(all_MR$root_name)
+
+all_MR2$genotype <- gsub("2800", "280", all_MR2$genotype)
+all_MR2$root_name <- gsub(" 089_1_", " 089_1_C", all_MR2$root_name)
+all_MR2$root_name <- gsub(" 089_1_C_C", " 089_1_C", all_MR2$root_name)
+all_MR2$root_name <- gsub(" 089_1_C_S", " 089_1_S", all_MR2$root_name)
+
+all_MR2$root_name <- gsub("301_3", "301_3_C", all_MR2$root_name)
+all_MR2$root_name <- gsub("301_3_CC", "301_3_C", all_MR2$root_name)
+all_MR2$root_name <- gsub("301_3_CS", "301_3_S", all_MR2$root_name)
+
+unique(all_MR2$cond)
+all_MR2$cond <- gsub("s", "S", all_MR2$cond)
+unique(all_MR2$cond)
+
+normal_cond <- c("C", "S")
+thats_it <- subset(all_MR2, (all_MR2$cond %in% normal_cond))
+whats_that <- subset(all_MR2, !(all_MR2$cond %in% normal_cond))
+whats_that
+whats_that$cond <- "C"
+
+all_MR3 <- rbind(thats_it, whats_that)
+unique(all_MR3$cond)
+```
+
+
+## Histograms
+
+### Library loading
+OK - now we can start plotting - finally! loading the libraries
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(doBy)
+library(cowplot)
+library(RColorBrewer)
+library(corrplot)
+library(ggbeeswarm)
+library(RColorBrewer)
+library(ggridges)
+library(gapminder)
+library("gplots")
+library("colorRamps")
+```
+
+Let's start from a simple histogram - so we can see the treatment dependent change in TRS
+
+```{r}
+TRS_histo <- gghistogram(all_MR3, x = "TRS",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", facet.by = "DAS", 
+            palette = c("#00AFBB", "#E7B800")) + xlab("Total root length (cm)")
+TRS_histo
+```
+
+OK - looks as we expect it to. Let's have a look at other things - like LR number:
+
+```{r}
+LRno_histo <- gghistogram(all_MR3, x = "LRno",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", facet.by = "DAS",
+            palette = c("#00AFBB", "#E7B800")) + xlab("number of LR / Main Root")
+LRno_histo
+```
+
+```{r}
+LRL_histo <- gghistogram(all_MR3, x = "LRL",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", facet.by = "DAS",
+            palette = c("#00AFBB", "#E7B800")) + xlab("Lateral Root Length (cm)")
+LRL_histo
+```
+
+```{r}
+MRL_histo <- gghistogram(all_MR3, x = "MRL",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", facet.by = "DAS",
+            palette = c("#00AFBB", "#E7B800")) + xlab("Main root length (cm)")
+MRL_histo
+```
+
+```{r}
+CoG_histo <- gghistogram(all_MR3, x = "CoG",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", facet.by = "DAS",
+            palette = c("#00AFBB", "#E7B800")) + xlab("Center of Gravity (cm of MR)")
+CoG_histo
+```
+
+```{r}
+all_MR3$LRL.dec <- as.numeric(all_MR3$LRL.dec)
+LRL.dec_histo <- gghistogram(all_MR3, x = "LRL.dec",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", facet.by = "DAS",
+            palette = c("#00AFBB", "#E7B800")) + xlab("Lateral Root Length decrease over MR (cm / cm of MR)")
+LRL.dec_histo
+```
+
+the above doesnt really make sense - let's replace all these extreme values (< -2, > 2) with "n.a.")
+
+```{r}
+temp <- subset(all_MR3, all_MR3$LRL.dec < 2)
+temp <- subset(temp, temp$LRL.dec > -2)
+
+LRL.dec_histo <- gghistogram(temp, x = "LRL.dec",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", facet.by = "DAS",
+            palette = c("#00AFBB", "#E7B800")) + xlab("Lateral Root Length decrease over MR (cm / cm of MR)")
+LRL.dec_histo
+
+```
+
+
+
+```{r}
+all_MR3$LRL.dec.R2 <- as.numeric(all_MR3$LRL.dec.R2)
+LRL.dec.R2_histo <- gghistogram(all_MR3, x = "LRL.dec.R2",
+                                add = "mean", rug = TRUE,
+                                color = "cond", fill = "cond", facet.by = "DAS",
+                                palette = c("#00AFBB", "#E7B800")) + xlab("R2 of Lateral Root Length decrease over MR")
+LRL.dec.R2_histo
+```
+
+## visualization of changes in RSA across time:
+
+Let's try to visualize changes across the accessions throughout the time using the line graph - similar to ones in Awlia et al., 2020
+
+First - what we need to do is to calculate the average per line and per condition:
+
+```{r}
+colnames(all_MR3)
+library(doBy)
+
+MR_sum <- summaryBy(data = all_MR3, MRL + LRL + LRno + aLRL + TRS + MRL.p.TRS + aLRL.p.TRS + CoG + LRL.dec ~ genotype + cond + DAS)
+head(MR_sum)
+MR_sum$geno_cond <- paste(MR_sum$genotype, "_", MR_sum$cond, sep="")
+```
+
+```{r}
+TRS_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=TRS.mean, group = geno_cond, color = cond)) 
+TRS_lgraph <- TRS_lgraph +geom_line(alpha = 0.1) 
+TRS_lgraph <- TRS_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)+ stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+TRS_lgraph <- TRS_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+TRS_lgraph <- TRS_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+TRS_lgraph <- TRS_lgraph + ylab("Total Root Size (cm)") + xlab("Days After Stress") + theme(legend.position='none')
+TRS_lgraph
+```
+
+```{r}
+MRL_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=MRL.mean, group = geno_cond, color = cond)) 
+MRL_lgraph <- MRL_lgraph +geom_line(alpha = 0.1) 
+MRL_lgraph <- MRL_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3) + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+MRL_lgraph <- MRL_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+MRL_lgraph <- MRL_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+MRL_lgraph <- MRL_lgraph + ylab("Main Root Length (cm)") + xlab("Days After Stress") + theme(legend.position='none')
+MRL_lgraph
+```
+
+
+```{r}
+LRL_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=LRL.mean, group = geno_cond, color = cond)) 
+LRL_lgraph <- LRL_lgraph +geom_line(alpha = 0.1) 
+LRL_lgraph <- LRL_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)+ stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRL_lgraph <- LRL_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRL_lgraph <- LRL_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+LRL_lgraph <- LRL_lgraph + ylab("Lateral Root Length (cm)") + xlab("Days After Stress") + theme(legend.position='none')
+LRL_lgraph
+```
+
+
+```{r}
+LRno_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=LRno.mean, group = geno_cond, color = cond)) 
+LRno_lgraph <- LRno_lgraph +geom_line(alpha = 0.1) 
+LRno_lgraph <- LRno_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3) + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRno_lgraph <- LRno_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRno_lgraph <- LRno_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+LRno_lgraph <- LRno_lgraph + ylab("Lateral Root Number (per MR)") + xlab("Days After Stress") + theme(legend.position='none')
+LRno_lgraph
+```
+
+```{r}
+CoG_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=CoG.mean, group = geno_cond, color = cond)) 
+CoG_lgraph <- CoG_lgraph +geom_line(alpha = 0.1) 
+CoG_lgraph <- CoG_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3) + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+CoG_lgraph <- CoG_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+CoG_lgraph <- CoG_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+CoG_lgraph <- CoG_lgraph + ylab("Center of Gravity (cm of MR)") + xlab("Days After Stress") + theme(legend.position='none')
+CoG_lgraph
+```
+
+```{r}
+LRL.dec_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=LRL.dec.mean, group = geno_cond, color = cond)) 
+LRL.dec_lgraph <- LRL.dec_lgraph +geom_line(alpha = 0.1) 
+LRL.dec_lgraph <- LRL.dec_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3) + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRL.dec_lgraph <- LRL.dec_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRL.dec_lgraph <- LRL.dec_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+LRL.dec_lgraph <- LRL.dec_lgraph + ylab("decrease of LRL over MRL (cm / cm of MR)") + xlab("Days After Stress") + theme(legend.position='none')
+LRL.dec_lgraph
+```
+
+```{r}
+MRL.p.TRS_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=MRL.p.TRS.mean, group = geno_cond, color = cond)) 
+MRL.p.TRS_lgraph <- MRL.p.TRS_lgraph +geom_line(alpha = 0.1) 
+MRL.p.TRS_lgraph <- MRL.p.TRS_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3) + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+MRL.p.TRS_lgraph <- MRL.p.TRS_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+MRL.p.TRS_lgraph <- MRL.p.TRS_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+MRL.p.TRS_lgraph <- MRL.p.TRS_lgraph + ylab("ratio (MRL / TRS)") + xlab("Days After Stress") + theme(legend.position='none')
+MRL.p.TRS_lgraph
+```
+
+```{r}
+aLRL.p.TRS_lgraph <- ggplot(data=MR_sum, aes(x= DAS, y=aLRL.p.TRS.mean, group = geno_cond, color = cond)) 
+aLRL.p.TRS_lgraph <- aLRL.p.TRS_lgraph +geom_line(alpha = 0.1) 
+aLRL.p.TRS_lgraph <- aLRL.p.TRS_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+aLRL.p.TRS_lgraph <- aLRL.p.TRS_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+aLRL.p.TRS_lgraph <- aLRL.p.TRS_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+aLRL.p.TRS_lgraph <- aLRL.p.TRS_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Average per accession")
+aLRL.p.TRS_lgraph <- aLRL.p.TRS_lgraph + ylab("ratio (aLRL / TRS)") + xlab("Days After Stress") + theme(legend.position='none')
+aLRL.p.TRS_lgraph
+```
+
+Lets combine these into one figure:
+
+```{r}
+pdf("Fig.TRS_MRL_LRL_LRno_CoG_MRLpTRS_Big01_to_Big04.pdf", height = 20, width = 15)
+plot_grid(TRS_lgraph, MRL_lgraph,
+          LRL_lgraph, LRno_lgraph,
+          CoG_lgraph, MRL.p.TRS_lgraph, ncol=2, labels = "AUTO")
+dev.off()
+```
+
+
+OK - let's keep going with exploring other cool traits...
+
+## Vizualization of LRL/LRno distribution across the root:
+
+In order to examine how the LR is distributed across MR - lets extract all the LR distribution traits
+
+```{r}
+colnames(all_MR3)
+dim(all_MR3)
+LR_distribution <- all_MR3[,c(1:8, 16:64)]
+colnames(LR_distribution)
+```
+
+Cool - then let's extract only the last day, reshape the data and plot the absolute LRno and LRL across the MR portions:
+
+### 4 days after stress
+
+```{r}
+day4 <- subset(LR_distribution, LR_distribution$DAS == 4)
+head(day4)
+colnames(day4)
+LRno <- day4[,c(1:18)]
+head(LRno)
+LRL <- day4[,c(1:8,19:28)]
+library(reshape2)
+mLRno <- melt(LRno, value.name = "LRno")
+mLRL <- melt(LRL, value.name = "LRL")
+head(mLRno)
+head(mLRL)
+```
+
+cool - now let's adjust the portion of the MR that is being used to calculate the LR distribution in "variable" columns:
+
+```{r}
+mLRno$variable <- gsub("LR_no_", "", mLRno$variable)
+mLRno$variable <- gsub("_100", "", mLRno$variable)
+
+mLRL$variable <- gsub("LRL_", "", mLRL$variable)
+mLRL$variable <- gsub("_100", "", mLRL$variable)
+
+mLRL$variable <- as.numeric(mLRL$variable)
+mLRno$variable <- as.numeric(mLRno$variable)
+colnames(mLRL)[9] <- "perc.of.MRL"
+colnames(mLRno)[9] <- "perc.of.MRL"
+head(mLRL)
+head(mLRno)
+
+```
+
+```{r}
+LRL_distribution_graph_d4 <- ggplot(data=mLRL, aes(x= perc.of.MRL, y=LRL, group = root_name, color = cond)) 
+LRL_distribution_graph_d4 <- LRL_distribution_graph_d4 + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) 
+LRL_distribution_graph_d4 <- LRL_distribution_graph_d4 + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRL_distribution_graph_d4 <- LRL_distribution_graph_d4 + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2)  + ggtitle("4 Days After Stress")
+LRL_distribution_graph_d4 <- LRL_distribution_graph_d4 + theme(legend.position="none")+ labs(color = "Treatment")
+LRL_distribution_graph_d4 <- LRL_distribution_graph_d4 + ylab("Lateral Root Length (cm)") + xlab("Portion of Main Root Length (%)") 
+LRL_distribution_graph_d4 <- LRL_distribution_graph_d4 + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRL_distribution_graph_d4
+```
+
+```{r}
+LRno_distribution_graph_d4 <- ggplot(data=mLRno, aes(x= perc.of.MRL, y=LRno, group = root_name, color = cond)) 
+LRno_distribution_graph_d4 <- LRno_distribution_graph_d4 + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) 
+LRno_distribution_graph_d4 <- LRno_distribution_graph_d4 + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRno_distribution_graph_d4 <- LRno_distribution_graph_d4 + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("4 Days After Stress")
+LRno_distribution_graph_d4 <- LRno_distribution_graph_d4 + theme(legend.position="none")+ labs(color = "Treatment")
+LRno_distribution_graph_d4 <- LRno_distribution_graph_d4 + ylab("Lateral Root number") + xlab("Portion of Main Root Length (%)") 
+LRno_distribution_graph_d4 <- LRno_distribution_graph_d4 + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRno_distribution_graph_d4
+```
+
+all good - but I think it would be better to calculate the above as %of LRL or %LRno per plant - then we can get better idea for clustering:
+
+```{r}
+colnames(day4)
+LRno_perc <- day4[,c(1:8,48:57)]
+LRL_perc <- day4[,c(1:8,38:47)]
+head(LRno_perc)
+head(LRL_perc)
+```
+
+
+```{r}
+mLRno_perc <- melt(LRno_perc, value.name = "LRno.perc")
+mLRL_perc <- melt(LRL_perc, value.name = "LRL.perc")
+
+head(mLRno_perc)
+head(mLRL_perc)
+unique(mLRno_perc$variable)
+
+mLRno_perc$variable <- gsub("LRno_", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("LRL_", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- gsub("_perc", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("_perc", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- as.numeric(mLRno_perc$variable)
+mLRL_perc$variable <- as.numeric(mLRL_perc$variable)
+
+colnames(mLRno_perc)[9] <- "perc.of.MRL"
+colnames(mLRL_perc)[9] <- "perc.of.MRL"
+head(mLRno_perc)
+head(mLRL_perc)
+```
+
+OK - now let's recalculate these graphs:
+
+```{r}
+LRL_distribution_graph_d4_perc <- ggplot(data=mLRL_perc, aes(x= perc.of.MRL, y=LRL.perc, group = root_name, color = cond)) 
+LRL_distribution_graph_d4_perc <- LRL_distribution_graph_d4_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) 
+LRL_distribution_graph_d4_perc <- LRL_distribution_graph_d4_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRL_distribution_graph_d4_perc <- LRL_distribution_graph_d4_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("4 Days After Stress")
+LRL_distribution_graph_d4_perc <- LRL_distribution_graph_d4_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRL_distribution_graph_d4_perc <- LRL_distribution_graph_d4_perc + ylab("Lateral Root Length (fraction of total LRL)") + xlab("Portion of Main Root Length (%)") 
+LRL_distribution_graph_d4_perc <- LRL_distribution_graph_d4_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRL_distribution_graph_d4_perc
+
+
+LRno_distribution_graph_d4_perc <- ggplot(data=mLRno_perc, aes(x= perc.of.MRL, y=LRno.perc, group = root_name, color = cond)) 
+LRno_distribution_graph_d4_perc <- LRno_distribution_graph_d4_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) 
+LRno_distribution_graph_d4_perc <- LRno_distribution_graph_d4_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRno_distribution_graph_d4_perc <- LRno_distribution_graph_d4_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("4 Days After Stress")
+LRno_distribution_graph_d4_perc <- LRno_distribution_graph_d4_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRno_distribution_graph_d4_perc <- LRno_distribution_graph_d4_perc + ylab("Lateral Root number (fraction of total LR #)") + xlab("Portion of Main Root Length (%)") 
+LRno_distribution_graph_d4_perc <- LRno_distribution_graph_d4_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRno_distribution_graph_d4_perc
+```
+OK - so the percentage of LRL is definitely more informative. Let's have a look how it looks in earlier days:
+
+### 3 days after stress
+
+```{r}
+day3 <- subset(all_MR3, all_MR3$DAS == 3)
+LRno_perc <- day3[,c(1:8,48:57)]
+LRL_perc <- day3[,c(1:8,38:47)]
+mLRno_perc <- melt(LRno_perc, value.name = "LRno.perc")
+mLRL_perc <- melt(LRL_perc, value.name = "LRL.perc")
+
+mLRno_perc$variable <- gsub("LRno_", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("LRL_", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- gsub("_perc", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("_perc", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- as.numeric(mLRno_perc$variable)
+mLRL_perc$variable <- as.numeric(mLRL_perc$variable)
+
+colnames(mLRno_perc)[9] <- "perc.of.MRL"
+colnames(mLRL_perc)[9] <- "perc.of.MRL"
+
+LRL_distribution_graph_d3_perc <- ggplot(data=mLRL_perc, aes(x= perc.of.MRL, y=LRL.perc, group = root_name, color = cond)) 
+LRL_distribution_graph_d3_perc <- LRL_distribution_graph_d3_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) + ylim(0,1)
+LRL_distribution_graph_d3_perc <- LRL_distribution_graph_d3_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRL_distribution_graph_d3_perc <- LRL_distribution_graph_d3_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("3 Days After Stress")
+LRL_distribution_graph_d3_perc <- LRL_distribution_graph_d3_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRL_distribution_graph_d3_perc <- LRL_distribution_graph_d3_perc + ylab("Lateral Root Length (fraction of total LRL)") + xlab("Portion of Main Root Length (%)") 
+LRL_distribution_graph_d3_perc <- LRL_distribution_graph_d3_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRL_distribution_graph_d3_perc
+
+
+LRno_distribution_graph_d3_perc <- ggplot(data=mLRno_perc, aes(x= perc.of.MRL, y=LRno.perc, group = root_name, color = cond)) 
+LRno_distribution_graph_d3_perc <- LRno_distribution_graph_d3_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) + ylim(0,1)
+LRno_distribution_graph_d3_perc <- LRno_distribution_graph_d3_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRno_distribution_graph_d3_perc <- LRno_distribution_graph_d3_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("3 Days After Stress")
+LRno_distribution_graph_d3_perc <- LRno_distribution_graph_d3_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRno_distribution_graph_d3_perc <- LRno_distribution_graph_d3_perc + ylab("Lateral Root number (fraction of total LR #)") + xlab("Portion of Main Root Length (%)") 
+LRno_distribution_graph_d3_perc <- LRno_distribution_graph_d3_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRno_distribution_graph_d3_perc
+```
+
+
+```{r}
+day2 <- subset(all_MR3, all_MR3$DAS == 2)
+LRno_perc <- day2[,c(1:8,48:57)]
+LRL_perc <- day2[,c(1:8,38:47)]
+mLRno_perc <- melt(LRno_perc, value.name = "LRno.perc")
+mLRL_perc <- melt(LRL_perc, value.name = "LRL.perc")
+
+mLRno_perc$variable <- gsub("LRno_", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("LRL_", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- gsub("_perc", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("_perc", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- as.numeric(mLRno_perc$variable)
+mLRL_perc$variable <- as.numeric(mLRL_perc$variable)
+
+colnames(mLRno_perc)[9] <- "perc.of.MRL"
+colnames(mLRL_perc)[9] <- "perc.of.MRL"
+
+LRL_distribution_graph_d2_perc <- ggplot(data=mLRL_perc, aes(x= perc.of.MRL, y=LRL.perc, group = root_name, color = cond)) 
+LRL_distribution_graph_d2_perc <- LRL_distribution_graph_d2_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) + ylim(0,1)
+LRL_distribution_graph_d2_perc <- LRL_distribution_graph_d2_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRL_distribution_graph_d2_perc <- LRL_distribution_graph_d2_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("2 Days After Stress")
+LRL_distribution_graph_d2_perc <- LRL_distribution_graph_d2_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRL_distribution_graph_d2_perc <- LRL_distribution_graph_d2_perc + ylab("Lateral Root Length (fraction of total LRL)") + xlab("Portion of Main Root Length (%)") 
+LRL_distribution_graph_d2_perc <- LRL_distribution_graph_d2_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRL_distribution_graph_d2_perc
+
+
+LRno_distribution_graph_d2_perc <- ggplot(data=mLRno_perc, aes(x= perc.of.MRL, y=LRno.perc, group = root_name, color = cond)) 
+LRno_distribution_graph_d2_perc <- LRno_distribution_graph_d2_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) + ylim(0,1)
+LRno_distribution_graph_d2_perc <- LRno_distribution_graph_d2_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRno_distribution_graph_d2_perc <- LRno_distribution_graph_d2_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("2 Days After Stress")
+LRno_distribution_graph_d2_perc <- LRno_distribution_graph_d2_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRno_distribution_graph_d2_perc <- LRno_distribution_graph_d2_perc + ylab("Lateral Root number (fraction of total LR #)") + xlab("Portion of Main Root Length (%)") 
+LRno_distribution_graph_d2_perc <- LRno_distribution_graph_d2_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRno_distribution_graph_d2_perc
+```
+
+```{r}
+day1 <- subset(all_MR3, all_MR3$DAS == 1)
+LRno_perc <- day1[,c(1:8,48:57)]
+LRL_perc <- day1[,c(1:8,38:47)]
+mLRno_perc <- melt(LRno_perc, value.name = "LRno.perc")
+mLRL_perc <- melt(LRL_perc, value.name = "LRL.perc")
+
+mLRno_perc$variable <- gsub("LRno_", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("LRL_", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- gsub("_perc", "", mLRno_perc$variable)
+mLRL_perc$variable <- gsub("_perc", "", mLRL_perc$variable)
+
+mLRno_perc$variable <- as.numeric(mLRno_perc$variable)
+mLRL_perc$variable <- as.numeric(mLRL_perc$variable)
+
+colnames(mLRno_perc)[9] <- "perc.of.MRL"
+colnames(mLRL_perc)[9] <- "perc.of.MRL"
+
+LRL_distribution_graph_d1_perc <- ggplot(data=mLRL_perc, aes(x= perc.of.MRL, y=LRL.perc, group = root_name, color = cond)) 
+LRL_distribution_graph_d1_perc <- LRL_distribution_graph_d1_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) + ylim(0,1)
+LRL_distribution_graph_d1_perc <- LRL_distribution_graph_d1_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRL_distribution_graph_d1_perc <- LRL_distribution_graph_d1_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("1 Day After Stress")
+LRL_distribution_graph_d1_perc <- LRL_distribution_graph_d1_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRL_distribution_graph_d1_perc <- LRL_distribution_graph_d1_perc + ylab("Lateral Root Length (fraction of total LRL)") + xlab("Portion of Main Root Length (%)") 
+LRL_distribution_graph_d1_perc <- LRL_distribution_graph_d1_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRL_distribution_graph_d1_perc
+
+
+LRno_distribution_graph_d1_perc <- ggplot(data=mLRno_perc, aes(x= perc.of.MRL, y=LRno.perc, group = root_name, color = cond)) 
+LRno_distribution_graph_d1_perc <- LRno_distribution_graph_d1_perc + geom_line(alpha = 0.1) + scale_colour_manual(values = c("dodgerblue3", "tomato1")) + ylim(0,1)
+LRno_distribution_graph_d1_perc <- LRno_distribution_graph_d1_perc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+LRno_distribution_graph_d1_perc <- LRno_distribution_graph_d1_perc + stat_summary(geom = "ribbon", linetype=0, fun.data = mean_cl_normal, aes(group= cond), alpha = 0.2) + ggtitle("1 Day After Stress")
+LRno_distribution_graph_d1_perc <- LRno_distribution_graph_d1_perc + theme(legend.position="none")+ labs(color = "Treatment")
+LRno_distribution_graph_d1_perc <- LRno_distribution_graph_d1_perc + ylab("Lateral Root number (fraction of total LR #)") + xlab("Portion of Main Root Length (%)") 
+LRno_distribution_graph_d1_perc <- LRno_distribution_graph_d1_perc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+LRno_distribution_graph_d1_perc
+```
+
+ok - maybe let's combine these graphs into a figure thus far:
+
+```{r}
+library(cowplot)
+pdf("Fig.Lateral_root_distribution_across_MRL_DAS1_DAS4_Big01_to_Big04.pdf", height = 20, width = 15)
+plot_grid(LRL_distribution_graph_d1_perc, LRno_distribution_graph_d1_perc,
+          LRL_distribution_graph_d2_perc, LRno_distribution_graph_d2_perc,
+          LRL_distribution_graph_d3_perc, LRno_distribution_graph_d3_perc,
+          LRL_distribution_graph_d4_perc, LRno_distribution_graph_d4_perc, ncol=2, labels = "AUTO")
+dev.off()
+```
+
+
+
+# Calculating growth rates for each plant:
+
+OK - so now we have all the data organized and everything seems to look pretty sane - let's start calculating the growth rate of aLRL, LR# and MR. The problem is that in some cases - the MR grew into the plate - and we didnt continue tracing it - so the length is getting staled. So - in these cases - I would like to calculate the growth rate only over the period where the size of the root is actually increasing. So:
+
+First - set the "day" ad numeric variable - because this will later come and bite us in our asses:
+
+```{r}
+all_MR3$DAS <- as.numeric(as.character(all_MR3$DAS))
+head(all_MR3)
+```
+## Establishing calculations
+
+Second - isolate one plant from the dataset, sort per day, and mark which of the values for MR are duplicates:
+```{r}
+temp1 <- subset(all_MR3, all_MR3$root == unique(all_MR3$root)[100])
+temp2 <- temp1[order(temp1$DAS),]
+head(temp2)
+
+temp2$MRdouble <- "no"
+for(i in 2:5){
+ if(temp2$MRL[i] == temp2$MRL[i-1]){
+  temp2$MRdouble[i] <- "yes"   
+ } 
+  else{
+  temp2$MRdouble[i] <- "no"   
+ } 
+}
+
+temp3 <- subset(temp2, temp2$MRdouble == "no")
+temp3
+```
+
+Now that we have the dataset without duplicated values - let's calculate MR growth rate using linear function:
+
+```{r}
+plot(temp3$MRL ~ temp3$DAS)
+abline(lm(temp3$MRL ~ temp3$DAS))
+```
+
+Let's check if this is also true for #LR:
+
+```{r}
+temp2$LRnodouble <- "no"
+for(i in 2:5){
+ if(temp2$LRno[i] == temp2$LRno[i-1]){
+  temp2$LRnodouble[i] <- "yes"   
+ } 
+  else{
+  temp2$LRnodouble[i] <- "no"   
+ } 
+}
+
+temp3 <- subset(temp2, temp2$LRnodouble == "no")
+
+plot(temp3$LRno ~ temp3$DAS)
+abline(lm(temp3$LRno ~ temp3$DAS))
+```
+and for aLRL:
+
+```{r}
+temp2$aLRLdouble <- "no"
+for(i in 2:5){
+ if(temp2$aLRL[i] == temp2$aLRL[i-1]){
+  temp2$aLRLdouble[i] <- "yes"   
+ } 
+  else{
+  temp2$aLRLdouble[i] <- "no"   
+ } 
+}
+temp2
+
+temp3 <- subset(temp2, temp2$aLRLdouble == "no")
+
+plot(temp3$aLRL ~ temp3$DAS)
+abline(lm(temp3$aLRL ~ temp3$DAS))
+```
+
+## Looped linear modeling for all RSA components
+
+First - let's construct the dataframe which will hold all the data points:
+
+```{r}
+names <- c(text="root_name", "genotype", "cond", "MR.intercept", "MR.delta", "LRno.intercept", "LRno.delta", "aLRL.intercept", "aLRL.delta")
+growth_factors <- data.frame()
+
+for (k in names) growth_factors[[k]] <- as.character()
+
+```
+
+just few fixes:
+
+```{r}
+all_MR3$root_name<- gsub("2800_3_S", "280_3_S", all_MR3$root_name)
+all_MR3 <- subset(all_MR3, all_MR3$image != "_set1_day1_20190930_093.rsml")
+all_MR3 <- subset(all_MR3, all_MR3$image != "_set1_day1_20190930_090.rsml")	
+all_MR3 <- subset(all_MR3, all_MR3$image != "_set1_day1_20190930_067.rsml")
+all_MR3 <- subset(all_MR3, all_MR3$image != "_set1_day1_20191008_047_FU.rsml")
+
+```
+
+
+Then - let's loop it in for calculating the Main Root growth factors:
+
+```{r}
+for(e in c(1:length(unique(all_MR3$root_name)))){
+  temp1 <- subset(all_MR3, all_MR3$root_name == unique(all_MR3$root_name)[e])
+  temp2 <- temp1[order(temp1$DAS),]
+  dim(temp2)
+  if(dim(temp2)[1] < 2){
+    
+  }
+  
+  # Main root part
+  temp2$MRdouble <- "no"
+  for(i in 2:nrow(temp2)){
+   if(temp2$MRL[i] == temp2$MRL[i-1]){
+    temp2$MRdouble[i] <- "yes"   
+   } 
+    else{
+    temp2$MRdouble[i] <- "no"   
+   } 
+  }
+  
+  temp2
+  # Main Root Growth Factor calculations: 
+  temp3 <- subset(temp2, temp2$MRdouble == "no")
+  model <- lm(temp3$MRL ~ temp3$DAS)
+  growth_factors[e,1] <- temp3$root_name[1]
+  growth_factors[e,2] <- temp3$genotype[1]
+  growth_factors[e,3] <- temp3$cond[1]
+  growth_factors[e,4] <- as.numeric(as.character(model$coefficients[[1]]))
+  growth_factors[e,5] <- as.numeric(as.character(model$coefficients[[2]]))
+  
+ 
+}
+```
+
+
+```{r}
+dim(growth_factors)
+```
+
+Great - let's calculate the LRno increase rate - with some special conditions for the lines which don't have any LR:
+
+```{r}
+for(e in 1:length(unique(all_MR3$root_name))){
+  temp1 <- subset(all_MR3, all_MR3$root_name == unique(all_MR3$root_name)[e])
+  temp2 <- temp1[order(temp1$DAS),]
+
+ # Let's remove all NA for LRno and aLRL in temp2
+  super_temp <- temp2[,c("DAS", "LRno", "aLRL")]
+  temp2 <- na.omit(super_temp)
+  
+  if(dim(temp2)[1] > 1){
+    model <- lm(temp2$LRno ~ temp2$DAS)
+    growth_factors[e,6] <- as.numeric(as.character(model$coefficients[[1]]))
+    growth_factors[e,7] <- as.numeric(as.character(model$coefficients[[2]]))  
+  }
+  # Lateral Root Number Increase calculations:
+  else{
+    growth_factors[e,6] <- 0
+    growth_factors[e,7] <- 0
+  }
+}  
+```
+
+Same thing for aLRL:
+
+```{r}
+for(e in 1:length(unique(all_MR3$root_name))){
+  temp1 <- subset(all_MR3, all_MR3$root_name == unique(all_MR3$root_name)[e])
+  temp2 <- temp1[order(temp1$DAS),]
+
+ # Let's remove all NA for LRno and aLRL in temp2
+  super_temp <- temp2[,c("DAS", "LRno", "aLRL")]
+  temp2 <- na.omit(super_temp)
+  temp2
+  dim(temp2)[1]
+  if(dim(temp2)[1] > 1){
+    model <- lm(temp2$aLRL ~ temp2$DAS)
+    model
+    growth_factors[e,8] <- as.numeric(as.character(model$coefficients[[1]]))
+    growth_factors[e,9] <- as.numeric(as.character(model$coefficients[[2]]))  
+  }
+  # Lateral Root Number Increase calculations:
+  else{
+    growth_factors[e,8] <- 0
+    growth_factors[e,9] <- 0
+  }
+}  
+```
+
+Let's have a look at the growth_factors table:
+
+```{r}
+growth_factors
+min(growth_factors$MR.delta)
+min(growth_factors$LRno.delta)
+min(growth_factors$aLRL.delta)
+
+max(growth_factors$MR.delta)
+max(growth_factors$LRno.delta)
+max(growth_factors$aLRL.delta)
+
+sapply(growth_factors, class)
+growth_factors$MR.delta <- as.numeric(growth_factors$MR.delta)
+growth_factors$LRno.delta <- as.numeric(growth_factors$LRno.delta)
+growth_factors$aLRL.delta <- as.numeric(growth_factors$aLRL.delta)
+```
+
+## Histograms for growth rates
+
+Most values seem to be in the reasonable range - but let's have a look at the histogram
+
+```{r}
+MR.delta_histo <- gghistogram(growth_factors, x = "MR.delta",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", 
+            palette = c("#00AFBB", "#E7B800")) + xlab("Main Root Growth (cm / day)")
+MR.delta_histo
+```
+
+```{r}
+LRno.delta_histo <- gghistogram(growth_factors, x = "LRno.delta",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", 
+            palette = c("#00AFBB", "#E7B800")) + xlab("Increase in Lateral Root number (# LR / day)")
+LRno.delta_histo
+```
+
+```{r}
+aLRL.delta_histo <- gghistogram(growth_factors, x = "aLRL.delta",
+            add = "mean", rug = TRUE,
+            color = "cond", fill = "cond", 
+            palette = c("#00AFBB", "#E7B800")) + xlab("average Lateral Root Growth (cm / day)")
+aLRL.delta_histo
+```
+
+awesome - let's save this into one figure as well:
+
+```{r}
+pdf("Fig.Growth_rates_histograms_MR_noLR_aLRL.pdf", width = 7.5, height = 10)
+plot_grid(MR.delta_histo, LRno.delta_histo, aLRL.delta_histo, ncol=1, labels = "AUTO")
+dev.off()
+```
+
+## reproducibility within accessions for growth rates:
+
+let's have a look what is the diversity of growth rates within accessions:
+
+```{r}
+grand.means <- aggregate(MR.delta ~ cond, data = growth_factors, FUN = mean)
+grand.means
+
+unique(growth_factors$genotype)
+
+MR.delta_p_geno <- ggerrorplot(growth_factors, y = "MR.delta", x = "genotype", fill="genotype", color="genotype", 
+                        facet.by = c("cond"), ncol=1,
+                        desc_stat = "mean_sd", add = "jitter", 
+                        add.params = list(color = "darkgray"),
+                        xlab="Genotype", ylab="Main Root Growth (cm / day)") 
+MR.delta_p_geno <- MR.delta_p_geno + geom_hline(
+                          data = grand.means, aes(yintercept = MR.delta),
+                          linetype = 2,
+                          group = "cond")
+MR.delta_p_geno <- MR.delta_p_geno + rremove("legend") + stat_compare_means(method="t.test", ref.group = ".all.", 
+                                                              label = "p.signif", hide.ns = T)
+MR.delta_p_geno
+```
+```{r}
+grand.means <- aggregate(LRno.delta ~ cond, data = growth_factors, FUN = mean)
+grand.means
+
+LRno.delta_p_geno <- ggerrorplot(growth_factors, y = "LRno.delta", x = "genotype", fill="genotype", color="genotype", 
+                        facet.by = c("cond"), ncol=1,
+                        desc_stat = "mean_sd", add = "jitter", 
+                        add.params = list(color = "darkgray"),
+                        xlab="Genotype", ylab="Increase in LR number (# LR / day)") 
+LRno.delta_p_geno <- LRno.delta_p_geno + geom_hline(
+                          data = grand.means, aes(yintercept = LRno.delta),
+                          linetype = 2,
+                          group = "cond")
+LRno.delta_p_geno <- LRno.delta_p_geno + rremove("legend") + stat_compare_means(method="t.test", ref.group = ".all.", 
+                                                              label = "p.signif", hide.ns = T)
+LRno.delta_p_geno
+```
+
+```{r}
+grand.means <- aggregate(aLRL.delta ~ cond, data = growth_factors, FUN = mean)
+grand.means
+
+aLRL.delta_p_geno <- ggerrorplot(growth_factors, y = "aLRL.delta", x = "genotype", fill="genotype", color="genotype", 
+                        facet.by = c("cond"), ncol=1,
+                        desc_stat = "mean_sd", add = "jitter", 
+                        add.params = list(color = "darkgray"),
+                        xlab="Genotype", ylab="average Lateral Root Growth (cm / day)") 
+aLRL.delta_p_geno <- aLRL.delta_p_geno + geom_hline(
+                          data = grand.means, aes(yintercept = aLRL.delta),
+                          linetype = 2,
+                          group = "cond")
+aLRL.delta_p_geno <- aLRL.delta_p_geno + rremove("legend") + stat_compare_means(method="t.test", ref.group = ".all.", 
+                                                              label = "p.signif", hide.ns = T)
+aLRL.delta_p_geno
+```
+
+ok - but these trends are very general - let's have a look what is the diversity between accessions in their salt responses. 
+
+## stress-induced changes in growth rates:
+
+Also - maybe lets calculate the average growth rate per accession and look how this looks on a graph with some stats - as in - do we see sig. differences between C and S:
+
+```{r}
+head(growth_factors)
+growth_nona <- na.omit(growth_factors)
+sum_growth <- summaryBy(data = growth_factors, MR.delta + LRno.delta + aLRL.delta ~ cond + genotype)
+sum_growth
+
+MR.delta_dotplot <- ggerrorplot(sum_growth, y = "MR.delta.mean", x = "cond", fill="cond", color="cond", 
+                        desc_stat = "mean_sd", add = "jitter", 
+                        add.params = list(color = "darkgray"),
+                        xlab="Condition", ylab="Main Root Growth (cm / day)") 
+MR.delta_dotplot <- MR.delta_dotplot + rremove("legend") + stat_compare_means(method="t.test", ref.group = "C", 
+                                                              label = "p.signif", hide.ns = T)
+MR.delta_dotplot
+```
+
+
+```{r}
+aLRL.delta_dotplot <- ggerrorplot(sum_growth, y = "aLRL.delta.mean", x = "cond", fill="cond", color="cond", 
+                        desc_stat = "mean_sd", add = "jitter", 
+                        add.params = list(color = "darkgray"),
+                        xlab="Condition", ylab="average Lateral Root Growth (cm / day)") 
+aLRL.delta_dotplot <- aLRL.delta_dotplot + rremove("legend") + stat_compare_means(method="t.test", ref.group = "C", 
+                                                              label = "p.signif", hide.ns = T)
+aLRL.delta_dotplot
+```
+
+```{r}
+LRno.delta_dotplot <- ggerrorplot(sum_growth, y = "LRno.delta.mean", x = "cond", fill="cond", color="cond", 
+                        desc_stat = "mean_sd", add = "jitter", 
+                        add.params = list(color = "darkgray"),
+                        xlab="Condition", ylab="average Lateral Root Growth (cm / day)") 
+LRno.delta_dotplot <- LRno.delta_dotplot + rremove("legend") + stat_compare_means(method="t.test", ref.group = "C", 
+                                                              label = "p.signif", hide.ns = T)
+LRno.delta_dotplot
+```
+
+ok - now we have all the accession values averaged - let's compare the growth rate under control and salt stress
+
+First - we need to split the data into control and salt and then match them based on genotype:
+
+```{r}
+growth_C <- subset(sum_growth, sum_growth$cond == "C")
+growth_S <- subset(sum_growth, sum_growth$cond == "S")
+colnames(growth_C) <- gsub(".mean", ".Control", colnames(growth_C))
+colnames(growth_S) <- gsub(".mean", ".Salt", colnames(growth_S))
+
+growth_C2 <- growth_C[,c(2:5)]
+growth_S2 <- growth_S[,c(2:5)]
+
+sum_growth2 <- merge(growth_C2, growth_S2, by="genotype")
+sum_growth2
+```
+
+```{r}
+corrplot_MR_gr <- ggscatter(sum_growth2, x = "MR.delta.Control", y = "MR.delta.Salt", size = 0.3, 
+                            rug = TRUE, add = "reg.line", color = "LRno.delta.Control") + stat_cor(method = "pearson")
+corrplot_MR_gr <- corrplot_MR_gr + gradient_color(c("blue", "grey", "red"))
+corrplot_MR_gr
+```
+
+```{r}
+corrplot_aLRL_gr <- ggscatter(sum_growth2, x = "aLRL.delta.Control", y = "aLRL.delta.Salt", size = 0.3, 
+                            rug = TRUE, add = "reg.line", color = "aLRL.delta.Control") + stat_cor(method = "pearson")
+corrplot_aLRL_gr <- corrplot_aLRL_gr + gradient_color(c("blue", "grey", "red"))
+corrplot_aLRL_gr
+
+
+```
+
+```{r}
+corrplot_LRno_gr <- ggscatter(sum_growth2, x = "LRno.delta.Control", y = "LRno.delta.Salt", color = "LRno.delta.Control",
+                              size = 0.3, rug = TRUE, add = "reg.line") + stat_cor(method = "pearson")
+corrplot_LRno_gr <- corrplot_LRno_gr + gradient_color(c("blue", "grey", "red"))
+corrplot_LRno_gr
+```
+
+hmmm... thinking about the dotplots from earlier and they *should* actually be a *paired* graph, because we want to see how individual accessions are behaving, and whether that *behaviour* is conserved across accessions:
+
+```{r}
+MR_sum_growth <- sum_growth2[,c(1,2,5)]
+MR_sum_melt <- melt(MR_sum_growth)
+MR_sum_melt
+MR_sum_melt$variable <- gsub("MR.delta.", "", MR_sum_melt$variable)
+colnames(MR_sum_melt)[2] <- "condition"
+colnames(MR_sum_melt)[3] <- "MR.delta"
+
+
+MR_growth_paired <- ggpaired(MR_sum_melt, x = "condition", y = "MR.delta",
+                               color = "condition", line.color = "gray", line.size = 0.1,
+                               palette = "jco", xlab ="", ylab ="Main Root Growth (cm / day)")
+MR_growth_paired <- MR_growth_paired + stat_compare_means(paired = TRUE, label.x = 1.5) + rremove("legend")
+MR_growth_paired
+```
+
+Cool - that looks much more informative - let's do this for other traits:
+
+```{r}
+LRno_sum_growth <- sum_growth2[,c(1,3,6)]
+LRno_sum_growth <- na.omit(LRno_sum_growth)
+LRno_sum_melt <- melt(LRno_sum_growth)
+LRno_sum_melt
+LRno_sum_melt$variable <- gsub("LRno.delta.", "", LRno_sum_melt$variable)
+colnames(LRno_sum_melt)[2] <- "condition"
+colnames(LRno_sum_melt)[3] <- "LRno.delta"
+
+
+LRno_growth_paired <- ggpaired(LRno_sum_melt, x = "condition", y = "LRno.delta",
+                               color = "condition", line.color = "gray", line.size = 0.1,
+                               palette = "jco", xlab ="", ylab ="Increase in Lateral Root # (# LR / day)")
+LRno_growth_paired <- LRno_growth_paired + stat_compare_means(paired = TRUE, label.x = 1.5) + rremove("legend")
+LRno_growth_paired
+```
+
+```{r}
+aLRL_sum_growth <- sum_growth2[,c(1,4,7)]
+aLRL_sum_growth <- na.omit(aLRL_sum_growth)
+aLRL_sum_melt <- melt(aLRL_sum_growth)
+aLRL_sum_melt
+aLRL_sum_melt$variable <- gsub("aLRL.delta.", "", aLRL_sum_melt$variable)
+colnames(aLRL_sum_melt)[2] <- "condition"
+colnames(aLRL_sum_melt)[3] <- "aLRL.delta"
+
+
+aLRL_growth_paired <- ggpaired(aLRL_sum_melt, x = "condition", y = "aLRL.delta",
+                               color = "condition", line.color = "gray", line.size = 0.1,
+                               palette = "jco", xlab ="", ylab ="average Lateral Root Growth (cm / day)")
+aLRL_growth_paired <- aLRL_growth_paired + stat_compare_means(paired = TRUE, label.x = 1.5) + rremove("legend")
+aLRL_growth_paired
+```
+
+ok - now let's start comparing how individual accessions are doing when it comes to salt indices of individual organs:
+
+## Salt Tolerance Indexes
+
+In order to look at salt responses - we need to calculate the average plant responses per accession and calculate the relative change in growth rate in response to salt (relative to control):
+
+```{r}
+head(sum_growth2)
+
+sum_growth2$MR.STI <- sum_growth2$MR.delta.Salt/sum_growth2$MR.delta.Control
+sum_growth2$LRno.STI <- sum_growth2$LRno.delta.Salt/sum_growth2$LRno.delta.Control
+sum_growth2$aLRL.STI <- sum_growth2$aLRL.delta.Salt/sum_growth2$aLRL.delta.Control
+head(sum_growth2)
+```
+
+Then - we would like to know also what is the effect of the salt on different root components across different accessions - so let's make a histogram for this :)
+
+```{r}
+colnames(sum_growth2)
+STI_histo_set <- sum_growth2[,c(1,8:10)]
+head(STI_histo_set)
+STI_histo_melt <- melt(STI_histo_set)
+head(STI_histo_melt)
+
+STI_growth_histo <- gghistogram(STI_histo_melt, x = "value",
+            add = "mean", rug = TRUE,
+            color = "variable", fill = "variable", 
+            palette = c("#1b9e77", "#d95f02", "#7570b3")) + xlab("fraction of growth at control")
+STI_growth_histo
+```
+
+cool - now we can also look in detail of how the individual accessions behave throughout these three STI
+
+```{r}
+STI_growth_paired <- ggpaired(STI_histo_melt, x = "variable", y = "value",
+                               color = "variable", line.color = "gray", line.size = 0.1,
+                               palette = "jco", xlab ="", ylab ="Fraction of rate at Control")
+STI_growth_paired <- STI_growth_paired + stat_compare_means(paired = TRUE, label.x = 1.5) + rremove("legend")
+STI_growth_paired
+```
+
+ok - also - lets look at these things in a bit more traditional setting:
+
+```{r}
+sum_growth2
+STI_MR_vs_aLRL <- ggscatter(sum_growth2, x = "MR.STI", y = "aLRL.STI", color = "aLRL.delta.Control", size = 0.3, 
+                            rug = TRUE, add = "reg.line") + stat_cor(method = "pearson")
+STI_MR_vs_aLRL <- STI_MR_vs_aLRL + gradient_color(c("blue", "grey", "red"))
+
+STI_MR_vs_aLRL
+```
+
+```{r}
+STI_MR_vs_LRno <- ggscatter(sum_growth2, x = "MR.STI", y = "LRno.STI", color = "LRno.delta.Control", size = 0.3, 
+                            rug = TRUE, add = "reg.line") + stat_cor(method = "pearson")
+STI_MR_vs_LRno <- STI_MR_vs_LRno + gradient_color(c("blue", "grey", "red"))
+
+STI_MR_vs_LRno
+```
+
+```{r}
+STI_aLRL_vs_LRno <- ggscatter(sum_growth2, x = "aLRL.STI", y = "LRno.STI", color = "LRno.delta.Control", size = 0.3, 
+                            rug = TRUE, add = "reg.line") + stat_cor(method = "pearson")
+STI_aLRL_vs_LRno <- STI_aLRL_vs_LRno + gradient_color(c("blue", "grey", "red"))
+
+STI_aLRL_vs_LRno
+```
+
+## Conclusions so far
+
+OK - so all of the above is pretty interesting - from the paired STI graph we can tell that there are multiple classes of accessions:
+
+```{r}
+STI_growth_paired
+```
+
+1) accessions that are equally impaired for all components of RSA
+2) accessions that are LEAST impaired in MRL
+3) accessions that are MOST impaired in MRL
+4) accessions that are MOST impaired in LRno
+
+The correlations between individual SITs is very low for all combinations - which is pretty exciting, and aLRL and MRL are in general the least impacted by the salt stress - while LRno is impaired in most accessions the most - based on this histogram:
+
+```{r}
+STI_growth_histo
+```
+
+now - I am wondering - if we throw only the STI into the hierarchical clustering - would we be able to discern between these classes of accessions?
+
+Let's see:
+
+## Hclust based on the SITs:
+
+First - let's prepare the matrix:
+
+```{r}
+colnames(sum_growth2)
+STI_only <- sum_growth2[,c(1,8:10)]
+# get only numeric variables from your data - NOT plant identifiers 
+STI_matrix <- STI_only[, c(2:4)]
+# transfer all numeric variables into matrix
+STI_matrix2 <- as.matrix(STI_matrix)
+# add plant identifiers as row names
+row.names(STI_matrix2) <- STI_only$genotype
+# omit missing values - otherwise we wont be able to do the clustering 
+final_m <- na.omit(STI_matrix2)
+dim(STI_matrix2)
+dim(final_m)
+head(final_m)
+```
+
+```{r}
+# run a correlation
+magda_cor = cor(final_m,method=c("pearson"))
+# calculate distance
+magda_dist = dist(magda_cor)
+# this is the clustering itself - but now we are clustering how phenotypes are related to eachother
+magda_clust = hclust(magda_dist,method="ward.D2")
+plot(as.dendrogram(magda_clust),horiz=T)
+# transposing the matrix
+magda_t_matrix=t(final_m)
+magda_t_cor = cor(magda_t_matrix,method=c("pearson"))
+magda_t_dist = dist(magda_t_cor)
+# clustering of accessions
+magda_t_clust = hclust(magda_t_dist,method="ward.D2")
+plot(as.dendrogram(magda_t_clust),horiz=T)
+clusters <- cutree(magda_t_clust,h=24)
+unique(clusters)
+write.table(as.data.frame(cutree(magda_t_clust,h=24)),file="STI_clusters.txt",sep="\t",quote=F)
+# the scaling only now applies to "row" which are our different phenotypes
+heatmap.2(magda_t_matrix,Rowv=as.dendrogram(magda_clust),Colv=as.dendrogram(magda_t_clust),col=blue2red(100),scale=c("row"),density.info="none",trace="none")
+```
+
+OK - let's save this one into a file before we forget
+
+```{r}
+pdf("Fig.STI_clustering.pdf",width=12,height=7)
+heatmap.2(magda_t_matrix,Rowv=as.dendrogram(magda_clust),Colv=as.dendrogram(magda_t_clust),col=blue2red(100),scale=c("row"),density.info="none",trace="none")
+dev.off()
+```
+
+cool - now let's see if the clusters actually differ in their respective growth rates / STIs.
+
+First - let's fuse "clusters" with the other growth rate data
+```{r}
+clusters
+
+sumatrix <- sum_growth2[,c(2:10)]
+sumatrix2 <- as.matrix(sumatrix)
+row.names(sumatrix2) <- sum_growth2$genotype
+sumatrix3 <- na.omit(sumatrix2)
+
+sum_growth3 <- cbind(sumatrix3, clusters)
+head(sum_growth3)
+```
+
+ok - now let's make some graphs per clusters starting with STIs:
+
+```{r}
+growth_cluster3 <- as.data.frame(sum_growth3)
+growth_cluster3
+
+STIcluster_MR.STI <- ggerrorplot(growth_cluster3, y = "MR.STI", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="", 
+                                   ylab="Fraction of Control (Main Root Growth)", title = "Main Root STI") 
+STIcluster_MR.STI <- STIcluster_MR.STI + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_MR.STI
+```
+
+```{r}
+STIcluster_LRno.STI <- ggerrorplot(growth_cluster3, y = "LRno.STI", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="", 
+                                   ylab="Fraction of Control (LR #)", title = "Lateral Root # STI") 
+STIcluster_LRno.STI <- STIcluster_LRno.STI + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_LRno.STI
+```
+
+```{r}
+STIcluster_aLRL.STI <- ggerrorplot(growth_cluster3, y = "aLRL.STI", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="", 
+                                   ylab="Fraction of Control (avg. Lateral Root Growth)", 
+                                   title = " avg Lateral Root Growth STI") 
+STIcluster_aLRL.STI <- STIcluster_aLRL.STI + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_aLRL.STI
+```
+
+Let's put these into one figure and think about it in another session:
+
+```{r}
+pdf("Fig.STI_based_clusters_STI_trait_comparison.pdf", height = 15, width = 10)
+plot_grid(STIcluster_MR.STI, STIcluster_LRno.STI, STIcluster_aLRL.STI, ncol=1, labels="AUTO")
+dev.off()
+```
+
+I m still wondering how the correlations between the traits would look if we would color it per cluster now:
+
+```{r}
+growth_cluster3$clusters <- as.factor(growth_cluster3$clusters)
+
+STI_aLRL_vs_LRno_clust <- ggscatter(growth_cluster3, x = "aLRL.STI", y = "LRno.STI", color = "clusters", size = 0.3, 
+                            rug = TRUE, ellipse = TRUE, palette = "jco") + stat_cor(method = "pearson")
+STI_aLRL_vs_LRno_clust
+```
+
+```{r}
+STI_aLRL_vs_MR_clust <- ggscatter(growth_cluster3, x = "aLRL.STI", y = "MR.STI", color = "clusters", size = 0.3, 
+                            rug = TRUE, ellipse = TRUE, palette = "jco") + stat_cor(method = "pearson")
+STI_aLRL_vs_MR_clust
+```
+
+```{r}
+STI_LRno_vs_MR_clust <- ggscatter(growth_cluster3, x = "LRno.STI", y = "MR.STI", color = "clusters", size = 0.3, 
+                            rug = TRUE, ellipse = TRUE, palette = "jco") + stat_cor(method = "pearson")
+STI_LRno_vs_MR_clust
+```
+
+I wonder if we could visualize accessions that belong to individual clusters in the continuous graphs with average per accession.
+
+Let's load the STI_cluster table:
+```{r}
+cluster01 <- read.table("STI_clusters_better.txt", header = T)
+head(cluster01)
+```
+
+now let's fuse it with the MR_sum dataset that we used previously for timeseries graphs:
+
+```{r}
+head(MR_sum)
+MR_sum2 <- MR_sum
+MR_sum2$genotype <- as.numeric(as.character(MR_sum2$genotype))
+MR_cluster <- merge(MR_sum2, cluster01, by="genotype", all=T)
+head(MR_cluster)
+MR_cluster$cluster <- as.factor(MR_cluster$cluster)
+```
+
+Cool - now let's see how the TRS graph looks like when we colour per cluster:
+
+```{r}
+TRS_clust_lgraph <- ggplot(data=MR_cluster, aes(x= DAS, y=TRS.mean, group = geno_cond, color = cond)) 
+TRS_clust_lgraph <- TRS_clust_lgraph + geom_line(alpha = 0.1) 
+TRS_clust_lgraph <- TRS_clust_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3) + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+TRS_clust_lgraph <- TRS_clust_lgraph + ggtitle("") +facet_grid(~ cluster)
+TRS_clust_lgraph <- TRS_clust_lgraph + ylab("Total Root Size (cm)") + xlab("Days After Stress")
+TRS_clust_lgraph
+```
+
+
+
+```{r}
+STIcluster_MR.C <- ggerrorplot(growth_cluster3, y = "MR.delta.Control", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="Clusters based on STI", 
+                                   ylab="Main Root Growth (cm / day)", title = "Control") 
+STIcluster_MR.C <- STIcluster_MR.C + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_MR.C
+```
+
+```{r}
+STIcluster_MR.S <- ggerrorplot(growth_cluster3, y = "MR.delta.Salt", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="Clusters based on STI", 
+                                   ylab="Main Root Growth (cm / day)", title = "Salt") 
+STIcluster_MR.S <- STIcluster_MR.S + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_MR.S
+```
+
+```{r}
+STIcluster_aLR.C <- ggerrorplot(growth_cluster3, y = "aLRL.delta.Control", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="Clusters based on STI", 
+                                   ylab="avg Lateral Root Growth (cm / day)", title = "Control") 
+STIcluster_aLR.C <- STIcluster_aLR.C + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_aLR.C
+```
+
+```{r}
+STIcluster_aLR.S <- ggerrorplot(growth_cluster3, y = "aLRL.delta.Salt", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="Clusters based on STI", 
+                                   ylab="avg Lateral Root Growth (cm / day)", title = "Salt") 
+STIcluster_aLR.S <- STIcluster_aLR.S + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_aLR.S
+```
+
+```{r}
+STIcluster_LRno.C <- ggerrorplot(growth_cluster3, y = "LRno.delta.Control", x = "clusters", fill="clusters"  
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="Clusters based on STI", 
+                                   ylab="Lateral Root Increase (# LR / day)", title = "Control") 
+STIcluster_LRno.C <- STIcluster_LRno.C + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_LRno.C
+library(plotly)
+ggplotly(STIcluster_LRno.C)
+```
+
+
+```{r}
+STIcluster_LRno.S <- ggerrorplot(growth_cluster3, y = "LRno.delta.Salt", x = "clusters", fill="clusters", 
+                                   color="clusters", desc_stat = "mean_sd", add = "jitter", 
+                                   add.params = list(color = "darkgray"), xlab="Clusters based on STI", 
+                                   ylab="Lateral Root Increase (# LR / day)", title = "Salt") 
+STIcluster_LRno.S <- STIcluster_LRno.S + rremove("legend") + stat_compare_means(method="t.test", ref.group = 1, 
+                                                              label = "p.signif", hide.ns = T)
+STIcluster_LRno.S
+```
+
+```{r}
+ggplotly(TRS_lgraph)
+```
+
+Let's have a look and select accessions:
+
+```{r}
+tomato <- subset(MR_sum, MR_sum$DAS > 3)
+tomato <- subset(tomato, tomato$cond == "S")
+tomato <- subset(tomato, tomato$TRS.mean > 19)
+tomato$genotype
+
+```
+
+that's of course based on the mean - lets have a look at the most interesting accessions tho:
+
+```{r}
+interesting <- subset(all_MR3, all_MR3$genotype == " 002")
+interesting
+
+M002_lgraph <- ggplot(data=interesting, aes(x= DAS, y=TRS, group = root_name, color = cond)) 
+M002_lgraph <- M002_lgraph +geom_line(alpha = 0.1) 
+M002_lgraph <- M002_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+M002_lgraph <- M002_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+M002_lgraph <- M002_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+M002_lgraph <- M002_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("M002")
+M002_lgraph <- M002_lgraph + ylab("Total Root Size (cm)") + xlab("Days After Stress") + theme(legend.position='none')
+M002_lgraph
+```
+
+
+```{r}
+interesting <- subset(all_MR3, all_MR3$genotype == " 248")
+interesting
+
+M248_lgraph <- ggplot(data=interesting, aes(x= DAS, y=TRS, group = root_name, color = cond)) 
+M248_lgraph <- M248_lgraph +geom_line(alpha = 0.1) 
+M248_lgraph <- M248_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+M248_lgraph <- M248_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+M248_lgraph <- M248_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+M248_lgraph <- M248_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("M248")
+M248_lgraph <- M248_lgraph + ylab("Total Root Size (cm)") + xlab("Days After Stress") + theme(legend.position='none')
+M248_lgraph
+```
+
+## Pareto and RSA
+
+OK - so now let's get to the actual paretho calculations made by Arjun.
+
+```{r}
+getwd()
+Pareto_01 <- read.csv("/Users/magdalena/Dropbox/DataAndAnalysis/Tomato/PimpiBIG csv raw files/Arjun_Paretho/arbor_stats.csv")
+Pareto_01
+Pareto_02 <- read.csv("/Users/magdalena/Dropbox/DataAndAnalysis/Tomato/PimpiBIG csv raw files/Arjun_Paretho/scaling_distances.csv")
+Pareto_02
+head(all_MR3)
+meta <- read.csv("/Users/magdalena/Dropbox/DataAndAnalysis/Tomato/PimpiBIG csv raw files/Arjun_Paretho/metadata.csv")
+meta
+```
+
+Cool - let's try to fuse it all together:
+
+```{r}
+dim(Pareto_01)
+dim(Pareto_02)
+dim(meta)
+dim(all_MR3)
+```
+
+ok - so for some reason we do have less paretho calculated than actually plants, but that's ok at this point. 
+
+Let's first fuse two paretho files:
+
+```{r}
+Pareto_all <- merge(Pareto_01, Pareto_02, by="arbor.name")
+dim(Pareto_all)
+head(Pareto_all)
+```
+
+Then add meta-data
+
+```{r}
+unique(Pareto_all$arbor.name)
+unique(meta$arbor.name)
+
+Pareto_all$arbor.name <- gsub(" ", "", Pareto_all$arbor.name)
+meta$arbor.name <- gsub(" ", "", meta$arbor.name)
+
+Pareto_meta <- merge(Pareto_all, meta, by="arbor.name")
+Pareto_meta
+dim(Pareto_meta)
+```
+
+Let's clean up this pareto_meta file:
+
+```{r}
+colnames(Pareto_meta)
+Pareto <- Pareto_meta[,c(8:13, 1:5)]
+dim(Pareto)
+colnames(Pareto)[11] <- "pareto.front.scaling.location"
+Pareto
+```
+
+Now - let's try and connect it to the MR_all3 file:
+
+```{r}
+all_MR3
+unique(all_MR3$genotype)
+all_MR3$arbor.name <- paste(all_MR3$genotype, "_", all_MR3$rep, "_", all_MR3$cond, "_DAS", all_MR3$DAS, sep="")
+head(all_MR3)
+
+all_MR3$arbor.name <- gsub("DAS0", "day1", all_MR3$arbor.name)
+all_MR3$arbor.name <- gsub("DAS1", "day2", all_MR3$arbor.name)
+all_MR3$arbor.name <- gsub("DAS2", "day3", all_MR3$arbor.name)
+all_MR3$arbor.name <- gsub("DAS3", "day4", all_MR3$arbor.name)
+all_MR3$arbor.name <- gsub("DAS4", "day5", all_MR3$arbor.name)
+all_MR3$arbor.name <- gsub(" ", "", all_MR3$arbor.name)
+head(all_MR3)
+unique(all_MR3$arbor.name) %in% unique(Pareto$arbor.name)
+all_MR4 <- merge(all_MR3, Pareto, by="arbor.name")
+dim(all_MR4)
+all_MR4
+```
+
+Let's clean it up a little before going further:
+
+```{r}
+colnames(all_MR4)
+
+all_MR4 <- all_MR4[,c(1:65,72:75)]
+colnames(all_MR4)[5] <- "experiment"
+colnames(all_MR4)[7] <- "genotype"
+all_MR4
+```
+
+### Pareto through time:
+
+Now we have all the data - let's have a look at how that is looking through time:
+
+```{r}
+all_MR5 <- na.omit(all_MR4)
+all_MR5$DAS <- as.factor(all_MR5$DAS)
+
+PFdist_lgraph <- ggplot(data=all_MR5, aes(x= DAS, y=pareto.front.distance, group = root_name, color = cond)) 
+PFdist_lgraph <- PFdist_lgraph +geom_line(alpha = 0.1) 
+PFdistance_lgraph <- PFdistance_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+PFdistance_lgraph <- PFdistance_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+PFdistance_lgraph <- PFdistance_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+
+PFdistance_lgraph <- PFdistance_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Individual accessions")
+PFdistance_lgraph <- PFdistance_lgraph + ylab("Pareto Front Distance (a.u.)") + xlab("Days After Stress") + theme(legend.position='none')
+PFdistance_lgraph
+```
+
+```{r}
+PFscdist_lgraph <- ggplot(data=all_MR5, aes(x= DAS, y=pareto.front.scaling.distance, group = root_name, color = cond)) 
+PFscdist_lgraph <- PFscdist_lgraph +geom_line(alpha = 0.1) 
+PFscdist_lgraph <- PFscdist_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+PFscdist_lgraph <- PFscdist_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+PFscdist_lgraph <- PFscdist_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+
+PFscdist_lgraph <- PFscdist_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Individual accessions")
+PFscdist_lgraph <- PFscdist_lgraph + ylab("Pareto Front Scaling Distance (a.u.)") + xlab("Days After Stress") + theme(legend.position='none')
+PFscdist_lgraph
+```
+
+
+```{r}
+PFloc_lgraph <- ggplot(data=all_MR5, aes(x= DAS, y=pareto.front.location, group = root_name, color = cond)) 
+PFloc_lgraph <- PFloc_lgraph +geom_line(alpha = 0.1) 
+PFloc_lgraph <- PFloc_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+PFloc_lgraph <- PFloc_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+PFloc_lgraph <- PFloc_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+PFloc_lgraph <- PFloc_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Individual accessions")
+PFloc_lgraph <- PFloc_lgraph + ylab("Pareto Front Location (a.u.)") + xlab("Days After Stress") + theme(legend.position='none')
+PFloc_lgraph
+```
+
+```{r}
+PFscloc_lgraph <- ggplot(data=all_MR5, aes(x= DAS, y=pareto.front.scaling.location, group = root_name, color = cond)) 
+PFscloc_lgraph <- PFscloc_lgraph +geom_line(alpha = 0.1) 
+PFscloc_lgraph <- PFscloc_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+PFscloc_lgraph <- PFscloc_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+PFscloc_lgraph <- PFscloc_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+PFscloc_lgraph <- PFscloc_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Individual accessions")
+PFscloc_lgraph <- PFscloc_lgraph + ylab("Pareto Front Scaling Location (a.u.)") + xlab("Days After Stress") + theme(legend.position='none')
+PFscloc_lgraph
+```
+
+ok - now let's have a look what is the reproducibility of the pareto front location within the genotype:
+
+```{r}
+interesting <- subset(all_MR5, all_MR5$genotype == " 248")
+interesting
+
+M248_PFScloc <- ggplot(data=interesting, aes(x= DAS, y=pareto.front.scaling.location, group = root_name, color = cond)) 
+M248_PFScloc <- M248_PFScloc +geom_line(alpha = 0.2) 
+M248_PFScloc <- M248_PFScloc + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+M248_PFScloc <- M248_PFScloc + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+M248_PFScloc <- M248_PFScloc + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+M248_PFScloc <- M248_PFScloc + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("M248")
+M248_PFScloc <- M248_PFScloc + ylab("Pareto Front Scaling Location") + xlab("Days After Stress") + theme(legend.position='none')
+M248_PFScloc
+```
+
+Let's save this file and explore the heritability of these traits in MVApp:
+
+```{r}
+write.csv(all_MR5, "Big01to04_incl.PF.csv", row.names = FALSE)
+```
+
+The heritabiity of all the traits is pretty decent overall - between 0.4 and 0.7 in most cases. 
+
+Let's see how the Pareto Front Scaling Location is correlated with LR traits:
+
+```{r}
+all_MR5$DAS <- as.factor(all_MR5$DAS)
+PFsc.loc_vs_TRS <- ggscatter(all_MR5, x = "pareto.front.scaling.location", y = "TRS", color = "cond", size = 0.3, 
+                            rug = TRUE, facet.by = "DAS") + stat_cor(method = "pearson")
+PFsc.loc_vs_TRS
+```
+
+```{r}
+PFsc.loc_vs_LRno <- ggscatter(all_MR5, x = "pareto.front.scaling.location", y = "LRno", color = "cond", size = 0.3, 
+                            rug = TRUE, facet.by = "DAS") + stat_cor(method = "pearson")
+PFsc.loc_vs_LRno
+```
+
+
+```{r}
+PFsc.loc_vs_aLRL <- ggscatter(all_MR5, x = "pareto.front.scaling.location", y = "aLRL", color = "cond", size = 0.3, 
+                            rug = TRUE, facet.by = "DAS") + stat_cor(method = "pearson")
+PFsc.loc_vs_aLRL
+```
+
+```{r}
+PFsc.loc_vs_CoG <- ggscatter(all_MR5, x = "pareto.front.scaling.location", y = "CoG", color = "cond", size = 0.3, 
+                            rug = TRUE, facet.by = "DAS") + stat_cor(method = "pearson")
+PFsc.loc_vs_CoG
+```
+
+actually - CoG should be calculated as perc. or MR - I wonder why I didnt do that before :)
+
+```{r}
+colnames(all_MR5)
+all_MR5$CoG.per <- all_MR5$CoG / all_MR5$MRL
+
+CoGperc_lgraph <- ggplot(data=all_MR5, aes(x= DAS, y=CoG.per, group = root_name, color = cond)) 
+CoGperc_lgraph <- CoGperc_lgraph +geom_line(alpha = 0.1) 
+CoGperc_lgraph <- CoGperc_lgraph + stat_summary(fun.data = mean_se, geom="ribbon", linetype=0, aes(group=cond), alpha=0.3)
+CoGperc_lgraph <- CoGperc_lgraph + stat_summary(fun.y=mean, aes(group= cond),  size=0.7, geom="line", linetype = "dashed")
+CoGperc_lgraph <- CoGperc_lgraph + stat_compare_means(aes(group = cond), label = "p.signif", method = "t.test", hide.ns = T)
+CoGperc_lgraph <- CoGperc_lgraph + scale_colour_manual(values = c("steelblue", "firebrick3")) + ggtitle("Individual accessions")
+CoGperc_lgraph <- CoGperc_lgraph + ylab("Fraction of the Main Root") + xlab("Days After Stress") + theme(legend.position='none')
+CoGperc_lgraph
+
+PFsc.loc_vs_CoG.perc <- ggscatter(all_MR5, x = "pareto.front.scaling.location", y = "CoG.per", color = "cond", size = 0.3, 
+                            rug = TRUE, facet.by = "DAS") + stat_cor(method = "pearson")
+PFsc.loc_vs_CoG.perc
+```
+
+Also - I would like to have a look at how this scaling.location looks across the accessions within one day and between conditions - lets do DAS4
+
+```{r}
+DAS4 <- subset(all_MR5, all_MR5$DAS == 4)
+
+grand.means <- aggregate(pareto.front.scaling.location ~ cond, data = DAS4, FUN = mean)
+grand.means
+
+unique(DAS4$genotype)
+
+PF.sc.loc_p_geno <- ggerrorplot(DAS4, y = "pareto.front.scaling.location", x = "genotype", fill="genotype",
+                               color="genotype", facet.by = c("cond"), ncol=1, desc_stat = "mean_sd", add = "jitter", 
+                               add.params = list(color = "darkgray"), xlab="Genotype", 
+                               ylab="Pareto Front Scaling Location (a.u.)") 
+PF.sc.loc_p_geno <- PF.sc.loc_p_geno + geom_hline(
+                                data = grand.means, aes(yintercept = pareto.front.scaling.location),
+                                linetype = 2,
+                                group = "cond")
+PF.sc.loc_p_geno <- PF.sc.loc_p_geno + rremove("legend") + stat_compare_means(method="t.test", ref.group = ".all.", 
+                                                              label = "p.signif", hide.ns = T)
+PF.sc.loc_p_geno
+
+```
+
+Let's calculate the change in the pareto front scaling location relative to control conditions per accession as well.
+
+```{r}
+DAS4_avg <- summaryBy(data = DAS4, pareto.front.scaling.location ~ genotype + cond)
+DAS4_avg
+DAS_C <- subset(DAS4_avg, DAS4_avg$cond == "C")
+DAS_C <- DAS_C[,c(1,3)]
+colnames(DAS_C)[2] <- "PF.scaling.location.Control"
+DAS_S <- subset(DAS4_avg, DAS4_avg$cond == "S")
+DAS_S <- DAS_S[,c(1,3)]
+colnames(DAS_S)[2] <- "PF.scaling.location.Salt"
+
+DAS_STI <- merge(DAS_C, DAS_S, id="genotype")
+DAS_STI$STI <- DAS_STI$PF.scaling.location.Salt / DAS_STI$PF.scaling.location.Control
+DAS_STI
+```
+
+```{r}
+PF.sc.loc_STI_histo <- gghistogram(DAS_STI, x = "STI",
+                                    add = "mean", rug = TRUE) + xlab("Salt / Control")
+PF.sc.loc_STI_histo
+
+DAS4_avg
+
+PF.sc.loc_histo <- gghistogram(DAS4_avg, x = "pareto.front.scaling.location.mean",
+                                add = "mean", rug = TRUE,
+                                color = "cond", fill = "cond",
+                                palette = c("#00AFBB", "#E7B800")) + xlab("Pareto Front Scaling Location")
+PF.sc.loc_histo
+
+PF.sc.loc_histo <- gghistogram(all_MR5, x = "pareto.front.scaling.location",
+                                add = "mean", rug = TRUE, facet.by = "DAS",
+                                color = "cond", fill = "cond",
+                                palette = c("#00AFBB", "#E7B800")) + xlab("Pareto Front Scaling Location")
+PF.sc.loc_histo
+```
+
