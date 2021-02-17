@@ -107,6 +107,9 @@ def read_arbor_full(fname):
                         if curr_root != 'main root':
                             lateral_starts.append(point)
                 else:
+                    if prev_point == point:
+                        # don't add a self loop that was probably an error in the data
+                        continue
                     # connect this point to the previous point on the same root
                     G.add_edge(prev_point, point)
                     G[prev_point][point]['length'] = euclidean(prev_point, point)
@@ -166,7 +169,7 @@ def read_arbor_condensed(fname):
     return G
 
 def main():
-    G = read_arbor_full('087_1_C_day4.csv')
+    G = read_arbor_full('292_1_C_day5.csv')
     draw_arbor(G, outdir=DRAWINGS_DIR)
 
 if __name__ == '__main__':
