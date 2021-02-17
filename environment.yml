@@ -1,0 +1,14 @@
+name: plant-architecture
+channels:
+  - defaults
+dependencies:
+  - seaborn
+  - networkx
+  - plotly
+  - dash
+  - statsmodels
+  - scikit-posthocs
+  - jupyter
+  - jupyterlab
+  - pingouin
+prefix: /Users/arjunchandrasekhar/opt/anaconda3/envs/plant-architecture
