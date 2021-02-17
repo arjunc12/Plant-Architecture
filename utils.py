@@ -158,7 +158,7 @@ def arbor_name(image, main_root_name):
 def get_experiment(fname):
     fname_items = fname.split('_')
 
-    pimpi = fname_items[0]
+    pimpi = fname_items[0].capitalize()
     big = fname_items[1]
 
-    return '%s_%s' % (pimpi, big)
+    return '%s%s' % (pimpi, big)
