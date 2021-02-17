@@ -227,7 +227,33 @@ def pareto_dist(G, alphas, wiring_costs, conduction_delays):
     closest_alpha = None
 
     for alpha, wiring, delay in zip(alphas, wiring_costs, conduction_delays):
-        pareto_dist = euclidean((arbor_wiring, arbor_delay), (wiring, delay))
+        pareto_dist = euclidean((wiring, delay), (arbor_wiring, arbor_delay))
+        if pareto_dist < closest_dist:
+            closest_dist = pareto_dist
+            closest_alpha = alpha
+
+    return closest_dist, closest_alpha
+
+def point_dist_scale(p1, p2):
+    assert len(p1) == len(p2)
+
+    max_ratio = float("-inf")
+    for i in range(len(p1)):
+        coord1 = p1[i]
+        coord2 = p2[i]
+        ratio = coord2 / coord1
+        max_ratio = max(ratio, max_ratio)
+
+    return max_ratio
+
+def pareto_dist_scale(G, alphas, wiring_costs, conduction_delays):
+    arbor_wiring, arbor_delay = pareto_costs(G)
+
+    closest_dist = float("inf")
+    closest_alpha = None
+
+    for alpha, wiring, delay in zip(alphas, wiring_costs, conduction_delays):
+        pareto_dist = point_dist_scale((wiring, delay), (arbor_wiring, arbor_delay))
         if pareto_dist < closest_dist:
             closest_dist = pareto_dist
             closest_alpha = alpha
