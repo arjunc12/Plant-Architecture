@@ -214,7 +214,7 @@ def opt_arbor(G, alpha):
     root_distances = get_root_distances(G)
 
     P = starting_graph(G)
-    P.graph['arbor name'] = '%s alpha = %f' % (G.graph['arbor name'], alpha)
+    P.graph['arbor name'] = '%s-alpha=%f' % (G.graph['arbor name'], alpha)
 
     lateral_root_tips = get_lateral_root_tips(P)
 
