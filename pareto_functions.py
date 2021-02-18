@@ -98,6 +98,11 @@ def prune_lateral_roots(G):
         elif not is_on_main_root(G, u):
             G.remove_node(u)
 
+def starting_graph(G):
+    P = G.copy()
+    prune_lateral_roots(P)
+    return P
+
 def satellite_tree(G):
     S = G.copy()
     prune_lateral_roots(S)
@@ -110,7 +115,7 @@ def satellite_tree(G):
 
     return S
 
-def root_distances(G):
+def get_root_distances(G):
     distances = {}
     root = G.graph['main root base']
     prev = root
@@ -132,38 +137,22 @@ def root_distances(G):
 
     return distances
 
-def opt_arbor(G, alpha):
-    if alpha == 0:
-        return satellite_tree(G)
-
-    root_x, root_y = G.graph['main root base']
-    root_distance = root_distances(G)
-
-    P = G.copy()
-    prune_lateral_roots(P)
-
-    P.graph['arbor name'] = '%s alpha = %f' % (G.graph['arbor name'], alpha)
-    lateral_root_tips = []
+def get_lateral_root_tips(G):
+    tips = []
     for u in G.nodes():
-        if is_on_main_root(G, u):
-            P.add_node(u)
-            P.nodes[u]['label'] = 'main root'
-            if G.nodes[u]['label'] == 'main root base':
-                P.graph['main root base'] = u
-        elif G.nodes[u]['label'] == 'lateral root tip':
-            P.add_node(u)
-            P.nodes[u]['label'] = 'lateral root tip'
-            lateral_root_tips.append(u)
+        if G.nodes[u]['label'] == 'lateral root tip':
+            tips.append(u)
+    return tips
 
-    main_root_segments = []
+def get_main_root_segments(G):
+    segments = []
     for u, v in G.edges():
         # check if both u and v are on the main root
         if is_on_main_root(G, u) and is_on_main_root(G, v):
-            main_root_segments.append((u, v))
+            segments.append((u, v))
+    return segments
 
-    # sort root segments based on the y-coordinate in the first point of the segment
-    main_root_segments = sorted(main_root_segments, key = lambda s: s[0][1])
-
+def get_best_midpoints(lateral_root_tips, main_root_segments, root_distances, alpha):
     best_midpoints = defaultdict(list)
 
     for lateral_root in lateral_root_tips:
@@ -173,7 +162,7 @@ def opt_arbor(G, alpha):
         best_p1 = None
         best_delta = None
         for p0, p1 in main_root_segments:
-            droot = root_distance[p0]
+            droot = root_distances[p0]
             cost, midpoint, delta = None, None, None
             if alpha == 1:
                 cost, midpoint, delta = optimal_midpoint_alpha1(p0, p1, lateral_root)
@@ -192,19 +181,44 @@ def opt_arbor(G, alpha):
         else:
             best_midpoints[(best_p0, best_p1)].append((best_delta, best_midpoint, lateral_root))
 
+    return best_midpoints
+
+def connect_to_midpoints(G, best_midpoints):
     for (p0, p1), midpoints in best_midpoints.items():
-        P.remove_edge(p0, p1)
+        assert G.has_edge(p0, p1)
+        G.remove_edge(p0, p1)
         prev_point = p0
         for best_delta, best_midpoint, lateral_root in sorted(midpoints):
-            if best_midpoint != prev_point and not P.has_node(best_midpoint):
-                P.add_node(best_midpoint)
-                P.nodes[best_midpoint]['label'] = 'main root'
-                connect_points(P, prev_point, best_midpoint)
-            connect_points(P, best_midpoint, lateral_root)
+            if best_midpoint != prev_point and not G.has_node(best_midpoint):
+                G.add_node(best_midpoint)
+                G.nodes[best_midpoint]['label'] = 'main root'
+                connect_points(G, prev_point, best_midpoint)
+            connect_points(G, best_midpoint, lateral_root)
             prev_point = best_midpoint
 
         if prev_point != p1:
-            connect_points(P, prev_point, p1)
+            connect_points(G, prev_point, p1)
+
+def opt_arbor(G, alpha):
+    if alpha == 0:
+        return satellite_tree(G)
+
+    root_x, root_y = G.graph['main root base']
+    root_distances = get_root_distances(G)
+
+    P = starting_graph(G)
+    P.graph['arbor name'] = '%s alpha = %f' % (G.graph['arbor name'], alpha)
+
+    lateral_root_tips = get_lateral_root_tips(P)
+
+    main_root_segments = get_main_root_segments(G)
+
+    # sort root segments based on the y-coordinate in the first point of the segment
+    main_root_segments = sorted(main_root_segments, key = lambda s: s[0][1])
+
+    best_midpoints = get_best_midpoints(lateral_root_tips, main_root_segments, root_distances, alpha)
+
+    connect_to_midpoints(P, best_midpoints)
 
     return P
 
