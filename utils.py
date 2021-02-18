@@ -118,6 +118,7 @@ def toy_network():
     connect_points(G, root_base, lateral2)
 
     G.nodes[root_base]['label'] = 'main root base'
+    G.graph['main root base'] = root_base
     relabel_lateral_root_tips(G)
 
     G.graph['arbor name'] = 'toy-network'
