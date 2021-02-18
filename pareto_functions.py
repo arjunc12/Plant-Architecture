@@ -146,11 +146,18 @@ def get_lateral_root_tips(G):
 
 def get_main_root_segments(G):
     segments = []
-    for u, v in G.edges():
-        # check if both u and v are on the main root
-        if is_on_main_root(G, u) and is_on_main_root(G, v):
-            segments.append((u, v))
+    visited = set()
+    queue = [G.graph['main root base']]
+    while len(queue) > 0:
+        curr = queue.pop()
+        assert 'main root' in G.nodes[curr]['label']
+        visited.add(curr)
+        for neighbor in G.neighbors(curr):
+            if neighbor not in visited and 'main root' in G.nodes[neighbor]['label']:
+                segments.append((curr, neighbor))
+                queue.append(neighbor)
     return segments
+
 
 def get_best_midpoints(lateral_root_tips, main_root_segments, root_distances, alpha):
     best_midpoints = defaultdict(list)
@@ -211,10 +218,7 @@ def opt_arbor(G, alpha):
 
     lateral_root_tips = get_lateral_root_tips(P)
 
-    main_root_segments = get_main_root_segments(G)
-
-    # sort root segments based on the y-coordinate in the first point of the segment
-    main_root_segments = sorted(main_root_segments, key = lambda s: s[0][1])
+    main_root_segments = get_main_root_segments(P)
 
     best_midpoints = get_best_midpoints(lateral_root_tips, main_root_segments, root_distances, alpha)
 
