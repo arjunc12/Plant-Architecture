@@ -3,6 +3,7 @@ import networkx as nx
 import pylab
 import os
 import re
+from constants import DRAWINGS_DIR
 
 NODE_SIZE = {'main root' : 30, 'main root base' : 30, 'lateral root' : 10, 'insertion point' : 10, 'lateral root tip' : 30}
 NODE_COLOR = {'main root' : 'm' , 'main root base' : 'k', 'lateral root' : 'b', 'insertion point' : 'r', 'lateral root tip' : 'k'}
@@ -58,7 +59,7 @@ def connect_main_root(G):
         assert not G.has_edge(root_point1, root_point2)
         connect_points(G, root_point1, root_point2)
 
-def draw_arbor(G, outdir):
+def draw_arbor(G, outdir=DRAWINGS_DIR):
     pos = {}
     nodelist = []
     node_size = []
@@ -122,6 +123,34 @@ def toy_network():
     relabel_lateral_root_tips(G)
 
     G.graph['arbor name'] = 'toy-network'
+
+    return G
+
+def toy_network2():
+
+    root_base = (0, 0)
+    root1 = (0, 1)
+    root2 = (0.5, 15)
+    lateral = (4, 3)
+    lateral2 = (-1, 5)
+
+    G = nx.Graph()
+
+    for u, label in zip([root_base, root1, root2, lateral, lateral2],\
+                        ['main root', 'main root', 'main root', 'lateral root', 'lateral root']):
+        G.add_node(u)
+        G.nodes[u]['label'] = label
+
+    connect_points(G, root_base, root1)
+    connect_points(G, root1, root2)
+    connect_points(G, root_base, lateral)
+    connect_points(G, root_base, lateral2)
+
+    G.nodes[root_base]['label'] = 'main root base'
+    G.graph['main root base'] = root_base
+    relabel_lateral_root_tips(G)
+
+    G.graph['arbor name'] = 'toy-network2'
 
     return G
 
