@@ -4,9 +4,11 @@ import networkx as nx
 from scipy.spatial.distance import euclidean
 import numpy as np
 from read_arbor_reconstruction import read_arbor_full
-from constants import DEFAULT_ALPHAS
+from constants import DEFAULT_ALPHAS, FRONT_DRAWINGS_DIR
 from optimal_midpoint import optimal_midpoint, optimal_midpoint_approx, optimal_midpoint_alpha1
 from collections import defaultdict
+import seaborn as sns
+import os
 
 def wiring_cost(G):
     # wiring cost is simply the sum of all edge lengths
@@ -159,7 +161,7 @@ def get_main_root_segments(G):
     return segments
 
 
-def get_best_midpoints(lateral_root_tips, main_root_segments, root_distances, alpha):
+def get_best_midpoints(G, lateral_root_tips, main_root_segments, root_distances, alpha):
     best_midpoints = defaultdict(list)
 
     for lateral_root in lateral_root_tips:
@@ -184,7 +186,7 @@ def get_best_midpoints(lateral_root_tips, main_root_segments, root_distances, al
 
         if best_delta == 1:
             assert best_midpoint == best_p1
-            connect_points(P, lateral_root, best_p1)
+            connect_points(G, lateral_root, best_p1)
         else:
             best_midpoints[(best_p0, best_p1)].append((best_delta, best_midpoint, lateral_root))
 
@@ -214,13 +216,13 @@ def opt_arbor(G, alpha):
     root_distances = get_root_distances(G)
 
     P = starting_graph(G)
-    P.graph['arbor name'] = '%s-alpha=%f' % (G.graph['arbor name'], alpha)
+    P.graph['arbor name'] = '%s-alpha=%0.2f' % (G.graph['arbor name'], alpha)
 
     lateral_root_tips = get_lateral_root_tips(P)
 
     main_root_segments = get_main_root_segments(P)
 
-    best_midpoints = get_best_midpoints(lateral_root_tips, main_root_segments, root_distances, alpha)
+    best_midpoints = get_best_midpoints(P, lateral_root_tips, main_root_segments, root_distances, alpha)
 
     connect_to_midpoints(P, best_midpoints)
 
@@ -278,14 +280,32 @@ def pareto_dist_scale(G, alphas, wiring_costs, conduction_delays):
 
     return closest_dist, closest_alpha
 
-def main():
-    G = read_arbor_full('065_3_S_day2.csv')
+def viz_trees(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
+    for alpha in alphas:
+        opt = opt_arbor(G, alpha)
+        draw_arbor(opt, outdir='%s/%s' % (outdir, G.graph['arbor name']))
 
-    alphas = DEFAULT_ALPHAS
-
+def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
     wiring_costs, conduction_delays = pareto_front(G, alphas=alphas)
-    for alpha, wiring, delay in zip(alphas, wiring_costs, conduction_delays):
-        print(alpha, wiring, delay)
+
+    arbor_wiring, arbor_delay = pareto_costs(G)
+    sns.set()
+    pylab.figure()
+    pylab.plot(wiring_costs, conduction_delays, color='b')
+    pylab.scatter(wiring_costs, conduction_delays, color='b')
+    pylab.scatter(arbor_wiring, arbor_delay, marker='x', color='r')
+    pylab.xlabel('wiring cost')
+    pylab.ylabel('conduction delay')
+    pylab.tight_layout()
+    plot_dir = '%s/%s' % (outdir, G.graph['arbor name'])
+    os.system('mkdir -p %s' % plot_dir)
+    pylab.savefig('%s/%s-pareto-front.pdf' % (plot_dir, G.graph['arbor name']))
+    pylab.close()
+
+def main():
+    G = read_arbor_full('065_3_S_day5.csv')
+
+    viz_front(G)
 
 
 if __name__ == '__main__':
