@@ -3,9 +3,10 @@ from pareto_functions import starting_graph, get_lateral_root_tips,\
                              get_main_root_segments, connect_to_midpoints
 from collections import defaultdict
 import optimal_midpoint as om
-from utils import toy_network, draw_arbor
+from utils import toy_network, toy_network2, draw_arbor
 from constants import DRAWINGS_DIR
 
+import random
 
 def get_main_root_length(G, main_root_segments):
     total_length = 0
@@ -25,10 +26,11 @@ def get_random_midpoints(G, main_root_segments, lateral_root_tips, main_root_len
         slope = om.slope_vector(u, v)
         total_length += length
         while len(offsets) > 0 and offsets[0][0] <= total_length:
-            offset, lateral_root = offsets.pop()
+            offset, lateral_root = offsets.pop(0)
 
-            offset_along_edge = offset - (total_length - length)
-            delta = offset_along_edge / length
+            relative_offset = offset - (total_length - length)
+            assert relative_offset <= length
+            delta = relative_offset / length
 
             midpoint = om.midpoint(u, slope, delta)
 
@@ -53,7 +55,8 @@ def random_arbor(G):
     return R
 
 def main():
-    T = toy_network()
+
+    T = toy_network2()
     R = random_arbor(T)
     draw_arbor(R, DRAWINGS_DIR)
 
