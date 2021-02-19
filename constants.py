@@ -16,8 +16,11 @@ PARETO_FRONTS_DIR = '%s/pareto-fronts' % RESULTS_DIR
 STATISTICS_DIR = '%s/statistics' % RESULTS_DIR
 
 FIGS_DIR = 'figs'
-DRAWINGS_DIR = '%s/drawings' % FIGS_DIR
 PLOTS_DIR = '%s/plots' % FIGS_DIR
+DRAWINGS_DIR = '%s/drawings' % FIGS_DIR
+ARBOR_DRAWINGS_DIR = '%s/arbors' % DRAWINGS_DIR
+TOY_NETWORK_DRAWINGS_DIR = '%s/toy-network' % DRAWINGS_DIR
+FRONT_DRAWINGS_DIR = '%s/pareto-front-drawings' % DRAWINGS_DIR
 
 PARETO_FRONT_DELTA = 0.01
 DEFAULT_ALPHAS = np.arange(0, 1 + PARETO_FRONT_DELTA, PARETO_FRONT_DELTA)
