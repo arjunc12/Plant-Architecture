@@ -1,68 +1,62 @@
 import numpy as np
 from pareto_functions import starting_graph, get_lateral_root_tips,\
                              get_main_root_segments, connect_to_midpoints
+from collections import defaultdict
+import optimal_midpoint as om
+from utils import toy_network, draw_arbor
+from constants import DRAWINGS_DIR
 
-def main_root_sequence(G):
-    nodelist = []
-    for u in G.nodes():
-        if 'main root' in G.nodes[u]['label']:
-            nodelist.append(u)
 
-    main_root_subgraph = G.subgraph(nodelist)
-    sequence = []
-    visited = set()
-    queue = [G.graph['main root base']]
-    while len(queue) > 0:
-        curr = queue.pop(0)
-        visited.add(curr)
-        sequence.append(curr)
-
-        for neighbor in G.nneighbors(curr):
-            if curr not in visited:
-                queue.append(curr)
-
-    return sequence
-
-def lateral_root_tips(G):
-    tips = []
-    for u in G.nodes:
-        if G.nodes[u]['label'] == 'lateral root tip':
-            tips.append(u)
-
-    return tips
-
-def main_root_length(sequence):
+def get_main_root_length(G, main_root_segments):
     total_length = 0
-    for i in xrange(len(sequence) - 1):
-        u, v = sequence[i], sequence[i + 1]
+    for u, v in main_root_segments:
         total_length += G[u][v]['length']
 
     return total_length
 
-def random_connection_point(G):
-    root_sequence = main_root_squence(G)
-    length = main_root_length(root_sequence)
+def get_random_midpoints(G, main_root_segments, lateral_root_tips, main_root_length):
+    ntips = len(lateral_root_tips)
+    offsets = sorted(zip(np.random.uniform(0, main_root_length, ntips), lateral_root_tips))
 
-    tips = lateral_root_tips(G)
+    midpoints = defaultdict(list)
+    total_length = 0
+    for u, v in main_root_segments:
+        length = G[u][v]['length']
+        slope = om.slope_vector(u, v)
+        total_length += length
+        while len(offsets) > 0 and offsets[0][0] <= total_length:
+            offset, lateral_root = offsets.pop()
 
-    tip_distances = {}
-    for tip in tips:
-        tip_distances[tip] = np.random.uniform(0, length)
+            offset_along_edge = offset - (total_length - length)
+            delta = offset_along_edge / length
+
+            midpoint = om.midpoint(u, slope, delta)
+
+            midpoints[(u, v)].append((delta, midpoint, lateral_root))
+
+    return midpoints
 
 def random_arbor(G):
+    R = starting_graph(G)
+    R.graph['arbor name'] = '%s-random-arbor' % G.graph['arbor name']
 
-    P = starting_graph(G)
-    P.graph['arbor name'] = '%s random arbor' % G.graph['arbor name']
+    lateral_root_tips = get_lateral_root_tips(R)
 
-    lateral_root_tips = get_lateral_root_tips(P)
+    main_root_segments = get_main_root_segments(R)
 
-    main_root_segments = get_main_root_segments(G)
+    main_root_length = get_main_root_length(R, main_root_segments)
 
-    # sort root segments based on the y-coordinate in the first point of the segment
-    main_root_segments = sorted(main_root_segments, key = lambda s: s[0][1])
+    random_midpoints = get_random_midpoints(R, main_root_segments, lateral_root_tips, main_root_length)
 
-    connect_to_midpoints(P, best_midpoints)
+    connect_to_midpoints(R, random_midpoints)
 
-    return P
+    return R
 
+def main():
+    T = toy_network()
+    R = random_arbor(T)
+    draw_arbor(R, DRAWINGS_DIR)
+
+if __name__ == '__main__':
+    main()
 
