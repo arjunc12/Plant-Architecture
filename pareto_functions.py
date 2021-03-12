@@ -4,11 +4,12 @@ import networkx as nx
 from scipy.spatial.distance import euclidean
 import numpy as np
 from read_arbor_reconstruction import read_arbor_full
-from constants import DEFAULT_ALPHAS, FRONT_DRAWINGS_DIR
+from constants import *
 from optimal_midpoint import optimal_midpoint, optimal_midpoint_approx, optimal_midpoint_alpha1
 from collections import defaultdict
 import seaborn as sns
 import os
+import pandas as pd
 
 def wiring_cost(G):
     # wiring cost is simply the sum of all edge lengths
@@ -240,14 +241,24 @@ def pareto_front(G, alphas=DEFAULT_ALPHAS):
 
     return wiring_costs, conduction_delays
 
-def pareto_dist(G, alphas, wiring_costs, conduction_delays):
+def pareto_dist(wiring, delay, opt_wiring_costs, opt_conduction_delays):
+    closest_dist = float("inf")
+
+    for opt_wiring, opt_delay in zip(opt_wiring_costs, opt_conduction_delays):
+        pareto_dist = euclidean((wiring, delay), (opt_wiring, opt_delay))
+        if pareto_dist < closest_dist:
+            closest_dist = pareto_dist
+
+    return closest_dist
+
+def arbor_dist_loc(G, alphas, wiring_costs, conduction_delays):
     arbor_wiring, arbor_delay = pareto_costs(G)
 
     closest_dist = float("inf")
     closest_alpha = None
 
     for alpha, wiring, delay in zip(alphas, wiring_costs, conduction_delays):
-        pareto_dist = euclidean((wiring, delay), (arbor_wiring, arbor_delay))
+        pareto_dist = euclidean((arbor_wiring, arbor_delay), (wiring, delay))
         if pareto_dist < closest_dist:
             closest_dist = pareto_dist
             closest_alpha = alpha
@@ -266,7 +277,17 @@ def point_dist_scale(p1, p2):
 
     return max_ratio
 
-def pareto_dist_scale(G, alphas, wiring_costs, conduction_delays):
+def pareto_dist_scale(wiring, delay, opt_wiring_costs, opt_conduction_delays):
+    closest_dist = float("inf")
+
+    for opt_wiring, opt_delay in zip(opt_wiring_costs, opt_conduction_delays):
+        pareto_dist = point_dist_scale((opt_wiring, opt_delay), (wiring, delay))
+        if pareto_dist < closest_dist:
+            closest_dist = pareto_dist
+
+    return closest_dist
+
+def arbor_dist_loc_scale(G, alphas, wiring_costs, conduction_delays):
     arbor_wiring, arbor_delay = pareto_costs(G)
 
     closest_dist = float("inf")
@@ -286,6 +307,7 @@ def viz_trees(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
         draw_arbor(opt, outdir='%s/%s' % (outdir, G.graph['arbor name']))
 
 def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
+    '''
     wiring_costs, conduction_delays = pareto_front(G, alphas=alphas)
 
     arbor_wiring, arbor_delay = pareto_costs(G)
@@ -301,9 +323,25 @@ def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
     os.system('mkdir -p %s' % plot_dir)
     pylab.savefig('%s/%s-pareto-front.pdf' % (plot_dir, G.graph['arbor name']))
     pylab.close()
+    '''
+    arbor_name = G.graph['arbor name']
+    pareto_front = pd.read_csv('%s/%s.csv' % (PARETO_FRONTS_DIR, arbor_name), skipinitialspace=True)
+    pareto_front.drop('alpha', axis=1, inplace=True)
+    pareto_front['model'] = 'Pareto front'
+
+    tree_costs = pd.read_csv('%s/%s.csv' % (NULL_MODELS_DIR, arbor_name), skipinitialspace=True)
+
+    scatter_df = tree_costs.append(pareto_front)
+
+    pylab.figure()
+    sns.scatterplot(x='wiring cost', y='conduction delay', hue='model', data=scatter_df)
+    plot_dir = '%s/%s' % (outdir, arbor_name)
+    os.system('mkdir -p %s' % plot_dir)
+    pylab.savefig('%s/%s-pareto-front.pdf' % (plot_dir, arbor_name))
+
 
 def main():
-    G = read_arbor_full('065_3_S_day5.csv')
+    G = read_arbor_full('091_4_S_day5.csv')
 
     viz_front(G)
 
