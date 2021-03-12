@@ -14,6 +14,7 @@ METADATA_DIR = '%s/metadata' % DATA_DIR
 RESULTS_DIR = '%s/results' % DATA_DIR
 PARETO_FRONTS_DIR = '%s/pareto-fronts' % RESULTS_DIR
 STATISTICS_DIR = '%s/statistics' % RESULTS_DIR
+NULL_MODELS_DIR = '%s/null-models' % RESULTS_DIR
 
 FIGS_DIR = 'figs'
 PLOTS_DIR = '%s/plots' % FIGS_DIR
@@ -26,4 +27,3 @@ PARETO_FRONT_DELTA = 0.01
 DEFAULT_ALPHAS = np.arange(0, 1 + PARETO_FRONT_DELTA, PARETO_FRONT_DELTA)
 
 SCORING_DATA_DIR = '%s/scoring-data' % DATA_DIR
-
