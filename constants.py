@@ -18,6 +18,8 @@ NULL_MODELS_DIR = '%s/null-models' % RESULTS_DIR
 
 FIGS_DIR = 'figs'
 PLOTS_DIR = '%s/plots' % FIGS_DIR
+NULL_MODELS_PLOTS_DIR = '%s/null-models-analysis' % PLOTS_DIR
+LOCATION_ANALYSIS_PLOTS_DIR = '%s/pareto-front-location-analysis' % PLOTS_DIR 
 DRAWINGS_DIR = '%s/drawings' % FIGS_DIR
 ARBOR_DRAWINGS_DIR = '%s/arbors' % DRAWINGS_DIR
 TOY_NETWORK_DRAWINGS_DIR = '%s/toy-network' % DRAWINGS_DIR
