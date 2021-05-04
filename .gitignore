@@ -9,3 +9,7 @@ figs
 .DS_Store
 
 .ipynb_checkpoints/
+
+Manuscripts/
+
+paper-figs/
