@@ -1,6 +1,7 @@
 import os
 import utils
 import pandas as pd
+pd.set_option('display.max_rows', 500)
 from constants import CLEANED_ROOT_NODES_DIR, METADATA_DIR
 import os
 import sys
@@ -12,7 +13,7 @@ def check_df(df):
     df['root items'] = df['root_name'].apply(num_root_items)
     df = df[df['root items'] < 3]
     if len(df.index) > 0:
-        print(df)
+        print(df[['root_name', 'root_order', 'root items']])
         sys.exit(1)
 
 def write_metadata(tracing_fname, output_fname):
