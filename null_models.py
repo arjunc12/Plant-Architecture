@@ -8,6 +8,7 @@ from read_arbor_reconstruction import read_arbor_full
 import pandas as pd
 import os
 import random
+import argparse
 
 def get_main_root_length(G, main_root_segments):
     total_length = 0
@@ -119,8 +120,15 @@ def write_null_models_file():
 
 
 def main():
-    #analyze_null_models()
-    write_null_models_file()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', '--analyze', action='store_true')
+    parser.add_argument('-w', '--write', action='store_true')
+
+    args = parser.parse_args()
+    if args.analyze:
+        analyze_null_models()
+    if args.write:
+        write_null_models_file()
 
 if __name__ == '__main__':
     main()
