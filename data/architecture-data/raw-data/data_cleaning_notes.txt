@@ -1,0 +1,792 @@
++------------------------------+
++ pimpi_Big1_D1_Root_Nodes.csv +
++------------------------------+
+     root_name  root_order  root order items
+5162     301_3           0                 2
+5163     301_3           0                 2
+5164     301_3           0                 2
+5165     301_3           0                 2
+5166     301_3           0                 2
+5167     301_3           0                 2
+5168     301_3           0                 2
+5169     301_3           0                 2
+5170     301_3           0                 2
+5171     301_3           0                 2
+5172     301_3           0                 2
+5173     301_3           0                 2
+5174     301_3           0                 2
+
+lines 5164-5176: changed it to 301_3_C because 301_3_S already exists in the data
+
+Replaced "2800_3_S" with "280_3_S" in all locations
+
++------------------------------+
++ pimpi_Big1_D2_Root_Nodes.csv +
++------------------------------+
+     root_name  root_order  root order items
+0       root_0           0                 2
+1       root_0           0                 2
+2       root_0           0                 2
+3       root_0           0                 2
+4       root_0           0                 2
+5       root_0           0                 2
+6       root_0           0                 2
+7       root_0           0                 2
+8       root_0           0                 2
+9       root_0           0                 2
+10      root_0           0                 2
+11      root_0           0                 2
+12      root_0           0                 2
+13      root_0           0                 2
+14      root_0           0                 2
+15      root_0           0                 2
+16      root_0           0                 2
+
+lines 2-18: changed it to a lateral root
+
+5748     301_3           0                 2
+5749     301_3           0                 2
+5750     301_3           0                 2
+5751     301_3           0                 2
+5752     301_3           0                 2
+5753     301_3           0                 2
+5754     301_3           0                 2
+5755     301_3           0                 2
+5756     301_3           0                 2
+5757     301_3           0                 2
+5758     301_3           0                 2
+5759     301_3           0                 2
+5760     301_3           0                 2
+5761     301_3           0                 2
+5762     301_3           0                 2
+5763     301_3           0                 2
+5764     301_3           0                 2
+5765     301_3           0                 2
+5766     301_3           0                 2
+5767     301_3           0                 2
+5768     301_3           0                 2
+5769     301_3           0                 2
+5770     301_3           0                 2
+5771     301_3           0                 2
+
+lines 5750-5775: changed it to 301_3_C because 301_3_S already exists in the data
+
+6637    root_1           0                 2
+6638    root_1           0                 2
+6639    root_1           0                 2
+6640    root_1           0                 2
+
+lines 6639-6642: changed it to a lateral root
+
+9538    root_0           0                 2
+9539    root_0           0                 2
+9540    root_0           0                 2
+9541    root_0           0                 2
+
+lines 9540-9543: changed it to a lateral root
+
+Replaced "2800_3_S" with "280_3_S" in all locations
+
++------------------------------+
++ pimpi_Big1_D3_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+8297      301_3           0                 2
+8298      301_3           0                 2
+8299      301_3           0                 2
+8300      301_3           0                 2
+8301      301_3           0                 2
+
+lines 8299-8336: changed it to 301_3_C because 301_3_S already exists in the data
+
+...         ...         ...               ...
+12062    root_0           0                 2
+
+lines 12017-12064: changed it to lateral root
+
+21583    root_0           0                 2
+21584    root_0           0                 2
+21585    root_0           0                 2
+21586    root_0           0                 2
+
+lines 21585-21588: changed it to lateral root
+
+Replaced "2800_3_S" with "280_3_S" in all locations
+
+[90 rows x 3 columns]
+
++------------------------------+
++ pimpi_Big1_D4_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+0        root_0           0                 2
+1        root_0           0                 2
+2        root_0           0                 2
+3        root_0           0                 2
+
+lines 2-5: changed it to lateral root
+
+20401    root_0           0                 2
+
+lines 20403-20473: changed it to lateral root
+
+...         ...         ...               ...
+30575     301_3           0                 2
+30576     301_3           0                 2
+
+lines 30511-30578: changed it to 301_3_C because 301_3_S already exists in the data 
+
+36900    root_0           0                 2
+36901    root_0           0                 2
+36902    root_0           0                 2
+
+lines 36902-36904: changed it to lateral root
+
+Replaced "2800_3_S" with "280_3_S" in all locations
+
+[146 rows x 3 columns]
+
++------------------------------+
++ pimpi_Big1_D5_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+6882     root_0           0                 2
+6883     root_0           0                 2
+6884     root_0           0                 2
+6885     root_0           0                 2
+
+lines 6884-6887: changed it to a lateral root
+
+14073    root_0           0                 2
+
+lines 14075-14081: changed it to lateral root
+
+...         ...         ...               ...
+
+38505     301_3           0                 2
+38506     301_3           0                 2
+38507     301_3           0                 2
+38508     301_3           0                 2
+38509     301_3           0                 2
+
+lines 38405-38511: changed it to 301_3_C because 301_3_S already exists in the data
+
+Replaced "2800_3_S" with "280_3_S" in all locations
+
+[118 rows x 3 columns]
+
++--------------------------------+
++ pimpi_Big2_D4D5_Root_Nodes.csv +
++--------------------------------+
+       root_name  root_order  root order items
+28899     root_5           0                 2
+28900     root_5           0                 2
+28901     root_5           0                 2
+
+lines 28901-28903: changed it to lateral root
+
+141899    root_0           0                 2
+141900    root_0           0                 2
+141901    root_0           0                 2
+141902    root_0           0                 2
+141903    root_0           0                 2
+141904    root_0           0                 2
+141905    root_0           0                 2
+141906    root_0           0                 2
+141907    root_0           0                 2
+
+lines 141901-141908: changed it to lateral root
+
++------------------------------+
++ pimpi_Big3_D1_Root_Nodes.csv +
++------------------------------+
+     root_name  root_order  root order items
+4566    root_0           0                 2
+4567    root_0           0                 2
+
+lines 4568-4569: changed it to a lateral root
+
++------------------------------+
++ pimpi_Big3_D2_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+14486    root_1           0                 2
+14487    root_1           0                 2
+
+lines 14488-14489: changed it to lateral root
+
+089_1_
+
+lines 2756-2822: changed it to 089_1_C because 089_1_S already exists in the data
+
++------------------------------+
++ pimpi_Big3_D3_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+14381    root_1           0                 2
+14382    root_1           0                 2
+14383    root_1           0                 2
+
+lines 14383-14385: changed it to lateral root
+
+089_1_
+
+lines 29554-29655: changed it to 089_1_C because 089_1_S already exists in the data
+
++------------------------------+
++ pimpi_Big3_D4_Root_Nodes.csv +
++------------------------------+
+
+089_1_
+
+lines 60410-60246: changed it to 089_1_C because 089_1_S already exists in the data
+
++------------------------------+
++ pimpi_Big3_D5_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+73185    root_1           0                 2
+73186    root_1           0                 2
+73187    root_1           0                 2
+73188    root_1           0                 2
+
+lines 73187-73190: changed it to lateral root
+
+86030    root_1           0                 2
+
+line 86032: changed it to lateral root
+
++------------------------------+
++ pimpi_Big4_D2_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+7509     root_3           0                 2
+7510     root_3           0                 2
+7511     root_3           0                 2
+7512     root_3           0                 2
+7513     root_3           0                 2
+7514     root_3           0                 2
+7515     root_3           0                 2
+
+lines 7511-7517: changed it to lateral root
+
+11169    root_1           0                 2
+11170    root_1           0                 2
+11171    root_1           0                 2
+11172    root_1           0                 2
+11173    root_1           0                 2
+11174    root_1           0                 2
+11175    root_1           0                 2
+
+lines 11171-11177: changed it to lateral root
+
++------------------------------+
++ pimpi_Big4_D3_Root_Nodes.csv +
++------------------------------+
+     root_name  root_order  root order items
+4241    root_3           0                 2
+4242    root_3           0                 2
+4243    root_3           0                 2
+4244    root_3           0                 2
+4245    root_3           0                 2
+4246    root_3           0                 2
+
+lines 4243-4248: changed it to lateral root
+
++------------------------------+
++ pimpi_Big4_D5_Root_Nodes.csv +
++------------------------------+
+      root_name  root_order  root order items
+104     root_11           0                 2
+105     root_11           0                 2
+
+lines 106-107: changed it to a lateral root
+
+60622    root_4           0                 2
+60623    root_4           0                 2
+60624    root_4           0                 2
+60625    root_4           0                 2
+
+lines 60624-60627: changed it to a lateral root
+
++------------------------------------+
++ pimpi_Big5_all_days_Root_Nodes.csv +
++------------------------------------+
+
+       root_name  root_order  root items
+33055     root_3           0           2
+33056     root_3           0           2
+33057     root_3           0           2
+
+Lines 33057-33059: changed it to lateral root
+
+65098     root_0           0           2
+65099     root_0           0           2
+65100     root_0           0           2
+65101     root_0           0           2
+65102     root_0           0           2
+65103     root_0           0           2
+65104     root_0           0           2
+65105     root_0           0           2
+65106     root_0           0           2
+65107     root_0           0           2
+65108     root_0           0           2
+65109     root_0           0           2
+65110     root_0           0           2
+65111     root_0           0           2
+65112     root_0           0           2
+
+Lines 65100-65114: changed it to lateral root
+
+66499    root_17           0           2
+66500    root_17           0           2
+66501    root_17           0           2
+66502    root_17           0           2
+66503    root_17           0           2
+66504    root_17           0           2
+66505    root_17           0           2
+66506    root_17           0           2
+66507    root_17           0           2
+66508    root_17           0           2
+66509    root_17           0           2
+66510    root_17           0           2
+66511    root_17           0           2
+66512    root_17           0           2
+
+Lines 66501-66514: changed it to lateral root
+
+70942    root_11           0           2
+70943    root_11           0           2
+70944    root_11           0           2
+70945    root_11           0           2
+70946    root_11           0           2
+70947    root_11           0           2
+70948    root_11           0           2
+70949    root_11           0           2
+70950    root_11           0           2
+
+Lines 70944-70952: changed it to lateral root
+
+70951     root_9           0           2
+70952     root_9           0           2
+70953     root_9           0           2
+70954     root_9           0           2
+70955     root_9           0           2
+70956     root_9           0           2
+70957     root_9           0           2
+70958     root_9           0           2
+70959     root_9           0           2
+70960     root_9           0           2
+70961     root_9           0           2
+70962     root_9           0           2
+70963     root_9           0           2
+70964     root_9           0           2
+70965     root_9           0           2
+70966     root_9           0           2
+
+Lines 70953-70968: changed it to lateral root
+
+76266     root_1           0           2
+76267     root_1           0           2
+76268     root_1           0           2
+76269     root_1           0           2
+76270     root_1           0           2
+76271     root_1           0           2
+76272     root_1           0           2
+76273     root_1           0           2
+76274     root_1           0           2
+76275     root_1           0           2
+76276     root_1           0           2
+76277     root_1           0           2
+
+Lines 76268-76279: changed it to lateral root
+
+90006    root_15           0           2
+90007    root_15           0           2
+90008    root_15           0           2
+90009    root_15           0           2
+90010    root_15           0           2
+90011    root_15           0           2
+90012    root_15           0           2
+90013    root_15           0           2
+90014    root_15           0           2
+90015    root_15           0           2
+90016    root_15           0           2
+90017    root_15           0           2
+90018    root_15           0           2
+90019    root_15           0           2
+90020    root_15           0           2
+90021    root_15           0           2
+90022    root_15           0           2
+90023    root_15           0           2
+90024    root_15           0           2
+90025    root_15           0           2
+90026    root_15           0           2
+90027    root_15           0           2
+90028    root_15           0           2
+90029    root_15           0           2
+
+Lines 90008-90031: changed it to lateral root
+
+91234      lat_5           0           2
+91235      lat_5           0           2
+91236      lat_5           0           2
+91237      lat_5           0           2
+91238      lat_5           0           2
+91239      lat_5           0           2
+91240      lat_5           0           2
+91241      lat_5           0           2
+91242      lat_5           0           2
+91243      lat_5           0           2
+91244      lat_5           0           2
+91245      lat_5           0           2
+91246      lat_5           0           2
+91247      lat_5           0           2
+91248      lat_5           0           2
+91249      lat_5           0           2
+91250      lat_5           0           2
+91251      lat_5           0           2
+91252      lat_5           0           2
+91253      lat_5           0           2
+91254      lat_5           0           2
+91255      lat_5           0           2
+91256      lat_5           0           2
+91257      lat_5           0           2
+
+Lines 91236-91259: changed it to lateral root
+
+91258      lat_1           0           2
+91259      lat_1           0           2
+91260      lat_1           0           2
+91261      lat_1           0           2
+91262      lat_1           0           2
+91263      lat_1           0           2
+91264      lat_1           0           2
+91265      lat_1           0           2
+91266      lat_1           0           2
+91267      lat_1           0           2
+91268      lat_1           0           2
+91269      lat_1           0           2
+91270      lat_1           0           2
+91271      lat_1           0           2
+91272      lat_1           0           2
+91273      lat_1           0           2
+91274      lat_1           0           2
+91275      lat_1           0           2
+91276      lat_1           0           2
+91277      lat_1           0           2
+91278      lat_1           0           2
+91279      lat_1           0           2
+91280      lat_1           0           2
+91281      lat_1           0           2
+91282      lat_1           0           2
+91283      lat_1           0           2
+91284      lat_1           0           2
+91285      lat_1           0           2
+91286      lat_1           0           2
+91287      lat_1           0           2
+
+Lines 91260-91289: changed it to lateral root
+
+96538     root_4           0           2
+96539     root_4           0           2
+96540     root_4           0           2
+96541     root_4           0           2
+96542     root_4           0           2
+96543     root_4           0           2
+96544     root_4           0           2
+96545     root_4           0           2
+96546     root_4           0           2
+96547     root_4           0           2
+96548     root_4           0           2
+96549     root_4           0           2
+96550     root_4           0           2
+96551     root_4           0           2
+96552     root_4           0           2
+
+lines 96540-96554: changed it to lateral root
+
+105808    root_0           0           2
+105809    root_0           0           2
+105810    root_0           0           2
+105811    root_0           0           2
+105812    root_0           0           2
+
+Lines 105810-105814: changed it to lateral root
+
+106588    root_2           0           2
+106589    root_2           0           2
+106590    root_2           0           2
+106591    root_2           0           2
+106592    root_2           0           2
+106593    root_2           0           2
+106594    root_2           0           2
+106595    root_2           0           2
+106596    root_2           0           2
+106597    root_2           0           2
+106598    root_2           0           2
+106599    root_2           0           2
+106600    root_2           0           2
+
+Lines 106590-106602: changed it to lateral root
+
+124883    root_3           0           2
+124884    root_3           0           2
+124885    root_3           0           2
+124886    root_3           0           2
+124887    root_3           0           2
+124888    root_3           0           2
+124889    root_3           0           2
+124890    root_3           0           2
+124891    root_3           0           2
+124892    root_3           0           2
+124893    root_3           0           2
+124894    root_3           0           2
+124895    root_3           0           2
+124896    root_3           0           2
+124897    root_3           0           2
+124898    root_3           0           2
+124899    root_3           0           2
+124900    root_3           0           2
+124901    root_3           0           2
+124902    root_3           0           2
+124903    root_3           0           2
+124904    root_3           0           2
+
+Lines 124885-124906: changed it to lateral root
+
+133219   root_16           0           2
+133220   root_16           0           2
+133221   root_16           0           2
+133222   root_16           0           2
+133223   root_16           0           2
+133224   root_16           0           2
+133225   root_16           0           2
+
+Lines 133221-133227: changed it to lateral root
+
+159150    root_3           0           2
+159151    root_3           0           2
+159152    root_3           0           2
+159153    root_3           0           2
+159154    root_3           0           2
+159155    root_3           0           2
+
+Lines 159152-159157: changed it to lateral root
+
+171614    root_5           0           2
+171615    root_5           0           2
+171616    root_5           0           2
+171617    root_5           0           2
+171618    root_5           0           2
+171619    root_5           0           2
+171620    root_5           0           2
+171621    root_5           0           2
+171622    root_5           0           2
+
+Lines 171616-171624: changed it to lateral root
+
+180218    root_3           0           2
+180219    root_3           0           2
+180220    root_3           0           2
+180221    root_3           0           2
+180222    root_3           0           2
+180223    root_3           0           2
+180224    root_3           0           2
+180225    root_3           0           2
+180226    root_3           0           2
+180227    root_3           0           2
+180228    root_3           0           2
+180229    root_3           0           2
+180230    root_3           0           2
+180231    root_3           0           2
+
+Lines 180220-180233: changed it to lateral root
+
+182285    root_4           0           2
+182286    root_4           0           2
+182287    root_4           0           2
+
+Lines 182287-182289: changed it to lateral root
+
+193560    root_0           0           2
+193561    root_0           0           2
+
+Lines 193562-193563: changed it tl lateral root
+
+197993    root_2           0           2
+197994    root_2           0           2
+197995    root_2           0           2
+197996    root_2           0           2
+197997    root_2           0           2
+197998    root_2           0           2
+197999    root_2           0           2
+198000    root_2           0           2
+198001    root_2           0           2
+
+Lines 197995-198003: changed it to lateral root
+
+199684    root_4           0           2
+199685    root_4           0           2
+199686    root_4           0           2
+199687    root_4           0           2
+199688    root_4           0           2
+199689    root_4           0           2
+
+Lines 199686-199691: changed it to lateral root
+
+203910     lat_1           0           2
+203911     lat_1           0           2
+203912     lat_1           0           2
+203913     lat_1           0           2
+203914     lat_1           0           2
+203915     lat_1           0           2
+203916     lat_1           0           2
+203917     lat_1           0           2
+203918     lat_1           0           2
+203919     lat_1           0           2
+203920     lat_1           0           2
+203921     lat_1           0           2
+203922     lat_1           0           2
+203923     lat_1           0           2
+203924     lat_1           0           2
+203925     lat_1           0           2
+203926     lat_1           0           2
+203927     lat_1           0           2
+203928     lat_1           0           2
+203929     lat_1           0           2
+203930     lat_1           0           2
+203931     lat_1           0           2
+203932     lat_1           0           2
+203933     lat_1           0           2
+203934     lat_1           0           2
+203935     lat_1           0           2
+203936     lat_1           0           2
+203937     lat_1           0           2
+203938     lat_1           0           2
+203939     lat_1           0           2
+
+Lines 203912-203941: changed it to lateral root
+
+replaced "-" with "_" in root_name column
+
+replaced "179_C" with "179_1_C" in all locations
+
+replaced "_set1_day1_20191021_052.rsml" with "_set1_day3_20191021_052.rsml" in all locations
+
+replaced "_set1_day3_20191022_052.rsml" with "_set1_day4_20191022_052.rsml" in all locations
+
+replaced "_set1_day4_20191023_052.rsml" with "_set1_day5_20191023_052.rsml" in all locations
+
++------------------------------------+
++ pimpi_Big6_all_days_Root_Nodes.csv +
++------------------------------------+
+
+       root_name  root_order  root items
+15189     root_1           0           2
+
+Line 15191: changed it to lateral root
+
+25234     root_7           0           2
+25235     root_7           0           2
+25236     root_7           0           2
+25237     root_7           0           2
+25238     root_7           0           2
+25239     root_7           0           2
+25240     root_7           0           2
+25241     root_7           0           2
+25242     root_7           0           2
+25243     root_7           0           2
+25244     root_7           0           2
+25245     root_7           0           2
+25246     root_7           0           2
+25247     root_7           0           2
+25248     root_7           0           2
+25249     root_7           0           2
+25250     root_7           0           2
+
+Lines 25236-25252: changed it to lateral root
+
+26648     root_8           0           2
+26649     root_8           0           2
+26650     root_8           0           2
+26651     root_8           0           2
+26652     root_8           0           2
+26653     root_8           0           2
+26654     root_8           0           2
+26655     root_8           0           2
+26656     root_8           0           2
+26657     root_8           0           2
+26658     root_8           0           2
+26659     root_8           0           2
+26660     root_8           0           2
+26661     root_8           0           2
+26662     root_8           0           2
+26663     root_8           0           2
+26664     root_8           0           2
+
+Lines 26650-26666: changed it to lateral root
+
+122204    root_3           0           2
+122205    root_3           0           2
+122206    root_3           0           2
+122207    root_3           0           2
+122208    root_3           0           2
+122209    root_3           0           2
+122210    root_3           0           2
+122211    root_3           0           2
+122212    root_3           0           2
+122213    root_3           0           2
+122214    root_3           0           2
+122215    root_3           0           2
+122216    root_3           0           2
+122217    root_3           0           2
+122218    root_3           0           2
+122219    root_3           0           2
+
+Lines 122206-122221: changed it to lateral root
+
+127714    root_1           0           2
+127715    root_1           0           2
+
+Lines 127716-127717: changed it to lateral root
+
+Replaced "M021" with "021" in all locations
+
+Replaced "M023" with "023" in all locations
+
+Replaced "M054" with "054" in all locations
+
+Replaced "M022" with "022" in all locations
+
+Replaced "M048" with "048" in all locations
+
+Replaced "M045" with "045" in all locations
+
+Replaced "M043" with "043" in all locations
+
+Replaced "M046" with "046" in all locations
+
++------------------------------------+
++ pimpi_IAA1_D5_Root_Nodes.csv       +
++------------------------------------+
+
+added "_set1_day5_" to the start of every image
+
+Reformated "root_name" column to be in the format "genotype_replicate_condition_hormone"
+
+replaced "plX" with just "X" and used that as the replicate
+
+replaced "s" with "S" in all locations
+
++------------------------------------+
++ pimpi_IAA1_D9_Root_Nodes.csv       +
++------------------------------------+
+
+added "_set1_day9_" to the start of every image
+
+Reformated "root_name" column to be in the format "genotype_replicate_condition_hormone"
+
+replaced "plX" with just "X" and used that as the replicate
+
+replaced "s" with "S" in all locations
