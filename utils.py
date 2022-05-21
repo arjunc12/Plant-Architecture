@@ -163,7 +163,7 @@ def image_metadata(image):
     day = image_items[1]
     day = day.strip('day')
 
-    picture_num = image_items[-1]
+    picture_num = image_items[-1].strip('Salt')
 
     return day, picture_num
 
@@ -174,7 +174,11 @@ def root_name_metadata(root_name):
     replicate = root_name_items[1]
     condition = root_name_items[2]
 
-    return genotype, replicate, condition
+    hormone = None
+    if len(root_name_items) > 3:
+        hormone = root_name_items[3]
+
+    return genotype, replicate, condition, hormone
 
 def get_day(image):
     image = image.strip('_')
@@ -189,6 +193,6 @@ def get_experiment(fname):
     fname_items = fname.split('_')
 
     pimpi = fname_items[0].capitalize()
-    big = fname_items[1]
+    exp = fname_items[1]
 
-    return '%s%s' % (pimpi, big)
+    return '%s%s' % (pimpi, exp)
