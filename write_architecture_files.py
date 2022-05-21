@@ -7,6 +7,7 @@ from constants import CLEANED_ROOT_NODES_DIR, RECONSTRUCTIONS_DIR
 import os
 from collections import defaultdict
 import utils
+from sys import argv
 
 def write_arbor_file_condensed(output_fname, points):
     with open(output_fname, 'w') as f:
@@ -114,9 +115,13 @@ def write_arbor_files_condensed(raw_data_fname, reconstruction_dir):
             curr_points.append((1, x, y, position))
 
 def main():
-    for fname in os.listdir(CLEANED_ROOT_NODES_DIR):
+    image_files = argv[1:]
+    if len(image_files) == 0:
+        image_files = os.listdir(CLEANED_ROOT_NODES_DIR)
+    for fname in image_files:
         if 'Root_Nodes' in fname and fname.endswith('.csv'):
             raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)
+            print(fname)
             write_arbor_files_full(raw_data_fname, RECONSTRUCTIONS_DIR)
 
 if __name__ == '__main__':

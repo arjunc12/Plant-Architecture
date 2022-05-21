@@ -169,8 +169,10 @@ def read_arbor_condensed(fname):
     return G
 
 def main():
-    G = read_arbor_full('292_1_C_day5.csv')
-    draw_arbor(G, outdir=DRAWINGS_DIR)
+    for arbor in os.listdir(RECONSTRUCTIONS_DIR):
+        if 'iaa' in arbor:
+            print(arbor)
+            G = read_arbor_full(arbor)
 
 if __name__ == '__main__':
     main()

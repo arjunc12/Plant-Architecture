@@ -32,15 +32,16 @@ def write_metadata(tracing_fname, output_fname):
 
     with open(output_fname, 'a') as f:
         if first_time:
-            f.write('experiment, arbor name, day, Picture #, genotype, replicate, condition\n')
+            f.write('experiment, arbor name, day, Picture #, genotype, replicate, condition, hormone\n')
 
         for image, root_name in zip(df['image'], df['root_name']):
             day, picture_num = utils.image_metadata(image)
-            genotype, replicate, condition = utils.root_name_metadata(root_name)
+            genotype, replicate, condition, hormone = utils.root_name_metadata(root_name)
 
             arbor = utils.arbor_name(image, root_name)
 
-            f.write('%s, %s, %s, %s, %s, %s, %s\n' % (experiment, arbor, day, picture_num, genotype, replicate, condition))
+            f.write('%s, %s, %s, %s, %s, %s, %s, %s\n' \
+                    % (experiment, arbor, day, picture_num, genotype, replicate, condition, hormone))
 
 def main():
     output_fname = '%s/%s' % (METADATA_DIR, 'metadata.csv')

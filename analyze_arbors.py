@@ -39,6 +39,8 @@ def analyze_arbors():
             f.write('arbor name, pareto front distance, pareto front location\n')
 
         for arbor_fname in os.listdir(RECONSTRUCTIONS_DIR):
+            if not arbor_fname.endswith('.csv'):
+                continue
             if arbor_fname.strip('.csv') in prev_arbors:
                 continue
             print(arbor_fname)
@@ -66,6 +68,9 @@ def write_scaling_dists():
             f.write('arbor name, pareto front scaling distance, pareto front scaling location\n')
 
         for arbor_fname in os.listdir(RECONSTRUCTIONS_DIR):
+            if not arbor_fname.endswith('.csv'):
+                continue
+
             if arbor_fname.strip('.csv') in prev_arbors:
                 continue
 
