@@ -790,3 +790,11 @@ Reformated "root_name" column to be in the format "genotype_replicate_condition_
 replaced "plX" with just "X" and used that as the replicate
 
 replaced "s" with "S" in all locations
+
+     root_name  root_order  root items
+128     root_0           0           2
+2234    root_0           0           2
+
+Lines 130-131: changed it to lateral root
+
+Lines 2236-2237: changed it to lateral root
