@@ -771,6 +771,8 @@ Replaced "M046" with "046" in all locations
 + pimpi_IAA1_D5_Root_Nodes.csv       +
 +------------------------------------+
 
+replaced '-' with '_' in root_name column
+
 added "_set1_day5_" to the start of every image
 
 Reformated "root_name" column to be in the format "genotype_replicate_condition_hormone"
@@ -779,9 +781,13 @@ replaced "plX" with just "X" and used that as the replicate
 
 replaced "s" with "S" in all locations
 
+Added "C" as the condition for all plants not explicitly marked as "s" or "S"
+
 +------------------------------------+
 + pimpi_IAA1_D9_Root_Nodes.csv       +
 +------------------------------------+
+
+replaced '-' with '_' in root_name column
 
 added "_set1_day9_" to the start of every image
 
@@ -798,3 +804,5 @@ replaced "s" with "S" in all locations
 Lines 130-131: changed it to lateral root
 
 Lines 2236-2237: changed it to lateral root
+
+Added "C" as the condition for all plants not explicitly marked as "s" or "S"
