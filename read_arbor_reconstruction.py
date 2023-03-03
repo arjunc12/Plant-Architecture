@@ -4,6 +4,7 @@ from utils import *
 from constants import RECONSTRUCTIONS_DIR, DRAWINGS_DIR
 import os
 import pandas as pd
+from sys import argv
 
 def check_root_points(root_points):
     '''
@@ -170,7 +171,7 @@ def read_arbor_condensed(fname):
 
 def main():
     for arbor in os.listdir(RECONSTRUCTIONS_DIR):
-        if 'iaa' in arbor:
+        if len(argv) > 1 and argv[1] in arbor:
             print(arbor)
             G = read_arbor_full(arbor)
 
