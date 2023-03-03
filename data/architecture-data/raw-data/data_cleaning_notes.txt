@@ -806,3 +806,51 @@ Lines 130-131: changed it to lateral root
 Lines 2236-2237: changed it to lateral root
 
 Added "C" as the condition for all plants not explicitly marked as "s" or "S"
+
++------------------------------------+
++ pimpi_Cyto_D5_Root_Nodes.csv       +
++------------------------------------+
+
+replaced '-' with '_' in root_name column
+
+replaced "plX" with just "X" and used that as the replicate
+
+replaced "c" with "C" and "s" with "S" in all locations
+
+Deleted all points from the image 20221119_RSA_M248M058LA1511_cyto_100mM_Salt050.rsml. This is because this
+picture referes to a root name whose replicate was labelled as p1#3. We aren't sure what
+this means, so we are ignoring it just to be safe.
+
+    root_name  root_order  root items
+466    root_0           0           2
+
+Line 468: changed it to lateral root with root order 1
+
++------------------------------------+
++ pimpi_Cyto_D9_Root_Nodes.csv       +
++------------------------------------+
+
+replaced '-' with '_' in root_name column
+
+replaced "plX" with just "X" and used that as the replicate
+
+Deleted all points from the image 20221123_RSA_M248M058LA1511_cyto_100mM_Salt050.rsml. This is because this
+picture referes to a root name whose replicate was labelled as p1#3. We aren't sure what
+this means, so we are ignoring it just to be safe.
+
+     root_name  root_order  root items
+1257    root_0           0           2
+1531    root_0           0           2
+2077    root_0           0           2
+2946    root_0           0           2
+7177    root_0           0           2
+
+Lines 1259-1260: changed it to lateral root with root order 1
+
+Line 1533: changed it to lateral root with root order 1
+
+Lines 2079-2082: changed it to lateral root with root order 1
+
+Lines 2948-2952: changed it to lateral root with root order 1
+
+Lines 7179-7189: changed it to lateral root with root order 1
