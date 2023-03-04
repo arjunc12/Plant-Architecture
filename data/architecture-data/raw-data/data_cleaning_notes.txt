@@ -854,3 +854,37 @@ Lines 2079-2082: changed it to lateral root with root order 1
 Lines 2948-2952: changed it to lateral root with root order 1
 
 Lines 7179-7189: changed it to lateral root with root order 1
+
++------------------------------------+
++ pimpi_Cyto_D5_Root_Nodes.csv       +
++------------------------------------+
+
+replaced '-' with '_' in root_name column
+
+replaced "plX" with just "X" and used that as the replicate
+
+replaced "c" with "C" and "s" with "S" in all locations
+
+     root_name  root_order  root items
+1072    root_0           0           2
+
+Lines 1074-1083: changed it to lateral root with root order 1
+
++------------------------------------+
++ pimpi_Cyto_D9_Root_Nodes.csv       +
++------------------------------------+
+
+replaced '-' with '_' in root_name column
+
+replaced "plX" with just "X" and used that as the replicate
+
+replaced "c" with "C" and "s" with "S" in all locations
+
+      root_name  root_order  root items
+1418     root_0           0           2
+12811    root_0           0           2
+15141    root_0           0           2
+17309    root_0           0           2
+17677    root_0           0           2
+18973    root_0           0           2
+19186    root_0           0           2
