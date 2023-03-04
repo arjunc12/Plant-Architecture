@@ -888,3 +888,17 @@ replaced "c" with "C" and "s" with "S" in all locations
 17677    root_0           0           2
 18973    root_0           0           2
 19186    root_0           0           2
+
+Lines 1420-1424: changed it to lateral root with root order 1
+
+Lines 12813-12819: changed it to lateral root with root order 1
+
+Lines 15143-15146: changed it to lateral root with root order 1
+
+Lines 17311-17313: changed it to lateral root with root order 1
+
+Lines 17679-17681: changed it to lateral root with root order 1
+
+Line 18975: changed it to lateral root with root order 1
+
+Lines 19186-19188: changed it to lateral root with root order 1
