@@ -902,3 +902,68 @@ Lines 17679-17681: changed it to lateral root with root order 1
 Line 18975: changed it to lateral root with root order 1
 
 Lines 19186-19188: changed it to lateral root with root order 1
+
++------------------------------------+
++ pimpi_ACC_D5_Root_Nodes.csv       +
++------------------------------------+
+
+replaced '-' with '_' in root_name column
+
+replaced "plX" with just "X" and used that as the replicate
+
+replaced "c" with "C" and "s" with "S" in all locations
+
+    root_name  root_order  root items
+666    root_1           0           2
+
+Lines 668-672: changed it to lateral root with root order 1
+
++------------------------------------+
++ pimpi_ACC_D5_Root_Nodes.csv       +
++------------------------------------+
+
+replaced '-' with '_' in root_name column
+
+replaced "plX" with just "X" and used that as the replicate
+
+replaced "c" with "C" and "s" with "S" in all locations
+
+      root_name  root_order  root items
+938      root_0           0           2
+1107     root_0           0           2
+2667     root_0           0           2
+8773     root_0           0           2
+12508    root_0           0           2
+12978    root_0           0           2
+13736    root_0           0           2
+13872    root_0           0           2
+14539    root_0           0           2
+14680    root_0           0           2
+15179    root_0           0           2
+15457    root_0           0           2
+
+Lines 940-946: changed it to lateral root with root order 1
+
+Lines 1109-1110: changed it to lateral root with root order 1
+
+Lines 2669-2671: changed it to lateral root with root order 1
+
+Lines 8775-7781: changed it to lateral root with root order 1
+
+Lines 12510-12512: changed it to lateral root with root order 1
+
+Lines 12980-12981: changed it to lateral root with root order 1
+
+Lines 13738-13740: changed it to lateral root with root order 1
+
+Lines 13874-13875: changed it to lateral root with root order 1
+
+Lines 14541-14546: changed it to lateral root with root order 1
+
+Lines 14682-14685: changed it to lateral root with root order 1
+
+Lines 15181-15182: changed it to lateral root with root order 1
+
+Lines 1081-1096: changed it from M058_8_5acc_s to M058_8_S_5acc
+
+Lines 15459-15461: changed it to lateral root with root order 1
