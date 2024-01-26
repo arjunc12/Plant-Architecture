@@ -19,7 +19,7 @@ Data pipeline:
 
 4. python read_arbor_reconstruction.py ...
 - This verifies that all of the arbors that we created are valid trees (connected w/ no cycles)
-- command line argument is the hormone to search for
+- command line argument is the hormone to search for. This argument is optional
 
 5. python analyze_arbors.py --analyze
 - computes the pareto front for the new arbors
