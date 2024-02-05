@@ -10,6 +10,7 @@ Data pipeline:
 - put all data in the 'root_name' column into 'genotype_replicate_condition_hormone' format
 
 2. `rm -f data/metadata/metadata.csv`
+
 `python write_metadata.py`
 - This will also tell you which nodes were mistakenly marked as lateral roots
    
