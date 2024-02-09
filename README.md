@@ -26,3 +26,23 @@ Data pipeline:
 
 6. `python analyze_arbors.py --scaling`
 - computes the scaling pareto front for the new arbors
+
+
+SETUP:
+pip install numpy
+pip install networkx
+pip install scipy
+pip install matplotlib
+pip install pandas
+pip install seaborn
+pip install pyarrow
+pip install pingouin
+
+folders to create:
+figs - plots
+in data:
+architecture-data - raw-data
+architecture-data - arbor-reconstructions
+metadata
+results - pareto-fronts
+results - statistics
