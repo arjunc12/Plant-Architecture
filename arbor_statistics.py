@@ -15,10 +15,10 @@ def get_dfs():
     pareto_front_df = pd.read_csv('%s/arbor_stats.csv' % STATISTICS_DIR, skipinitialspace=True)
     metadata_df = pd.read_csv('%s/metadata.csv' % METADATA_DIR, skipinitialspace=True)
 
-    ideotypes_df = pd.read_csv('%s/manual-scoring-last-day.csv' % SCORING_DATA_DIR, skipinitialspace=True)
-    ideotypes_df['ideotype'] = ideotypes_df['ideotype (T/C/B)'].map(IDEOTYPES)
+    # ideotypes_df = pd.read_csv('%s/manual-scoring-last-day.csv' % SCORING_DATA_DIR, skipinitialspace=True)
+    # ideotypes_df['ideotype'] = ideotypes_df['ideotype (T/C/B)'].map(IDEOTYPES)
 
-    return pareto_front_df, metadata_df, ideotypes_df
+    return pareto_front_df, metadata_df#, ideotypes_df
 
 def alphas_hist(df, hue='condition'):
     pylab.figure()
@@ -63,13 +63,15 @@ def main():
 
     args = parser.parse_args()
 
-    pareto_front_df, metadata_df, ideotypes_df = get_dfs()
+    # pareto_front_df, metadata_df, ideotypes_df = get_dfs()
+    pareto_front_df, metadata_df = get_dfs()
+
     arbor_stats_df = pd.merge(pareto_front_df, metadata_df)
 
 
-    last_day_arbors = last_day_df(arbor_stats_df)
+    # last_day_arbors = last_day_df(arbor_stats_df)
 
-    arbor_ideotypes = pd.merge(last_day_arbors, ideotypes_df)
+    # arbor_ideotypes = pd.merge(last_day_arbors, ideotypes_df)
 
     if args.histogram:
         alphas_hist(arbor_ideotypes, hue="ideotype")
