@@ -5,9 +5,9 @@ ARCHITECTURE_DIR = '%s/architecture-data' % DATA_DIR
 
 RAW_DATA_DIR = '%s/raw-data' % ARCHITECTURE_DIR
 ORIGINAL_ROOT_NODES_DIR = '%s/root-nodes-original' % RAW_DATA_DIR
-CLEANED_ROOT_NODES_DIR = '%s/root-nodes-cleaned' % RAW_DATA_DIR
+CLEANED_ROOT_NODES_DIR = '%s/root-nodes-cleaned' % RAW_DATA_DIR  #data/architecture-data/raw-data/root-nodes-cleaned
 
-RECONSTRUCTIONS_DIR = '%s/arbor-reconstructions' % ARCHITECTURE_DIR
+RECONSTRUCTIONS_DIR = '%s/arbor-reconstructions' % ARCHITECTURE_DIR #data/architecture-data/arbor-reconstructions
 
 METADATA_DIR = '%s/metadata' % DATA_DIR
 

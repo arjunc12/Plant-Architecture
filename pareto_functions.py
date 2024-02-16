@@ -20,7 +20,7 @@ def wiring_cost(G):
 
 def conduction_delay(G):
     '''
-    use a bread-first search to compute the distance to from the root to each point
+    use a breadth-first search to compute the distance to from the root to each point
 
     when we encounter a visit node for the first time, we record its distance to the root
     (which is the sum of its parent's distance, plus the length of the edge from the parent

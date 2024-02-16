@@ -47,7 +47,8 @@ def main():
     output_fname = '%s/%s' % (METADATA_DIR, 'metadata.csv')
     for fname in os.listdir(CLEANED_ROOT_NODES_DIR):
         if 'Root_Nodes' in fname and fname.endswith('.csv'):
-            raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)
+            raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)  #for file in cleaned_root_nodes_dir 
+        #data/architecture-data/raw-data/root-nodes-cleaned
             print(raw_data_fname)
             write_metadata(raw_data_fname, output_fname)
 
