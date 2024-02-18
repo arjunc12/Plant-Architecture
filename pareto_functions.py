@@ -331,7 +331,7 @@ def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
 
     tree_costs = pd.read_csv('%s/%s.csv' % (NULL_MODELS_DIR, arbor_name), skipinitialspace=True)
 
-    scatter_df = tree_costs.append(pareto_front)
+    scatter_df = tree_costs._append(pareto_front)
 
     pylab.figure()
     sns.scatterplot(x='wiring cost', y='conduction delay', hue='model', data=scatter_df)
@@ -343,9 +343,14 @@ def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
 def main():
     # G = read_arbor_full('091_4_S_day5.csv')
     # 189_3_C_day3
-    G = read_arbor_full('189_3_C_day3.csv')
+    # 194_1_C_day3
+    # G = read_arbor_full('189_3_C_day3.csv') #- produces an image
+    # G = read_arbor_full('194_1_C_day3.csv') #- produces an image
+    for arbor in os.listdir(RECONSTRUCTIONS_DIR):
+        print(arbor)
+        G = read_arbor_full(arbor)
 
-    viz_front(G)
+        viz_front(G)
 
 
 if __name__ == '__main__':
