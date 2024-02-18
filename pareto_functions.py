@@ -341,7 +341,9 @@ def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
 
 
 def main():
-    G = read_arbor_full('091_4_S_day5.csv')
+    # G = read_arbor_full('091_4_S_day5.csv')
+    # 189_3_C_day3
+    G = read_arbor_full('189_3_C_day3.csv')
 
     viz_front(G)
 
