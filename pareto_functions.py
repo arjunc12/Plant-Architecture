@@ -349,7 +349,7 @@ def main():
     for arbor in os.listdir(RECONSTRUCTIONS_DIR):
         print(arbor)
         G = read_arbor_full(arbor)
-
+        viz_trees(G)
         viz_front(G)
 
 
