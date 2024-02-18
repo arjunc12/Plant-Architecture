@@ -38,12 +38,12 @@ SETUP:
 `pip install pyarrow`  
 `pip install pingouin`  
 
-New setup:
-oryx build
-pip install pingoiun
-python makeDir.py
-
-This should set up the basic environment and folders needed for the project.
+New setup:  
+oryx build  
+pip install pingoiun  
+python makeDir.py  
+  
+This should set up the basic environment and folders needed for the project.  
 
 folders to create:  
 figs - plots  
