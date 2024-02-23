@@ -111,9 +111,31 @@ write_architecture_files.py
 write_metadata.py  
   
 pareto_functions:  
-viz_front (looks to draw something)  
+viz_front -- draws pareto front
+viz_trees -- draws tree graphs for each 
 
 Notes:  
 Oryx-build-commands.txt seems to build the environment  
     https://github.com/microsoft/Oryx  
 for codespace recomment python extension pack for extension to use  
+
+
+data processing procedures:
+python write_architecture_files.py <filename> creates files in architecture-reconstructions containing two columns first one titled "main root"
+
+Skipped read_arbor_reconstructions step
+
+For example input file, start here
+
+`python analyze_arbors.py --analyze` creates files in pareto-fronts and one file in statistics, takes over 30min for the large file
+When using the small file creates a single file in pareto-fronts containing the calculated fronts, creates the arbor_stats file in statistics folder
+
+`python analyze_arbors.py --scaling` creates scaling_distances file in statistics and prints to screen all file names that it reads from
+
+`python null_models.py -a` creates a null models file with random arbors for comparison
+
+`python null_models.py -w` creates `models` file in statistics folder
+
+`python pareto_functions.py` contains viz_front which creates a pareto front graph, and viz_trees which draws all the graph trees.
+
+065_3_S_day2 - example input file (an arbor reconstruction)

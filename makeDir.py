@@ -2,7 +2,7 @@ import pathlib
 from constants import *
 
 #pathlib.Path(ORIGINAL_ROOT_NODES_DIR).mkdir(parents=True, exist_ok=True) 
-pathlib.Path(CLEANED_ROOT_NODES_DIR).mkdir(parents=True, exist_ok=True) 
+#pathlib.Path(CLEANED_ROOT_NODES_DIR).mkdir(parents=True, exist_ok=True) 
 pathlib.Path(RECONSTRUCTIONS_DIR).mkdir(parents=True, exist_ok=True) 
 #pathlib.Path(METADATA_DIR).mkdir(parents=True, exist_ok=True) 
 pathlib.Path(PARETO_FRONTS_DIR).mkdir(parents=True, exist_ok=True) 

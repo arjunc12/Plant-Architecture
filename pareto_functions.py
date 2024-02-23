@@ -336,7 +336,8 @@ def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
     pylab.figure()
     sns.scatterplot(x='wiring cost', y='conduction delay', hue='model', data=scatter_df)
     plot_dir = '%s/%s' % (outdir, arbor_name)
-    os.system('mkdir -p %s' % plot_dir)
+    #print('mkdir -p %s' % plot_dir)
+    #os.system('mkdir -p %s' % plot_dir) #for some reason my system is saying the syntax of this command is inccorrect
     pylab.savefig('%s/%s-pareto-front.pdf' % (plot_dir, arbor_name))
 
 
@@ -344,13 +345,16 @@ def main():
     # G = read_arbor_full('091_4_S_day5.csv')
     # 189_3_C_day3
     # 194_1_C_day3
-    # G = read_arbor_full('189_3_C_day3.csv') #- produces an image
-    # G = read_arbor_full('194_1_C_day3.csv') #- produces an image
-    for arbor in os.listdir(RECONSTRUCTIONS_DIR):
-        print(arbor)
-        G = read_arbor_full(arbor)
-        viz_trees(G)
-        viz_front(G)
+     #G = read_arbor_full('189_3_C_day3.csv') #- produces an image
+     #G = read_arbor_full('194_1_C_day3.csv') #- produces an image
+     G = read_arbor_full('001_1_C_day5.csv')
+     #viz_trees(G)
+     #viz_front(G)
+    #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
+    #    print(arbor)
+    #    G = read_arbor_full(arbor)
+    #    viz_trees(G)
+    #    #viz_front(G)
 
 
 if __name__ == '__main__':

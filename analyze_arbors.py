@@ -43,6 +43,8 @@ def analyze_arbors():
                 continue
             if arbor_fname.strip('.csv') in prev_arbors:
                 continue
+
+            print("analyzing arbors from analyze_arbors.py")
             print(arbor_fname)
 
             G = read_arbor_full(arbor_fname)
@@ -74,6 +76,7 @@ def write_scaling_dists():
             if arbor_fname.strip('.csv') in prev_arbors:
                 continue
 
+            print("writing scaling distances from analyze_arbors.py")
             print(arbor_fname)
 
             G = read_arbor_full(arbor_fname)
