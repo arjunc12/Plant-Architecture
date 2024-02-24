@@ -45,6 +45,16 @@ python makeDir.py
   
 This should set up the basic environment and folders needed for the project.  
 
+new new setup:  
+`python makeDir.py`  
+`pip install pipreqs`  
+`pipreqs`  
+`pip install -r requirements.txt`  
+
+then make sure to put the file in arbor-reconstructions folder  
+afterwards can run command  
+`python automated_data_pipeline_single_file.py`  
+
 folders to create:  
 figs - plots  
 in data:  
