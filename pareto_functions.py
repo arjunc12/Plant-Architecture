@@ -337,7 +337,7 @@ def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
     sns.scatterplot(x='wiring cost', y='conduction delay', hue='model', data=scatter_df)
     plot_dir = '%s/%s' % (outdir, arbor_name)
     #print('mkdir -p %s' % plot_dir)
-    #os.system('mkdir -p %s' % plot_dir) #for some reason my system is saying the syntax of this command is inccorrect
+    os.system('mkdir -p %s' % plot_dir) #for some reason my system is saying the syntax of this command is inccorrect
     pylab.savefig('%s/%s-pareto-front.pdf' % (plot_dir, arbor_name))
 
 
