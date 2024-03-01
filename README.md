@@ -38,6 +38,8 @@ SETUP:
 `pip install pyarrow`  
 `pip install pingouin`  
 
+* note: `pip install pandas` should also install `numpy`
+
 New setup:  
 oryx build  
 pip install pingoiun  
