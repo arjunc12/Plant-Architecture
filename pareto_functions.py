@@ -332,7 +332,7 @@ def viz_front(G, alphas=DEFAULT_ALPHAS, outdir=FRONT_DRAWINGS_DIR):
     tree_costs = pd.read_csv('%s/%s.csv' % (NULL_MODELS_DIR, arbor_name), skipinitialspace=True)
 
     scatter_df = tree_costs._append(pareto_front)
-
+    scatter_df = scatter_df[scatter_df['model'] != 'random']
     pylab.figure()
     sns.scatterplot(x='wiring cost', y='conduction delay', hue='model', data=scatter_df)
     plot_dir = '%s/%s' % (outdir, arbor_name)

@@ -29,3 +29,6 @@ PARETO_FRONT_DELTA = 0.01
 DEFAULT_ALPHAS = np.arange(0, 1 + PARETO_FRONT_DELTA, PARETO_FRONT_DELTA)
 
 SCORING_DATA_DIR = '%s/scoring-data' % DATA_DIR
+
+#list of all needed directories for processing a single arbor reconstruction file
+NECESSARY_DIR_LIST = [RECONSTRUCTIONS_DIR, PARETO_FRONTS_DIR, STATISTICS_DIR, NULL_MODELS_DIR, FRONT_DRAWINGS_DIR]
