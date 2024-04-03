@@ -1,3 +1,23 @@
+"""Analyze arbors
+
+This file contains functions for analyzing arbors to create the Pareto 
+front.
+
+This file requires `pandas` to be installed.
+
+This file can also be imported as a module and contains the following
+functions:
+    * write_front - creates a file containing columns of alpha, wiring cost, and conduction delay
+    * get_pareto_front - returns a list containing wiring_costs and conduction_delays
+    * analyze_arbors -
+    * write_scaling_dists - 
+    * main - the main function of the file
+
+This file can also be called on its own with arguments `--analyze` 
+to run `analyze_arbors()` and `--scaling` to run `write_scaling_dists()`.
+
+"""
+
 from constants import *
 from read_arbor_reconstruction import read_arbor_full
 import pareto_functions as pf
@@ -14,6 +34,25 @@ def write_front(G, outdir, alphas, wiring_costs, conduction_delays):
             f.write('%f, %f, %f\n' % (alpha, wiring, delay))
 
 def get_pareto_front(G, alphas):
+    """Gets the wiring costs and condution delays for the Pareto front.
+    If the file already exists it just reads the file. If it does not,
+    it will use `pareto_front()` from `pareto_functions.py` to calculate
+    the needed information and then write the file using `write_front()` and
+    finally returns the wiring costs and conduction delays.
+
+    Parameters
+    ----------
+    G : graph(?) #TODO: maybe figure out what exactly G is? 
+                 #      Could just do type print later for it.
+        The graph information of the arbor (maybe)
+    alphas : alpha numbers (?)
+        Used to create the Pareto front if file doesn't already exist.
+
+    Returns
+    -------
+    list
+        a list of wiring costs and conduction delays
+    """
     outdir = PARETO_FRONTS_DIR
     fname = '%s/%s.csv' % (outdir, G.graph['arbor name'])
     if os.path.exists(fname):
@@ -43,6 +82,8 @@ def analyze_arbors():
                 continue
             if arbor_fname.strip('.csv') in prev_arbors:
                 continue
+
+            print("analyzing arbors from analyze_arbors.py")
             print(arbor_fname)
 
             G = read_arbor_full(arbor_fname)
@@ -74,6 +115,7 @@ def write_scaling_dists():
             if arbor_fname.strip('.csv') in prev_arbors:
                 continue
 
+            print("writing scaling distances from analyze_arbors.py")
             print(arbor_fname)
 
             G = read_arbor_full(arbor_fname)

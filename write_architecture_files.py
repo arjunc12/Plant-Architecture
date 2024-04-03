@@ -14,7 +14,8 @@ def write_arbor_file_condensed(output_fname, points):
         f.write('root order, x coordinate, y coordinate, insertion point\n')
         for root_type, x, y, insertion in points:
             f.write('%d, %f, %f, %f\n' % (root_type, x, y, insertion))
-
+            
+#write_full_2
 def write_arbor_file_full(output_fname, main_root_points, lateral_roots):
     with open(output_fname, 'w') as f:
         # write the main root points
@@ -28,6 +29,9 @@ def write_arbor_file_full(output_fname, main_root_points, lateral_roots):
             for x, y in points:
                 f.write('%f, %f\n' % (x, y))
 
+# reconstruction_dir = #data/architecture-data/arbor-reconstructions
+#raw_data_fname = data/architecture-data/raw-data/root-nodes-cleaned/pimpi_Big1_D3_Root_Nodes.csv
+# write_full_1
 def write_arbor_files_full(raw_data_fname, reconstruction_dir):
     df = pd.read_csv(raw_data_fname, skipinitialspace=True)
     images = df['image']
@@ -50,7 +54,9 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
             if curr_main_root_name != None and len(curr_lateral_roots) > 0:
                 reconstruction_fname = utils.arbor_name(curr_image, curr_main_root_name)
                 output_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
-                write_arbor_file_full(output_fname, curr_main_root_points, curr_lateral_roots)
+                #print("write_full_1 output_fname = %s" % output_fname)
+                #data/architecture-data/arbor-reconstructions/282_1_C_day3.csv
+                write_arbor_file_full(output_fname, curr_main_root_points, curr_lateral_roots) #write_full_2
 
             # reset the points for the current (new) image
             curr_image = image
@@ -121,8 +127,8 @@ def main():
     for fname in image_files:
         if 'Root_Nodes' in fname and fname.endswith('.csv'):
             raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)
-            print(fname)
-            write_arbor_files_full(raw_data_fname, RECONSTRUCTIONS_DIR)
+            print(fname) #the first print line you see
+            write_arbor_files_full(raw_data_fname, RECONSTRUCTIONS_DIR) #write_full_1
 
 if __name__ == '__main__':
     main()

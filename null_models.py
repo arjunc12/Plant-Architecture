@@ -87,6 +87,7 @@ def null_comparison(G, methods=None, ntrials=20):
 
 def analyze_null_models():
     for reconstruction in os.listdir(RECONSTRUCTIONS_DIR):
+        print("analyzing null models, creating null models for comparison")
         print(reconstruction)
         G = read_arbor_full(reconstruction)
         null_comparison(G)
@@ -99,6 +100,7 @@ def write_null_models_file():
 
         for arbor_file in os.listdir(NULL_MODELS_DIR):
             arbor_name = arbor_file.strip('.csv')
+            print("writing null models files from null_models.py")
             print(arbor_name)
 
             tree_costs_file = '%s/%s' % (NULL_MODELS_DIR, arbor_file)
@@ -132,4 +134,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

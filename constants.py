@@ -5,9 +5,9 @@ ARCHITECTURE_DIR = '%s/architecture-data' % DATA_DIR
 
 RAW_DATA_DIR = '%s/raw-data' % ARCHITECTURE_DIR
 ORIGINAL_ROOT_NODES_DIR = '%s/root-nodes-original' % RAW_DATA_DIR
-CLEANED_ROOT_NODES_DIR = '%s/root-nodes-cleaned' % RAW_DATA_DIR
+CLEANED_ROOT_NODES_DIR = '%s/root-nodes-cleaned' % RAW_DATA_DIR  #data/architecture-data/raw-data/root-nodes-cleaned
 
-RECONSTRUCTIONS_DIR = '%s/arbor-reconstructions' % ARCHITECTURE_DIR
+RECONSTRUCTIONS_DIR = '%s/arbor-reconstructions' % ARCHITECTURE_DIR #data/architecture-data/arbor-reconstructions
 
 METADATA_DIR = '%s/metadata' % DATA_DIR
 
@@ -29,3 +29,6 @@ PARETO_FRONT_DELTA = 0.01
 DEFAULT_ALPHAS = np.arange(0, 1 + PARETO_FRONT_DELTA, PARETO_FRONT_DELTA)
 
 SCORING_DATA_DIR = '%s/scoring-data' % DATA_DIR
+
+#list of all needed directories for processing a single arbor reconstruction file
+NECESSARY_DIR_LIST = [RECONSTRUCTIONS_DIR, PARETO_FRONTS_DIR, STATISTICS_DIR, NULL_MODELS_DIR, FRONT_DRAWINGS_DIR]
