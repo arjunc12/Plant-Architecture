@@ -3,6 +3,13 @@ Studying whether plants grow in a Pareto-optimal manner
 
 Authors: Magdalena Julkowska and Arjun Chandrasekhar
 
+Contributors: 
+- Kathryn Altman
+- Alley Koenig
+- Joanna Blatt
+- Zekkie McCormick
+- Aaron Garza
+
 Data pipeline: 
 
 1. Clean root data
