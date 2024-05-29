@@ -81,8 +81,8 @@ def fill_lateral_root(G, G_opt, main_root, lateral_tip) :
     x_coords = []
     y_coords = []
     count = -1
-    for tuple in encountered_observed:
-        for coords in tuple:
+    for point in encountered_observed:
+        for coords in point:
           count += 1
           if count % 2 == 0 :
               x_coords.append(coords)
