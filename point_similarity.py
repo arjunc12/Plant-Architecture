@@ -134,7 +134,10 @@ def find_best_distance(fname):
     results = []
     best_alpha = math.inf
     best_distance = math.inf
-    for alpha in pylab.arange(0, 1, 0.01):
+    min_alpha = 0
+    delta = 0.01
+    max_alpha = 1
+    for alpha in pylab.arange(min_alpha, max_alpha + delta, delta):
         distance = cumulative_distance(fname, alpha)
         if distance < best_distance:
             best_distance = distance
