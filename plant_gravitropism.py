@@ -9,9 +9,12 @@ from plotly import graph_objs as go
 import sys
 import read_arbor_reconstruction as rar
 import networkx as nx
-import pareto_functions.py as pf
+import pareto_functions as pf
 from constants import *
+import os
+import pickle
 
+## returns the coefficients of the quadratic equation involving gravity
 def calc_coeff(G, x, y, p, q):
     b = ((q - y - G*(p*p - x*x))/(p-x))
     c = (q - G*p*p - b*p)
@@ -21,15 +24,28 @@ def calc_coeff(G, x, y, p, q):
     
     return b, c
     
+## checks if a line has a positive slope given two points
+def positive_slope(x0, y0, x1, y1):
+    if x0 == x1 or y0 == y1:
+        return False
+    slope = (y1 - y0)/(x1 - x0)
+    if slope >= 0:
+        return True
+    return False
     
+## simply just a distance function
 def length_func(x0, y0, x1, y1):
     length = pylab.sqrt((x1 - x0)**2 + (y1 - y0)**2)
     return length
-    
+
+## a way to calculate theta based on two points
 def get_theta(x0, y0, x1, y1):
+    if x1 == x0 or y1 == y0:
+        return 0
     theta = pylab.arctan((abs(y1 - y0))/(abs(x1 - x0)))
     return theta
 
+## Returns the length of a curve (in this case a lateral root when gravity is not 0)
 def curve_length(G, x0, y0, p, q):        
     b, c = calc_coeff(G, x0, y0, p, q)
     def differential(x):
@@ -37,7 +53,7 @@ def curve_length(G, x0, y0, p, q):
     curve, tolerance = integrate.quad(differential, min(x0, p), max(x0, p))
     return curve
     
-        
+## Returns the distance from a point to the base of the plant 
 def distance_from_base(root_distance, x, y, x1, y1):
     pair1 = [x, y]
     pair2 = [x1, y1]
@@ -46,6 +62,7 @@ def distance_from_base(root_distance, x, y, x1, y1):
         assert distance == 0
     return distance + root_distance
 
+## Returns the total cost along with the wiring and delay used to calculate it 
 def total_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q):
     curve = curve_length(G, x1, y1, p, q)
     to_root = distance_from_base(root_distance, x0, y0, x1, y1)
@@ -55,7 +72,6 @@ def total_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q):
     #print("curve = ", curve, "to root = " , to_root, "wiring = ", wiring, "delay = ", delay, "total cost = ", cost)
     #cost = curve + (1 - alpha) * distance_from_base(root_distance, x0, y0, x1, y1)
     return cost, wiring, delay
-
 
 def find_best_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q):
     results = []
@@ -271,12 +287,12 @@ def modified_fill_lateral_root(gravity, G, G_opt, main_root, lateral_tip) :
 
 def calc_pareto_front(fname):
     G = rar.read_arbor_full(fname)
-    delta = 0.01
-    epsilon = 0.1
+    delta = 0.05
+    epsilon = 0.2
     min_alpha = 0.0
-    max_alpha = 0.10
-    min_gravity = 0
-    max_gravity = 0.1
+    max_alpha = 1.0
+    min_gravity = -2.0
+    max_gravity = 2.0
     values = []
     for alpha in pylab.arange(min_alpha, max_alpha + delta, delta):
         for g in pylab.arange(min_gravity, max_gravity + epsilon, epsilon):
@@ -295,19 +311,161 @@ def calc_pareto_front(fname):
                 main_root = result[4], result[5]
                 lateral_tip = result[6], result[7]
                 point_dist += modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
-            values.append((alpha, g, wiring, delay, point_dist))
+            wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
+            values.append((g, alpha, wiring, delay, point_dist))
             
     return values
-    
+
+def main_root_distance(line_segments):
+    distance = 0
+    for seg in line_segments:
+        x0 = line_segments[seg][0][0]
+        y0 = line_segments[seg][0][1] 
+        x1 = line_segments[seg][1][0]
+        y1 = line_segments[seg][1][1]
+        distance += length_func(x0, y0, x1, y1)
+    return distance
+
+def modified_conduction_delay(G):
+    '''
+    use a breadth-first search to compute the distance to from the root to each point
+
+    when we encounter a visit node for the first time, we record its distance to the root
+    (which is the sum of its parent's distance, plus the length of the edge from the parent
+    to the current node').  We keep a running total of the total distances from the root
+    to each node.
+    '''
+    droot = {}
+    queue = []
+    curr = None
+    visited = set()
+
+    root = G.graph['main root base']
+
+    queue.append(root)
+    droot[root] = 0
+
+    delay = 0
+    while len(queue) > 0:
+        curr = queue.pop(0)
+        # we should never visit a node twice
+        assert curr not in visited
+        visited.add(curr)
+        # we only measure delay for the lateral root tips
+        if G.nodes[curr]['label'] == 'lateral root tip':
+            delay += droot[curr]
+        for u in G.neighbors(curr):
+            if u not in visited:
+                queue.append(u)
+                droot[u] = droot[curr] + G[curr][u]['length']
+
+    # make sure we visited every node
+    assert len(visited) == G.number_of_nodes()
+
+    return delay
+
 def main():
     #fname = '%s/plant_gravitropism.csv' % ARCHITECTURE_DIR
     #first_time = not os.path.exists(fname)
-    path = '%s/plant_gravitropism' $ RESULTS_DIR
-    if not os.path.exists(
-    for arbor in os.listdir(RECONSTRUCTIONS_DIR):
+    G_alpha_file = '%s/G_alpha_combinations.pkl' % RESULTS_DIR
+    path = '%s/gravitropism_pareto_fronts' % RESULTS_DIR
+    last_day_files = get_last_day_files()
+    if not os.path.exists(path): 
+        os.mkdir(path)
+    processed_arbors = load_processed_arbors()
+    #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
+    for key, arbor in last_day_files.items():
+        
+        if arbor in processed_arbors:
+           print('%s already processed' % (arbor))
+           continue
+        
+        #clear_pickle_file(pickle_file)
+        fname = '%s/%s' % (path, arbor)
+        first_time = not os.path.exists(fname) or os.path.getsize(fname) == 0
+        print('Calculating pareto front for %s' % (arbor))
+        
+        #combinations = load_written_combinations()
+        with open(fname, 'a') as f:
+            if first_time: 
+                f.write('arbor type, G, alpha, wiring cost, conduction delay, point distance\n')
+                observed_graph = rar.read_arbor_full(arbor)
+                observed_wiring = pf.wiring_cost(observed_graph)
+                observed_delay = modified_conduction_delay(observed_graph)
+                f.write('%s, %s, %s, %f, %f, %f\n' % ("observed", "", "", observed_wiring, observed_delay, 0.0))
+                
+                
+            values = calc_pareto_front(arbor)
+            for row in values:
+                G, alpha, wiring, delay, point_distance = row
+                #curr_combo = (G, alpha)
+                #if curr_combo not in combinations:
+                f.write('%s, %f, %f, %f, %f, %f\n' % ("optimal", G, alpha, wiring, delay, point_distance))
+                #combinations.add(curr_combo)
+                #save_written_combinations(combinations)
+            processed_arbors.add(arbor)
+            save_processed_arbors(processed_arbors)
+            
+def load_processed_arbors():
+    filename = '%s/processed_arbors.pkl' % RESULTS_DIR
+    if os.path.exists(filename):
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
+    else:
+        return set()
+        
+def save_processed_arbors(processed_arbors):
+    filename = '%s/processed_arbors.pkl' % RESULTS_DIR
+    with open(filename, 'wb') as f:
+        pickle.dump(processed_arbors, f)
+        
+def load_written_combinations():
+    filename = '%s/G_alpha_combinations.pkl' % RESULTS_DIR
+    if os.path.exists(filename):
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
+    else:
+        return set()
 
+def save_written_combinations(written_combinations):
+    filename = '%s/G_alpha_combinations.pkl' % RESULTS_DIR
+    with open(filename, 'wb') as f:
+        pickle.dump(written_combinations, f)
+        
+def clear_pickle_file(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        
+def get_last_day_files():
+    files_by_genotype = {}
     
-    
+    for file_name in os.listdir(RECONSTRUCTIONS_DIR):
+        parts = file_name.split('_')
+        
+        genotype = parts[0]
+        replicate = parts[1]
+        condition = parts[2]
+        day = parts[3].replace('.csv', '')
+        
+        key = (genotype, replicate, condition)
+        if key not in files_by_genotype:
+            files_by_genotype[key] = {}
+        
+        files_by_genotype[key][day] = file_name
+       
+    last_day_files = {}
+    for key, day_files in files_by_genotype.items():
+        last_day = sorted(day_files.keys())[-1]
+        last_day_files[key] = day_files[last_day]
+    return last_day_files
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Interrupted')
+        sys.exit(0)    
+
     '''
     with open(fname, 'a') as f:
         if first_time:

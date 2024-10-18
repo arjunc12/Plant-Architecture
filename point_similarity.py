@@ -10,12 +10,14 @@ import pylab
 import os
 from constants import *
 
+## This method creates networkx graphs based on a given arbor and alpha value
 def create_graphs(fname, alpha):
     G = rar.read_arbor_full(fname)
     G_opt = pf.opt_arbor(G, alpha)
     return G, G_opt
     
-    
+## This method creates dictionaries that contain all the coordinates from the G and G optimal graphs.
+## The key and value for both are the corresponding coordinate point. 
 def create_dict(G, G_opt) :
     G_dict = {}
     for coordinate in list(G.nodes):
@@ -27,7 +29,8 @@ def create_dict(G, G_opt) :
         
     return G_dict, G_opt_dict
 
-
+## This method returns the coefficients (slope and y-intercept) of the line equation for the 
+## optimal graph between a lateral tip and its corresponding main root point. 
 def line_equation(G, G_opt, main_root, lateral_tip) :
 
     G_dict, G_opt_dict = create_dict(G, G_opt)
@@ -43,11 +46,10 @@ def line_equation(G, G_opt, main_root, lateral_tip) :
 
     return m, y_int
 
-## maybe rename
+## This method is named so because it in theory fills in the gap of the optimal graphs' lateral
+## roots. It uses the lateral tip and main root to fill in points of the lateral root
+## in order to perform distance calculation.
 def fill_lateral_root(G, G_opt, main_root, lateral_tip) :
-
-    ## This method uses the lateral tip and main root to fill in points of the lateral root
-    ## in order to perform distance calculation
   
     m, y_int = line_equation(G, G_opt, main_root, lateral_tip)
 
@@ -96,6 +98,7 @@ def fill_lateral_root(G, G_opt, main_root, lateral_tip) :
     return added_nodes, y_coords
 
 
+## This method calculates the total distance squared between the optimal line and actual line
 def calculate_distance(G, G_opt, lateral_tip):
     
     main_root = modified_closest_main_root_point(G_opt, lateral_tip)
@@ -119,7 +122,7 @@ def modified_closest_main_root_point(G, lateral_root_tip):
         curr = list(G.neighbors(curr))[0]
     return curr
     
-    
+## Gets distance squared for EVERY lateral root
 def cumulative_distance(fname, alpha):
     G, G_opt = create_graphs(fname, alpha)
     results = []
@@ -130,6 +133,7 @@ def cumulative_distance(fname, alpha):
             results.append(sum_of_distances)
     return sum(results)
     
+## Given an alpha and an arbor, return the smallest distance squared and its corresponding alpha
 def find_best_distance(fname):
     results = []
     best_alpha = math.inf
