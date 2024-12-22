@@ -488,7 +488,11 @@ def get_last_day_files():
         genotype = parts[0]
         replicate = parts[1]
         condition = parts[2]
-        day = parts[3].replace('.csv', '')
+        hormone = None
+        if len(parts) >= 3:
+            hormone = parts[3]
+        day = parts[-1].replace('.csv', '')
+        day = int(day.strip('day'))
 
         key = (genotype, replicate, condition)
         if key not in files_by_genotype:
@@ -498,7 +502,9 @@ def get_last_day_files():
 
     last_day_files = {}
     for key, day_files in files_by_genotype.items():
-        last_day = sorted(day_files.keys())[-1]
+        last_day = max(day_files.keys())
+        if last_day not in [5, 9]:
+            continue
         last_day_files[key] = day_files[last_day]
     return last_day_files
 
