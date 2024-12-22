@@ -336,12 +336,18 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
             alpha_skip = list(df['alpha'])
             skip = set(zip(G_skip, alpha_skip))
 
+        #print(pylab.arange(Gmin, Gmax + Gstep, Gstep))
         for g in pylab.arange(Gmin, Gmax + Gstep, Gstep):
             g = round(g, 2)
+            #print(pylab.arange(amin, amax + astep, astep))
             for alpha in pylab.arange(amin, amax + astep, astep):
                 alpha = round(alpha, 2)
                 if (g, alpha) in skip:
                     continue
+                if g == 0:
+                    g = abs(g)
+                if alpha == 0:
+                    alpha = abs(alpha)
                 print(g, alpha)
                 G_opt = nx.Graph(Gravity = g)
                 line_segs = get_line_segments(G)
@@ -360,7 +366,7 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
                     point_dist += modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
                 wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
 
-                f.write('%s, %f, %f, %f, %f, %f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
+                f.write('%s, %0.2f, %0.2f, %f, %f, %f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
 
 def main_root_distance(line_segments):
     distance = 0
@@ -422,13 +428,13 @@ def main():
     parser.add_argument('--Gstep', default=0.2, type=float)
 
     args = parser.parse_args()
-    amin = args.amin
-    amax = args.amax
-    astep = args.astep
+    amin = round(args.amin, 2)
+    amax = round(args.amax, 2)
+    astep = round(args.astep, 2)
 
-    Gmin = args.Gmin
-    Gmax = args.Gmax
-    Gstep = args.Gstep
+    Gmin = round(args.Gmin, 2)
+    Gmax = round(args.Gmax, 2)
+    Gstep = round(args.Gstep, 2)
 
     #fname = '%s/plant_gravitropism.csv' % ARCHITECTURE_DIR
     #first_time = not os.path.exists(fname)
