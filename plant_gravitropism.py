@@ -3,7 +3,7 @@ import point_similarity as ps
 import scipy.integrate as integrate
 import pylab
 import mpmath
-from scipy.misc import derivative
+#from scipy.misc import derivative
 import plotly
 from plotly import graph_objs as go
 import sys
@@ -489,6 +489,8 @@ def get_last_day_files():
     files_by_genotype = {}
 
     for file_name in os.listdir(RECONSTRUCTIONS_DIR):
+        if not file_name.endswith(".csv"):
+            continue
         parts = file_name.split('_')
 
         genotype = parts[0]
