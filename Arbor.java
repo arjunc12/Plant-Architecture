@@ -41,14 +41,6 @@ public class Arbor {
     }
 }
 
-class ArborBuild {
-    //create a way to sift through all the files
-    public static Arbor buildArborFile (String filename) throws FileNotFoundException {
-        Arbor arbor = null;
-        return null;
-    }
-}
-
 //class representing a 2D point
 class Point {
     public double p; //x coord
@@ -79,4 +71,12 @@ class Point {
     	return Math.atan2(delta[1], delta[0]);
     }
     
+}
+
+class ArborBuild {
+    //create a way to sift through all the files
+    public static Arbor buildArborFile (String filename) throws FileNotFoundException {
+        Arbor arbor = null;
+        return null;
+    }
 }
