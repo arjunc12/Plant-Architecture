@@ -128,11 +128,3 @@ class ArborBuild {
         return arbor;
     }
 }
-
-class PlantNode {
-	//latitude and longitude of coordinates
-	public double lat;
-	public double lon;
-	public String ID;
-	public List<PlantNode> coords;
-}
