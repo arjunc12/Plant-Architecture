@@ -9,34 +9,45 @@ import java.util.*;
 //write the code to initialize an arbor from the arbor file
 //write the code to (for a given value of alpha) find the best place to connect a lateral root tie to the main root
 
+//stores the main root and lateral roots
 public class Arbor {
     
-    private Point mainRoot;
-    private List<Point> lateralRoots;
+    private List<Point> mainRoot;
+    private Map<String, List<Point>> lateralRoots;
     
+    //builds arbor from a file
     public static void main(String[] args) throws FileNotFoundException {
     	System.out.println("Running Arbor Build...");
-    	Arbor arbor = buildArborFile("005_3_S_day5.csv");
+    	Arbor arbor = ArborBuild.buildArborFile("005_3_S_day5.csv");
     }
     
     //constructor
-    public Arbor(Point mainRoot) {
-        this.mainRoot = mainRoot;
-        this.lateralRoots = new ArrayList<Point>();
+    public Arbor() {
+        mainRoot = new ArrayList<>();
+        lateralRoots = new LinkedHashMap<>();
     }
 	
-	//method to map lateral roots
-    public void addLatRoots(Point latRoot)
+	//add main root coords
+	public void addMainRoot(Point p) {
+		mainRoot.add(p);
+	}
+	
+	//adds lateral roots
+    public void addLatRoots(String ID, Point p)
     {
-        lateralRoots.add(latRoot);
+        if (!lateralRoots.containsKey(ID)) {
+        	lateralRoots.put(ID, new ArrayList<>());
+        }
+        lateralRoots.get(ID).add(p);
     }
 	
-	//method to map main root
-    public Point getMainRoot() {
+	//accesses mainRoot
+    public List<Point> getMainRoot() {
         return mainRoot;
     }
-
-    public List<Point> getLateralRoots() {
+	
+	//accesses lateral roots
+    public Map<String, List<Point>> getLateralRoots() {
         return lateralRoots;
     }
 }
@@ -66,6 +77,7 @@ class Point {
 		return Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
     }
     
+    //returns the angle for the line connecting the points and the x axis
     public double thetaTo(Point mainRoot) {
     	double[] delta = deltaTo(mainRoot);
     	return Math.atan2(delta[1], delta[0]);
@@ -73,10 +85,22 @@ class Point {
     
 }
 
+//builds an arbor from a file
 class ArborBuild {
-    //create a way to sift through all the files
     public static Arbor buildArborFile (String filename) throws FileNotFoundException {
+        Scanner scanner = new Scanner(new File("data/architecture-data/arbor-reconstructions/005_3_S_day5.csv"));
+        //if main root, continue until lateral root is encountered
+        //separate coords based on comma
+        //if scanner line has a dash, it is a lateral root (assuming the strings of letters/nums are IDS)
         Arbor arbor = null;
         return null;
     }
+}
+
+class PlantNode {
+	//latitude and longitude of coordinates
+	public double lat;
+	public double lon;
+	public String ID;
+	public List<PlantNode> coords;
 }
