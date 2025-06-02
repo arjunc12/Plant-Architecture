@@ -17,12 +17,43 @@ public class Arbor {
     
     //builds arbor from a file
     public static void main(String[] args) throws FileNotFoundException {
-    	System.out.println("Running Arbor Build...");
-    	Arbor arbor = ArborBuild.buildArborFile("data/architecture-data/arbor-reconstructions/005_3_S_day5.csv");
+    	System.out.println("Arbor Data Files: ");
     	
-    	double alpha = 1.0;
+    	//objects that tell program where to find arbor files & lists them
+    	File folder = new File("data/architecture-data/arbor-reconstructions");
+    	File[] files = folder.listFiles();
+    	
+    	//prints each file name
+    	for (File file : files) {
+    		System.out.println(file.getName());
+    	}
+    	
+    	//gathers user input
+    	Scanner scanner = new Scanner(System.in);
+    	System.out.println("Enter the name of the file you want to use: ");
+    	String fileName = scanner.nextLine().trim();
+    	
+    	//holds user selected file
+    	File selectedFile = new File(folder, fileName);
+    	
+    	//accounting for typing errors
+		if(!selectedFile.exists()) {
+			System.out.println(" File " + fileName + " wasn't found. Did you type it correctly?");
+			return;
+		}
+		
+		System.out.println("Running Arbor Build Using File: " + fileName + ". . .");
+		Arbor arbor = ArborBuild.buildArborFile(selectedFile.getPath());
+    	
+    	//generating random alpha
+    	double alpha = Math.random();
+    	//printing alpha value
+    	System.out.println("Alpha value generated: " + alpha);
+    	
+    	//stores best connection for each lat root
     	Map<String, Point> connections = BestArbor.findBestConnection(arbor, alpha);
     	
+    	//loops through lat roots to find best connection
     	for (String ID : connections.keySet()) {
     		Point p = connections.get(ID);
     		System.out.println("Best connection for " + ID + " is at (" + p.p + ", " + p.q + ")");
