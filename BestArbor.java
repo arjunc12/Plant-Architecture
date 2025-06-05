@@ -29,7 +29,10 @@ public class BestArbor {
 				//computing the angle difference
 				double angleDiff = Math.abs(tip.thetaTo(mainPoint) - mainPoint.thetaTo(tip));
 				//combines two previous values to calculate the cost
-				double cost = distance + alpha * angleDiff;
+				double cost = (1 - alpha) * distance + alpha * angleDiff;
+				
+				//debugging print statement
+				System.out.println("lat root: " + latID + ", main root point: (" + mainPoint.p + ", " + mainPoint.q + "), cost: " + cost + ", alpha: " + alpha);
 				
 				//updating the min cost to decide best point
 				if (cost < minCost) {
