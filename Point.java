@@ -27,12 +27,6 @@ public class Point {
 		return Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
     }
     
-    //returns the angle for the line connecting the points and the x axis
-    public double thetaTo(Point mainRoot) {
-    	double[] delta = deltaTo(mainRoot);
-    	return Math.atan2(delta[1], delta[0]);
-    }
-    
     public String toString() {
     	return "(" + p + ", " + q + ")";
     }

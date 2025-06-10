@@ -8,6 +8,7 @@ import java.util.*;
 //use this data set to find the best connection point for alpha 0.0, 0.5, and 1.0
 
 //uses test data to make sure the output of Arbor.java is correct
+
 public class ArborTest {
 	 public static void main(String[] args) throws IOException {
     	System.out.println("Arbor Data Files: ");

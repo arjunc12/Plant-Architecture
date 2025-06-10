@@ -2,6 +2,10 @@ import java.io.File;
 import java.io.*;
 import java.util.*;
 
+//note to self: alpha of 0 favors the shortest direct connection to main root
+//				alpha of 1 favors connections points closer to the closestMainPoint to reduce conduction delay
+//				alpha 0.5 balances both 
+
 //finds best place to connect a lateral root the the main root
 public class BestArbor {
 	public static Map<String, Point> findBestConnection(Arbor arbor, double alpha) {
@@ -22,36 +26,36 @@ public class BestArbor {
 			double minCost = Double.MAX_VALUE;
 			Point bestPoint = null;
 			
-			//looping through main root
-			for(Point mainPoint : mainRoot) {
-				//computing the distance from the lat root start to the main root
-				double distance = tip.distanceTo(mainPoint);
+			//looping through each segment of the main root
+			for(int i = 0; i < mainRoot.size() - 1; i++) {
+				Point p0 = mainRoot.get(i);
+				Point p1 = mainRoot.get(i + 1);
 				
-				//creating vector representing last direction of lat root
-				Point lastLat = latPoints.get(latPoints.size() - 2);
-				double dx1 = tip.p - lastLat.p;
-				double dy1 = tip.q - lastLat.q;
+				double mx = p1.p - p0.p;
+				double my = p1.q - p0.q;
 				
-				//vector from tip to main root
-				double dx2 = mainPoint.p - tip.p;
-				double dy2 = mainPoint.q - tip.q;
-				
-				//computing the angle between the two vectors
-				double dot = dx1 * dx2 + dy1 * dy2;
-				double mag1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
-				double mag2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-				
-				double angleDiff = Math.acos(dot / (mag1 * mag2));
-				
-				//combines two previous values to calculate the cost
-				double cost = (1 - alpha) * distance + alpha * angleDiff;
-				
-				System.out.println("lat root: " + latID + ", main root point: (" + mainPoint.p + ", " + mainPoint.q + "), cost: " + cost + ", alpha: " + alpha);
-				
-				//updating the min cost to decide best point
-				if (cost < minCost) {
-					minCost = cost;
-					bestPoint = mainPoint;				
+				//sample points along the segment
+				for (double t = 0.0; t <= 1.0; t += 0.01) {
+					//computes points using linear interpolation
+					double px = p0.p + t * mx;
+					double py = p0.q + t * my;
+					Point sampled = new Point(px, py);
+					
+					double wiringCost = tip.distanceTo(sampled);
+					
+					//getting closest mainRoot point
+					Point firstPoint = mainRoot.get(0);
+					
+					
+					//closest main point -> sampled -> tip
+					double conductionDelay = firstPoint.distanceTo(sampled) + sampled.distanceTo(tip);
+					
+					double cost = (1 - alpha) * wiringCost + alpha * conductionDelay;
+					
+					if (cost < minCost) {
+						minCost = cost;
+						bestPoint = sampled;
+					}
 				}
 			}
 			bestConnection.put(latID, bestPoint);
