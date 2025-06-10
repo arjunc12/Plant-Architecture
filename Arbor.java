@@ -47,7 +47,7 @@ public class Arbor {
 		Arbor arbor = ArborBuild.buildArborFile(selectedFile.getPath());
     	
     	//preparing result output 
-    	File resultDir = new File("data/results/heterogeneous_pareto_fronts");
+    	File resultDir = new File("data/results/hetereogeneous_pareto_fronts");
     	resultDir.mkdirs();
     	
     	//creating output file
