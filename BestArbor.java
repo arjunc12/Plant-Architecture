@@ -26,12 +26,26 @@ public class BestArbor {
 			for(Point mainPoint : mainRoot) {
 				//computing the distance from the lat root start to the main root
 				double distance = tip.distanceTo(mainPoint);
-				//computing the angle difference
-				double angleDiff = Math.abs(tip.thetaTo(mainPoint) - mainPoint.thetaTo(tip));
+				
+				//creating vector representing last direction of lat root
+				Point lastLat = latPoints.get(latPoints.size() - 2);
+				double dx1 = tip.p - lastLat.p;
+				double dy1 = tip.q - lastLat.q;
+				
+				//vector from tip to main root
+				double dx2 = mainPoint.p - tip.p;
+				double dy2 = mainPoint.q - tip.q;
+				
+				//computing the angle between the two vectors
+				double dot = dx1 * dx2 + dy1 * dy2;
+				double mag1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+				double mag2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+				
+				double angleDiff = Math.acos(dot / (mag1 * mag2));
+				
 				//combines two previous values to calculate the cost
 				double cost = (1 - alpha) * distance + alpha * angleDiff;
 				
-				//debugging print statement
 				System.out.println("lat root: " + latID + ", main root point: (" + mainPoint.p + ", " + mainPoint.q + "), cost: " + cost + ", alpha: " + alpha);
 				
 				//updating the min cost to decide best point

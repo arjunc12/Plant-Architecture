@@ -31,5 +31,9 @@ public class Point {
     public double thetaTo(Point mainRoot) {
     	double[] delta = deltaTo(mainRoot);
     	return Math.atan2(delta[1], delta[0]);
-    } 
+    }
+    
+    public String toString() {
+    	return "(" + p + ", " + q + ")";
+    }
 }
