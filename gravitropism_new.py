@@ -334,7 +334,7 @@ def get_closest_and_valid_segments(lat_tips, line_segments):
             if seg[1][1] <= best_seg[1][1]:
                 valid.append(seg)
             else:
-                break
+                continue
         all_valid_segs.append(valid)
 
     return all_closest, all_valid_segs
