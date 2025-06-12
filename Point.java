@@ -12,19 +12,26 @@ public class Point {
         this.p = p;
         this.q = q;
     }
-    
-    //helper method for delta between two points
-    public double[] deltaTo(Point mainRoot) {
-    	double dp = this.p - mainRoot.p; //accessing the x coordinate of point p
-    	double dq = this.q - mainRoot.q; //same thing for y coordinate
-    	return new double[] {dp, dq};
-    }
         
-    //need to calculate the distance of a specific point to the lat and main root
-    public double distanceTo(Point mainRoot) {
-    	double[] delta = deltaTo(mainRoot);
-		//using pythagorean theorem to calculate distance
-		return Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
+    //need to calculate the distance of a specific point to main root
+    //standard case- distance to another point
+    public double distanceTo(Point other) {
+		double dx = this.p - other.p;
+		double dy = this.q - other.q;
+		return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    //avoids creating Point- distance to raw coords (for calculations)
+    public double distanceTo(double x, double y) {
+    	double dx = this.p - x;
+    	double dy = this.q - y;
+    	return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    public static double distance(double x1, double y1, double x2, double y2) {
+    	double dx = x1 - x2;
+    	double dy = y1 - y2;
+    	return Math.sqrt(dx * dx + dy * dy);
     }
     
     public String toString() {

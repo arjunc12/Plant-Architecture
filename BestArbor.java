@@ -16,45 +16,41 @@ public class BestArbor {
 		List<Point> mainRoot = arbor.getMainRoot();
 		Map<String, List<Point>> lateralRoots = arbor.getLateralRoots();
 		
-		//looping through each lat root
-		for (String latID : lateralRoots.keySet()) {
-			//retrieving points of current lat root
-			List<Point> latPoints = lateralRoots.get(latID);
-			//getting last point of lat root
+		//getting first main point
+		Point firstPoint = mainRoot.get(0);
+		
+		for (Map.Entry<String, List<Point>> entry : lateralRoots.entrySet()) {
+			String latID = entry.getKey();
+			List<Point> latPoints = entry.getValue();
 			Point tip = latPoints.get(latPoints.size() - 1);
 			
 			double minCost = Double.MAX_VALUE;
 			Point bestPoint = null;
-			
+	
 			//looping through each segment of the main root
 			for(int i = 0; i < mainRoot.size() - 1; i++) {
 				Point p0 = mainRoot.get(i);
 				Point p1 = mainRoot.get(i + 1);
 				
-				double mx = p1.p - p0.p;
-				double my = p1.q - p0.q;
+				double dx = p1.p - p0.p;
+				double dy = p1.q - p0.q;
 				
 				//sample points along the segment
 				for (double t = 0.0; t <= 1.0; t += 0.01) {
 					//computes points using linear interpolation
-					double px = p0.p + t * mx;
-					double py = p0.q + t * my;
-					Point sampled = new Point(px, py);
+					double px = p0.p + t * dx;
+					double py = p0.q + t * dy;
 					
-					double wiringCost = tip.distanceTo(sampled);
-					
-					//getting closest mainRoot point
-					Point firstPoint = mainRoot.get(0);
-					
+					double wiringCost = Point.distance(px, py, tip.p, tip.q);
 					
 					//closest main point -> sampled -> tip
-					double conductionDelay = firstPoint.distanceTo(sampled) + sampled.distanceTo(tip);
+					double conductionDelay = Point.distance(firstPoint.p, firstPoint.q, px, py) + Point.distance(px, py, tip.p, tip.q);
 					
 					double cost = (1 - alpha) * wiringCost + alpha * conductionDelay;
 					
 					if (cost < minCost) {
 						minCost = cost;
-						bestPoint = sampled;
+						bestPoint = new Point(px, py);
 					}
 				}
 			}
