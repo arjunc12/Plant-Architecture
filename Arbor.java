@@ -10,7 +10,7 @@ import java.util.*;
 //write the code to initialize an arbor from the arbor file
 //write the code to (for a given value of alpha) find the best place to connect a lateral root tie to the main root
 
-//instructions2:
+//instructions2 (complete):
 //alpha value is not supposed to be randomly generated
 //store all results for alpha values 0.0-1.0 to 2 decimal places. 
 //create a file with the names of the arbors in data/results/hetereogeneous_pareto_fronts
