@@ -3,7 +3,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
-//instructions:
+//instructions (complete):
 //create a test data set based on the chalk board picture
 //use this data set to find the best connection point for alpha 0.0, 0.5, and 1.0
 

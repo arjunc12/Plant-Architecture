@@ -3,7 +3,7 @@ import java.io.*;
 import java.util.*;
 
 //note to self: alpha of 0 favors the shortest direct connection to main root
-//				alpha of 1 favors connections points closer to the closestMainPoint to reduce conduction delay
+//				alpha of 1 favors connections points closer to the firstPoint to reduce conduction delay
 //				alpha 0.5 balances both 
 
 //finds best place to connect a lateral root the the main root
