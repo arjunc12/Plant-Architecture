@@ -1,5 +1,4 @@
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
@@ -17,17 +16,11 @@ public class ArborTest {
     	File folder = new File("data/architecture-data/arbor-reconstructions");
     	File[] files = folder.listFiles();
     	
-    	//prints each file name
-    	for (File file : files) {
-    		System.out.println(file.getName());
-    	}
-    	
     	//gathers user input
     	Scanner scanner = new Scanner(System.in);
     	System.out.println("Enter the name of the file you want to use: ");
     	String fileName = scanner.nextLine().trim();
     	
-    	//holds user selected file
     	File selectedFile = new File(folder, fileName);
     	
     	//accounting for typing errors
@@ -39,8 +32,10 @@ public class ArborTest {
 		System.out.println("Running Arbor Build Using File: " + fileName + ". . .");
 		Arbor arbor = ArborBuild.buildArborFile(selectedFile.getPath());
     	
-    	//initializing alpha values
-    	double[] alphaValues = {0.0, 0.5, 1.0};
+    	testArbor(arbor, new double[] {0.0, 0.5, 1.0});
+    }
+    
+    private static void testArbor(Arbor arbor, double[] alphaValues) {
     	for (double alpha : alphaValues) {
     		System.out.println("alpha value: " + alpha);
     		//stores best connection for each lat root
