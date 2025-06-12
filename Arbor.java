@@ -23,72 +23,7 @@ public class Arbor {
     private List<Point> mainRoot;
     private Map<String, List<Point>> lateralRoots;
     
-    //builds arbor from a file
-    public static void main(String[] args) throws IOException {
-    	
-    	//objects that tell program where to find arbor files
-    	File folder = new File("data/architecture-data/arbor-reconstructions");
-    	File[] files = folder.listFiles();
-
-    	//preparing result output 
-    	File resultDir = new File("data/results/hetereogeneous_pareto_fronts");
-    	resultDir.mkdirs();
-    	
-    	for (File file : files) {
-    		//skipping potential directories or non-files
-    		if (!file.isFile()) continue;
-    		
-    		System.out.println("Processing file: " + file.getName());
-    		
-    		Arbor arbor = ArborBuild.buildArborFile(file.getPath());
-    		if (arbor.getMainRoot().isEmpty()) {
-    			System.out.println("Skipping " + file.getName() + ": no main root data");
-    			continue;
-    		}
-    		
-    		//creating output file
-    		File outFile = new File(resultDir, file.getName());
-    		
-    		try (FileWriter writer = new FileWriter(outFile)) {
-    			writer.write("alpha, wiring_cost, conduction_delay\n");
-    			
-    			Point firstPoint = arbor.getMainRoot().get(0);
-    			
-    			//looping alpha from 0.1 to 1.0 by 0.01
-    			for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
-    				//ensures num stability
-    				alpha = Math.round(alpha * 100.0) / 100.0;
-    		
-    				//stores best connection for each lat root
-    				Map<String, Point> connections = BestArbor.findBestConnection(arbor, alpha);
-    		
-    				double totalWiring = 0.0;
-    				double totalDelay = 0.0;
-    		
-    				for (String ID : connections.keySet()) {
-    					List<Point> latPoints = arbor.getLateralRoots().get(ID);
-    					Point tip = latPoints.get(latPoints.size() - 1);
-    					Point conn = connections.get(ID);
-    			
-    					double wiringCost = tip.distanceTo(conn);
-    					double conductionDelay = firstPoint.distanceTo(conn) + conn.distanceTo(tip);
-    			
-    					totalWiring += wiringCost;
-    					totalDelay += conductionDelay;
-    				}
-    				
-    				//rounding to 2 decimal places
-    				String alphaStr = String.format("%.2f", alpha);
-    				String wiringStr = String.format("%.4f", totalWiring);
-    				String delayStr = String.format("%.4f", totalDelay);
-    		
-    				writer.write(alphaStr + ", " + wiringStr + ", " + delayStr + "\n");
-    			}
-    		}
-    		System.out.println("Results written to: " + outFile.getPath());
-    	}
-    }
-    
+       
     //constructor
     public Arbor() {
         mainRoot = new ArrayList<>();
@@ -117,5 +52,76 @@ public class Arbor {
 	//accesses lateral roots
     public Map<String, List<Point>> getLateralRoots() {
         return lateralRoots;
+    }
+    
+    //builds arbor from a file
+    public static void main(String[] args) throws IOException {
+    	
+    	//object that tells program where to find arbor files
+    	File inputDir = new File("data/architecture-data/arbor-reconstructions");
+    	//preparing result output 
+    	File outputDir = new File("data/results/hetereogeneous_pareto_fronts");
+    	outputDir.mkdirs();
+    	
+    	File[] files = inputDir.listFiles();
+    	
+    	for (File file : files) {
+    		//skipping potential directories or non-files
+    		if (!file.isFile()) {
+    			continue;
+    		}
+    		
+    		System.out.println("Processing file: " + file.getName());
+    		
+    		Arbor arbor = ArborBuild.buildArborFile(file.getPath());
+    		if (arbor.getMainRoot().isEmpty()) {
+    			System.out.println("Skipping " + file.getName() + ": no main root data");
+    			continue;
+    		}
+    		
+    		writeResults(file.getName(), arbor, outputDir);
+    	}
+    }
+    
+    private static void writeResults(String fileName, Arbor arbor, File outputDir) throws IOException {
+    	//creating output file
+    	File outFile = new File(outputDir, fileName);
+    	try (FileWriter writer = new FileWriter(outFile)) {
+    		writer.write("alpha, wiring_cost, conduction_delay\n");
+    			
+    		Point firstPoint = arbor.getMainRoot().get(0);
+    			
+    		//looping alpha from 0.1 to 1.0 by 0.01
+    		for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
+    			//ensures num stability
+    			alpha = Math.round(alpha * 100.0) / 100.0;
+		
+    			//stores best connection for each lat root
+    			Map<String, Point> connections = BestArbor.findBestConnection(arbor, alpha);
+    	
+				double totalWiring = 0.0;
+    			double totalDelay = 0.0;
+    	
+    			for (String ID : connections.keySet()) {
+    				List<Point> latPoints = arbor.getLateralRoots().get(ID);
+    				Point tip = latPoints.get(latPoints.size() - 1);
+    				Point conn = connections.get(ID);
+    			
+    				double wiringCost = tip.distanceTo(conn);
+    				double conductionDelay = firstPoint.distanceTo(conn) + conn.distanceTo(tip);
+    			
+    				totalWiring += wiringCost;
+    				totalDelay += conductionDelay;
+    			}
+    			
+				//rounding to 2 decimal places
+    			String alphaStr = String.format("%.2f", alpha);
+    			String wiringStr = String.format("%.4f", totalWiring);
+    			String delayStr = String.format("%.4f", totalDelay);
+    	
+				writer.write(alphaStr + ", " + wiringStr + ", " + delayStr + "\n");
+    		}
+    	}
+    	System.out.println("Results written to: " + outFile.getPath());
     }
 }
