@@ -108,7 +108,7 @@ public class Arbor {
     				Point conn = connections.get(ID);
     			
     				double wiringCost = tip.distanceTo(conn);
-    				double conductionDelay = firstPoint.distanceTo(conn) + conn.distanceTo(tip);
+    				double conductionDelay = BestArbor.getPathDistanceTo(arbor.getMainRoot(), conn) + wiringCost;
     			
     				totalWiring += wiringCost;
     				totalDelay += conductionDelay;
