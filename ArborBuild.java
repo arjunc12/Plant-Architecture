@@ -13,8 +13,19 @@ public class ArborBuild {
 			
 			while ((line = reader.readLine()) != null) {
 				//encountering lateral root ID
-				if (line.contains("-")) {
-					currentID = line;
+				line = line.trim();
+				if(line.isEmpty()) {
+					continue;
+				}
+				
+				//switching to main root 
+				if (line.toLowerCase().contains("main root")) {
+					currentID = null;
+				}
+				
+				else if (line.contains("-") && line.split(",").length <= 1) {
+					currentID = line.replace(",", "").trim();
+					System.out.println("Switched to lateral root: " + currentID);
 				}
 				else {
 					String[] tokens = line.split(",");
@@ -27,9 +38,11 @@ public class ArborBuild {
         				//adding lat root
         				if (currentID != null) {
         					arbor.addLatRoots(currentID, point);
+        					System.out.println("Added to " + currentID + ": " + point);
         				}
         				else {
         					arbor.addMainRoot(point);
+        					System.out.println("Added to main root: " + point);
         				}
 					}
 				}
