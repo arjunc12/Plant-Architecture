@@ -1,14 +1,7 @@
-<<<<<<< HEAD
 import java.io.File;
 import java.io.*;
 import java.util.*;
 
-=======
-import java.io.*;
-import java.util.*;
-
-
->>>>>>> e88ade2a0b0da0fa5f316acedb66793131773e69
 public class pointDistance {
     public static void main(String[] args) throws IOException {
         //object that tells program where to find arbor files
@@ -36,9 +29,7 @@ public class pointDistance {
                 Map<String, Point> connections = bestArbor.findBestConnection(arbor, alpha);
                 Map<String, ArrayList<Point>> points = getPoints(file);
 
-<<<<<<< HEAD
 	private static void testBestConnections(Arbor arbor, double[] alphaValues) {
-=======
                 for(Point bestConnection : connections.values()) {
                     List<Point> latPoints = arbor.getLateralRoots().get(ID);
                     Point tip = latPoints.get(latPoints.size() - 1);
