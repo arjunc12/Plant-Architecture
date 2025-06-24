@@ -34,7 +34,7 @@ public class pointDistance {
     		}
             for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
                 Map<String, Point> connections = bestArbor.findBestConnection(arbor, alpha);
-                Map<String, ArrayList<Point> points = getPoints(file);
+                Map<String, ArrayList<Point>> points = getPoints(file);
 
 <<<<<<< HEAD
 	private static void testBestConnections(Arbor arbor, double[] alphaValues) {
@@ -156,7 +156,6 @@ public class pointDistance {
         return coeffs
     }
     private static void testBestConnections(Arbor arbor, double[] alphaValues) {
->>>>>>> e88ade2a0b0da0fa5f316acedb66793131773e69
         for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
             //ensures num stability
             alpha = Math.round(alpha * 100.0) / 100.0;
