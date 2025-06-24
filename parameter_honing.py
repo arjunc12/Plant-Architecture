@@ -15,7 +15,16 @@ import os
 import pickle
 import argparse
 import pandas as pd
+import warnings
 
+   # Ignore all deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+   
+def is_between(a, x, b):
+        return a < x < b or b < x < a
+        
 ## returns the coefficients of the quadratic equation involving gravity
 def calc_coeff(G, x, y, p, q):
     b = ((q - y - G*(p*p - x*x))/(p-x))
@@ -322,10 +331,10 @@ def get_closest_and_valid_segments(lat_tips, line_segments):
         # Collect valid segments (those before the closest one)
         valid = []
         for num, seg in line_segments.items():
-            if num <= best_seg_num:
+            if seg[1][1] <= best_seg[1][1]:
                 valid.append(seg)
             else:
-                break
+                continue
         all_valid_segs.append(valid)
 
     return all_closest, all_valid_segs
@@ -479,6 +488,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                     wiring = curve
                     delay = (curve + to_root)
                     result = (cost(min_root), wiring, delay, best_t, best_x, best_y, p, q)
+                    curr_dist += length_func(x0, y0, x1, y1)
                 else: 
                     # No root in [0,1], so check endpoints
                     cost_0 = cost(0)
@@ -497,6 +507,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                     wiring = curve
                     delay = (curve + to_root)
                     result = (min(cost_0, cost_1), wiring, delay, best_t, best_x, best_y, p, q)
+                    curr_dist += length_func(x0, y0, x1, y1)
                     
                 results.append(result)
         if results:
@@ -534,7 +545,7 @@ def calc_pareto_front(fname, amin=0, amax=1, astep=0.05, Gmin=-2, Gmax=2, Gstep=
             G_opt = nx.Graph(Gravity = g)
             line_segs = get_line_segments(G)
             graph_main_root(G_opt, line_segs)
-            final = arbor_best_cost(fname, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
+            final = modified_arbor_best_cost(fname, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
             graph_opt_lines(G_opt, final)
             point_dist = 0
             #print("Calculating distances for alpha: " + str(alpha) + " and G = " + str(g))
@@ -586,7 +597,7 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
                 G_opt = nx.Graph(Gravity = g)
                 line_segs = get_line_segments(G)
                 graph_main_root(G_opt, line_segs)
-                final = arbor_best_cost(arbor, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
+                final = modified_arbor_best_cost(arbor, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
                 graph_opt_lines(G_opt, final)
                 point_dist = 0
                 #print("Calculating distances for alpha: " + str(alpha) + " and G = " + str(g))
@@ -661,6 +672,11 @@ def main():
     parser.add_argument('--Gmax', default=2, type=float)
     parser.add_argument('--Gstep', default=0.2, type=float)
 
+    parser.add_argument('--smart', action = 'store_true')
+    parser.add_argument('--smartNumPoints', default = 1, type=float)
+    parser.add_argument('--smartStep', default = 0.05, type=float)
+    parser.add_argument('--smartGridSize', default = 1, type=float)
+
     args = parser.parse_args()
     amin = round(args.amin, 2)
     amax = round(args.amax, 2)
@@ -669,55 +685,75 @@ def main():
     Gmin = round(args.Gmin, 2)
     Gmax = round(args.Gmax, 2)
     Gstep = round(args.Gstep, 2)
+    smart = args.smart
+    smartNumPoints = int(args.smartNumPoints)
+    smartStep = args.smartStep
+    smartGridSize = int(args.smartGridSize)
 
     #fname = '%s/plant_gravitropism.csv' % ARCHITECTURE_DIR
     #first_time = not os.path.exists(fname)
     #G_alpha_file = '%s/G_alpha_combinations.pkl' % RESULTS_DIR
-    path = '%s/gravitropism_pareto_fronts' % RESULTS_DIR
+    path = '%s/new_gravitropism_pareto_fronts' % RESULTS_DIR
     last_day_files = get_last_day_files()
     if not os.path.exists(path):
         os.mkdir(path)
     #processed_arbors = load_processed_arbors()
     #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
-    for key, arbor in last_day_files.items():
+    if smart:
+        for arbor in os.listdir('%s/new_gravitropism_pareto_fronts' % RESULTS_DIR):
+            skip = set()
+            path = '%s/new_gravitropism_pareto_fronts' % RESULTS_DIR
+            fname = '%s/%s' % (path, arbor)
+            df = pd.read_csv(fname)  # Update this line to match your filename
+            G = rar.read_arbor_full(arbor)
+            line_segs = get_line_segments(G)
 
-        #if arbor in processed_arbors:
-           #print('%s already processed' % (arbor))
-           #continue
+            df_optimal = df[df['arbor type'] == 'optimal']
 
-        #clear_pickle_file(pickle_file)
-        fname = '%s/%s' % (path, arbor)
-        write_new_pareto_front_values(fname, arbor, amin=amin, amax=amax, astep=astep, Gmin=Gmin, Gmax=Gmax, Gstep=Gstep)
+            best_points = df_optimal.nsmallest(smartNumPoints, ' point distance')[[' G', ' alpha']]
+            print(best_points)
+            def generate_local_grid(G_center, alpha_center, window=smartStep, n=smartGridSize):
+                G_vals = np.linspace(float(G_center) - window, float(G_center) + window, n)
+                alpha_vals = np.linspace(float(alpha_center) - window, float(alpha_center) + window, n)
+                grid = [(round(G, 4), round(alpha, 4)) 
+                        for G in G_vals 
+                        for alpha in alpha_vals if 0 <= alpha <= 1]
+                return grid
 
-def load_processed_arbors():
-    filename = '%s/processed_arbors.pkl' % RESULTS_DIR
-    if os.path.exists(filename):
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
-    else:
-        return set()
+            refined_params = set()
+            
+            for _, row in best_points.iterrows():
+                refined_params.update(generate_local_grid(row[' G'], row[' alpha']))
+            print(refined_params)
+            for g, alpha in refined_params:
+                G_skip = df_optimal[' G'].astype(float)
+                alpha_skip = df_optimal[' alpha'].astype(float)
+                skip = set(zip(G_skip, alpha_skip))
+                if (g, alpha) in skip:
+                    print("repeated G and alpha combination")
+                    continue
+                wiring = 0
+                delay = 0
+                point_dist = 0
 
-def save_processed_arbors(processed_arbors):
-    filename = '%s/processed_arbors.pkl' % RESULTS_DIR
-    with open(filename, 'wb') as f:
-        pickle.dump(processed_arbors, f)
+                G_opt = nx.Graph(Gravity = g)
+                results = modified_arbor_best_cost(arbor, alpha, g, 0)
+                for result in results:
+                    wiring += result[1]
+                    delay += result[2]
+                    main_root = result[4], result[5]
+                    lateral_tip = result[6], result[7]
+                    point_dist += modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
+                wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
+                with open(fname, 'a') as f:
+                    f.write('%s, %0.2f, %0.2f, %f, %f, %f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
+                    print("arbor: " + arbor + " was appended to.")
 
-def load_written_combinations():
-    filename = '%s/G_alpha_combinations.pkl' % RESULTS_DIR
-    if os.path.exists(filename):
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
-    else:
-        return set()
+    else: 
+        for key, arbor in last_day_files.items():            
+            fname = '%s/%s' % (path, arbor)
+            write_new_pareto_front_values(fname, arbor, amin=amin, amax=amax, astep=astep, Gmin=Gmin, Gmax=Gmax, Gstep=Gstep)
 
-def save_written_combinations(written_combinations):
-    filename = '%s/G_alpha_combinations.pkl' % RESULTS_DIR
-    with open(filename, 'wb') as f:
-        pickle.dump(written_combinations, f)
-
-def clear_pickle_file(file_path):
-    if os.path.exists(file_path):
-        os.remove(file_path)
 
 def get_last_day_files():
     files_by_genotype = {}
