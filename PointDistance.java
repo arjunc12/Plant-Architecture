@@ -10,7 +10,22 @@ public class PointDistance {
     	File outputDir = new File("data/results/hetereogeneous_pareto_fronts");
     	outputDir.mkdirs();
     	
-    	File[] files = inputDir.listFiles();
+    	File[] files;
+    	
+    	if (args.length > 0) {
+    		//run on a specific file
+    		File specifiedFile = new File(args[0]);
+    		if (!specifiedFile.exists() | !specifiedFile.isFile()) {
+    			System.err.println("Specified file does not exist or is not a file: " + args[0]);
+    			return;
+    		}
+    		files = new File[1];
+    		files[0] = specifiedFile;
+    	}
+    	else {
+    		//run on all files in the input dir
+    		files = inputDir.listFiles();
+    	}
     	
     	for (File file : files) {
     		//skipping potential directories or non-files
@@ -26,7 +41,7 @@ public class PointDistance {
     		
             for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
             	alpha = Math.round(alpha * 100.0) / 100.0;
-            	System.out.println("---Alpha = " + alpha + "---");
+            	System.out.println("\n---Alpha = " + alpha + "---\n");
             	
                 Map<String, Point> bestConnections = BestArbor.findBestConnection(arbor, alpha);
                 
@@ -50,7 +65,7 @@ public class PointDistance {
                 	//root mean square error
                 	//low rmse = close to actual, high = far from actual
                 	double rmse = Math.sqrt(totalError / latPoints.size());
-                	System.out.printf("Lat Root: " + ID + " | RMSE: " + String.format("%.4f", rmse));
+                	System.out.printf("Lat Root: %s | RMSE: %.4f%n", ID, rmse);
                 }
             }
         }
