@@ -90,3 +90,4 @@ public class PointDistance {
         coeffs[1] = b;
         return coeffs;
     }
+}
