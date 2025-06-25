@@ -61,7 +61,7 @@ public class pointDistance {
         
         // Arbor arbor = new Arbor();
         Map<String, ArrayList<Point>> map = new HashMap<>();
-        boolean firstTime = true
+        boolean firstTime = true;
         ArrayList<Point> points 
 		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
 			String line;
@@ -81,7 +81,7 @@ public class pointDistance {
 				else if (line.contains("-") && line.split(",").length <= 1) {
                     if(firstTime == true) {
                         ArrayList<Point> points;
-                        firstTime == false
+                        firstTime = false;
                     }
                     else {
                         map.put(currentID, points);
@@ -97,11 +97,11 @@ public class pointDistance {
 						double p = Double.parseDouble(tokens[0].trim());
         				double q = Double.parseDouble(tokens[1].trim());
         				Point point = new Point(p, q);
-            			points.add(point)
+            			points.add(point);
         				//adding lat root
         				if (currentID != null) {
         					///arbor.addLatRoots(currentID, point);
-                            points.put(currentID, point
+                            map.put(currentID, new ArrayList<>(points));
         					System.out.println("Added to " + currentID + ": " + point);
         				}
         				///else {
@@ -116,7 +116,7 @@ public class pointDistance {
 	}
 
     private static ArrayList<Double> fillLateralRoot(Double[] coeffs, List<Point> points) {
-        ArrayList<Double> optimal_y = new ArrayList<Double>;
+        ArrayList<Double> optimal_y = new ArrayList<Double>();
         double m = coeffs[0];
         double y_int = coeffs[1];
         
@@ -125,11 +125,11 @@ public class pointDistance {
             y_value = (m * point.p + y_int);
             optimal_y.add(y_value);
 
-        return optimal_y
+        return optimal_y;
     }
     
     private static double[] getCoefficients(Point tip, Point connection) {
-        double[] coeffs = new Array[2];
+        double[] coeffs = new double[2];
         double m = 0.0;
         double y_int = 0.0;
         
@@ -144,7 +144,7 @@ public class pointDistance {
 
         coeffs[0] = m;
         coeffs[1] = y_int;
-        return coeffs
+        return coeffs;
     }
     private static void testBestConnections(Arbor arbor, double[] alphaValues) {
         for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
