@@ -28,7 +28,7 @@ public class PointDistance {
             	alpha = Math.round(alpha * 100.0) / 100.0;
             	System.out.println("---Alpha = " + alpha + "---");
             	
-                Map<String, Point> bestConnections = bestArbor.findBestConnection(arbor, alpha);
+                Map<String, Point> bestConnections = BestArbor.findBestConnection(arbor, alpha);
                 
                 for (String ID : bestConnections.keySet()) {
                 	List<Point> latPoints = arbor.getLateralRoots().get(ID);
@@ -50,7 +50,7 @@ public class PointDistance {
                 	//root mean square error
                 	//low rmse = close to actual, high = far from actual
                 	double rmse = Math.sqrt(totalError / latPoints.size());
-                	System.out.println("Lat Root: " + ID + " | RMSE: " + String.format("%.4f", rmse));
+                	System.out.printf("Lat Root: " + ID + " | RMSE: " + String.format("%.4f", rmse));
                 }
             }
         }
@@ -62,7 +62,7 @@ public class PointDistance {
         double b = coeffs[1];
 
         for(Point point : points) {
-            double y = (m * pt.p + b);
+            double y = (m * point.p + b);
             optY.add(y);
 		}
         return optY;
