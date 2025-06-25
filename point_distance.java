@@ -2,7 +2,7 @@ import java.io.File;
 import java.io.*;
 import java.util.*;
 
-public class pointDistance {
+public class PointDistance {
     public static void main(String[] args) throws IOException {
         //object that tells program where to find arbor files
     	File inputDir = new File("data/architecture-data/arbor-reconstructions");
@@ -18,8 +18,6 @@ public class pointDistance {
     			continue;
     		}
     		
-    		// System.out.println("Processing file: " + file.getName());
-    		
     		Arbor arbor = ArborBuild.buildArborFile(file.getPath());
     		if (arbor.getMainRoot().isEmpty()) {
     			System.out.println("Skipping " + file.getName() + ": no main root data");
@@ -27,153 +25,68 @@ public class pointDistance {
     		}
     		
             for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
-                Map<String, Point> connections = bestArbor.findBestConnection(arbor, alpha);
-                Map<String, ArrayList<Point>> points = getPoints(file);
+            	alpha = Math.round(alpha * 100.0) / 100.0;
+            	System.out.println("---Alpha = " + alpha + "---");
+            	
+                Map<String, Point> bestConnections = bestArbor.findBestConnection(arbor, alpha);
+                
+                for (String ID : bestConnections.keySet()) {
+                	List<Point> latPoints = arbor.getLateralRoots().get(ID);
+                	
+                	Point tip = latPoints.get(latPoints.size() - 1);
+                	Point connection = bestConnections.get(ID);
+                	
+                	double[] coeffs = getCoefficients(tip, connection);
+                	ArrayList<Double> predictedY = fillLateralRoot(coeffs, latPoints);
+                	
+                	double totalError = 0.0;
+                	for (int i = 0; i < latPoints.size(); i++) {
+                		double actualY = latPoints.get(i).q;
+                		double bestY = predictedY.get(i);
+                		double diff = bestY - actualY;
+                		totalError += diff * diff;
+                	}
+                	
+                	//root mean square error
+                	//low rmse = close to actual, high = far from actual
+                	double rmse = Math.sqrt(totalError / latPoints.size());
+                	System.out.println("Lat Root: " + ID + " | RMSE: " + String.format("%.4f", rmse));
+                }
             }
         }
     }
 
-	private static void testBestConnections(Arbor arbor, double[] alphaValues) {
-        for(Point bestConnection : connections.values()) {
-            List<Point> latPoints = arbor.getLateralRoots().get(ID);
-            Point tip = latPoints.get(latPoints.size() - 1);
-
-            double[] coefficients = getCoefficients(tip, bestConnection);
-            ArrayList<Double> optimal_y = fillLateralRoot(cofficients, latPoints);
-
-            int i = 0;
-            double distance = 0.0;
-                    
-            for(double opt_y : optimal_y) {
-            	double diff = 0.0;
-            	diff = (opt_y - latPoints[i].q);
-            	distance += (diff * diff);
-            	i++;   
-            }
-    	}
-    }
-    public static Map<String, ArrayList<Point>> getPoints (String filename) throws IOException {
-        
-        // Arbor arbor = new Arbor();
-        Map<String, ArrayList<Point>> map = new HashMap<>();
-        boolean firstTime = true;
-        ArrayList<Point> points = new ArrayList<>();
-		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-			String line;
-			String currentID = null;
-			while ((line = reader.readLine()) != null) {
-				//encountering lateral root ID
-				line = line.trim();
-				if(line.isEmpty()) {
-					continue;
-				}
-				
-				//switching to main root 
-				if (line.toLowerCase().contains("main root")) {
-					currentID = null;
-				}
-				
-				else if (line.contains("-") && line.split(",").length <= 1) {
-                    if(firstTime == true) {
-                        ArrayList<Point> points;
-                        firstTime = false;
-                    }
-                    else {
-                        map.put(currentID, points);
-                        points.clear();
-                        
-					currentID = line.replace(",", "").trim();
-					System.out.println("Switched to lateral root: " + currentID);
-					}
-				}
-				else {
-					String[] tokens = line.split(",");
-					//checking that p/q are present and initializing them
-					if (tokens.length == 2) {
-						double p = Double.parseDouble(tokens[0].trim());
-        				double q = Double.parseDouble(tokens[1].trim());
-        				Point point = new Point(p, q);
-            			points.add(point);
-            			
-        				//adding lat root
-        				if (currentID != null) {
-        					///arbor.addLatRoots(currentID, point);
-                            map.put(currentID, new ArrayList<>(points));
-        					System.out.println("Added to " + currentID + ": " + point);
-        			
-        				}
-					}
-				}
-			}
-		}
-		return map;	
-	}
-
-    private static ArrayList<Double> fillLateralRoot(Double[] coeffs, List<Point> points) {
-        ArrayList<Double> optimal_y = new ArrayList<Double>();
+    private static ArrayList<Double> fillLateralRoot(double[] coeffs, List<Point> points) {
+        ArrayList<Double> optY = new ArrayList<>();
         double m = coeffs[0];
-        double y_int = coeffs[1];
-        
-        double y_value = 0.0;
+        double b = coeffs[1];
+
         for(Point point : points) {
-            y_value = (m * point.p + y_int);
-            optimal_y.add(y_value);
+            double y = (m * pt.p + b);
+            optY.add(y);
 		}
-        return optimal_y;
+        return optY;
     }
     
     private static double[] getCoefficients(Point tip, Point connection) {
         double[] coeffs = new double[2];
-        double m = 0.0;
-        double y_int = 0.0;
-        
         double x1 = tip.p;
         double y1 = tip.q;
 
         double x2 = connection.p;
         double y2 = connection.q;
-
-        m = ((y2 - y1) / (x2 - x1));
-        y_int = (y1 - m * x1);
+        
+        double m = 0.0;
+        if (x1 == x2) {
+        	m = 0;
+        }
+        else {
+        	m = (y2 - y1) / (x2 - x1);
+        }
+        
+        double b = y1 - m * x1;
 
         coeffs[0] = m;
-        coeffs[1] = y_int;
+        coeffs[1] = b;
         return coeffs;
     }
-    
-    private static void testBestConnections(Arbor arbor, double[] alphaValues) {
-        for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
-            //ensures num stability
-            alpha = Math.round(alpha * 100.0) / 100.0;
-            System.out.println("alpha value: " + alpha);
-            
-            //stores best connection for each lat root
-            Map<String, Point> connections = BestArbor.findBestConnection(arbor, alpha);
-            
-            double totalWiring = 0.0;
-            double totalDelay = 0.0;
-            
-            for (String ID : connections.keySet()) {
-            	List<Point> latPoints = arbor.getLateralRoots().get(ID);
-            	Point tip = latPoints.get(latPoints.size() - 1);
-            	Point conn = connections.get(ID);
-            
-            	double wiringCost = tip.distanceTo(conn);
-            	double conductionDelay = BestArbor.getPathDistanceTo(arbor.getMainRoot(), conn) + wiringCost;
-            
-            	totalWiring += wiringCost;
-            	totalDelay += conductionDelay;
-            
-            	System.out.println("Lateral Root: " + ID);
-            	System.out.println("		Best connection: (" + String.format("%.4f", conn.p) + ", " + String.format("%.4f", conn.q) + ")");
-            	System.out.println("		Wiring cost: " + String.format("%.4f", wiringCost));
-            	System.out.println("		Conduction delay: " + String.format("%.4f", conductionDelay));
-            }
-            
-        	//rounding to 2 decimal places
-        	String alphaStr = String.format("%.2f", alpha);
-        	String wiringStr = String.format("%.4f", totalWiring);
-        	String delayStr = String.format("%.4f", totalDelay);
-        }
-    }
-}
