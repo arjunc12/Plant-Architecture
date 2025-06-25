@@ -25,44 +25,39 @@ public class pointDistance {
     			System.out.println("Skipping " + file.getName() + ": no main root data");
     			continue;
     		}
+    		
             for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
                 Map<String, Point> connections = bestArbor.findBestConnection(arbor, alpha);
                 Map<String, ArrayList<Point>> points = getPoints(file);
+            }
+        }
+    }
 
 	private static void testBestConnections(Arbor arbor, double[] alphaValues) {
-                for(Point bestConnection : connections.values()) {
-                    List<Point> latPoints = arbor.getLateralRoots().get(ID);
-                    Point tip = latPoints.get(latPoints.size() - 1);
+        for(Point bestConnection : connections.values()) {
+            List<Point> latPoints = arbor.getLateralRoots().get(ID);
+            Point tip = latPoints.get(latPoints.size() - 1);
 
-                    double[] coefficients = getCoefficients(tip, bestConnection);
-                    ArrayList<Double> optimal_y = fillLateralRoot(cofficients, latPoints);
+            double[] coefficients = getCoefficients(tip, bestConnection);
+            ArrayList<Double> optimal_y = fillLateralRoot(cofficients, latPoints);
 
-                    int i = 0;
-                    double distance = 0.0;
-                    for(double opt_y : optimal_y) {
-                        double diff = 0.0;
-                        diff = (opt_y - latPoints[i].q);
-                        distance += (diff * diff);
-                        i++;
-                    }
-
+            int i = 0;
+            double distance = 0.0;
                     
-
-                    
-                ///for(ArrayList<Point> bestPoints : points.values()) {
-                  //  Point tip = points.size - 1;
-                    
-                
+            for(double opt_y : optimal_y) {
+            	double diff = 0.0;
+            	diff = (opt_y - latPoints[i].q);
+            	distance += (diff * diff);
+            	i++;   
             }
-    		// writeResults(file.getName(), arbor, outputDir);
     	}
     }
-    public static Map<String, ArrayList<Point> getPoints (String filename) throws IOException {
+    public static Map<String, ArrayList<Point>> getPoints (String filename) throws IOException {
         
         // Arbor arbor = new Arbor();
         Map<String, ArrayList<Point>> map = new HashMap<>();
         boolean firstTime = true;
-        ArrayList<Point> points 
+        ArrayList<Point> points = new ArrayList<>();
 		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
 			String line;
 			String currentID = null;
@@ -89,6 +84,7 @@ public class pointDistance {
                         
 					currentID = line.replace(",", "").trim();
 					System.out.println("Switched to lateral root: " + currentID);
+					}
 				}
 				else {
 					String[] tokens = line.split(",");
@@ -98,15 +94,13 @@ public class pointDistance {
         				double q = Double.parseDouble(tokens[1].trim());
         				Point point = new Point(p, q);
             			points.add(point);
+            			
         				//adding lat root
         				if (currentID != null) {
         					///arbor.addLatRoots(currentID, point);
                             map.put(currentID, new ArrayList<>(points));
         					System.out.println("Added to " + currentID + ": " + point);
-        				}
-        				///else {
-        				///	arbor.addMainRoot(point);
-        				///	System.out.println("Added to main root: " + point);
+        			
         				}
 					}
 				}
@@ -124,7 +118,7 @@ public class pointDistance {
         for(Point point : points) {
             y_value = (m * point.p + y_int);
             optimal_y.add(y_value);
-
+		}
         return optimal_y;
     }
     
@@ -146,6 +140,7 @@ public class pointDistance {
         coeffs[1] = y_int;
         return coeffs;
     }
+    
     private static void testBestConnections(Arbor arbor, double[] alphaValues) {
         for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
             //ensures num stability
