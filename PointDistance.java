@@ -44,42 +44,79 @@ public class PointDistance {
     			continue;
     		}
     		
-    		//getting best connections for alphas 0.0 - 1.0
-            for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
-            	alpha = Math.round(alpha * 100.0) / 100.0;
-            	System.out.println("\n---Alpha = " + alpha + "---\n");
+    		String outputFileName = outputDir + "/" + file.getName().replace(".txt", ".csv");
+    		try (FileWriter writer = new FileWriter(outputFileName)) {
+    			writer.write("alpha,wiring_cost,conduction_delay,point_distance\n");
+    			
+    			double bestAlpha = -1;
+    			double minRMSE = Double.MAX_VALUE;
+    			double bestWiringCost = 0.0;
+    			double bestConductionDelay = 0.0;
+    			
+    			//getting best connections for alphas 0.0 - 1.0
+            	for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
+            		alpha = Math.round(alpha * 100.0) / 100.0;
+            		System.out.println("\n---Alpha = " + alpha + "---\n");
             	
-            	//finding best connection points for given alpha
-                Map<String, Point> bestConnections = BestArbor.findBestConnection(arbor, alpha);
+            		//finding best connection points for given alpha
+                	Map<String, Point> bestConnections = BestArbor.findBestConnection(arbor, alpha);
                 
-                //going through lat roots
-                for (String ID : bestConnections.keySet()) {
-                	List<Point> latPoints = arbor.getLateralRoots().get(ID);
+                	double totalRMSE = 0.0;
+                	int rootCount = 0;
                 	
-                	//getting tip & best connection point
-                	Point tip = latPoints.get(latPoints.size() - 1);
-                	Point connection = bestConnections.get(ID);
+                	//going through lat roots
+                	for (String ID : bestConnections.keySet()) {
+                		List<Point> latPoints = arbor.getLateralRoots().get(ID);
                 	
-                	//computing line coefficients
-                	double[] coeffs = getCoefficients(tip, connection);
-                	//generating predicted Y values along the line
-                	ArrayList<Double> predictedY = fillLateralRoot(coeffs, latPoints);
+                		//getting tip & best connection point
+                		Point tip = latPoints.get(latPoints.size() - 1);
+                		Point connection = bestConnections.get(ID);
                 	
-                	//compute rmse
-                	double totalError = 0.0;
-                	for (int i = 0; i < latPoints.size(); i++) {
-                		double actualY = latPoints.get(i).q;
-                		double bestY = predictedY.get(i);
-                		double diff = bestY - actualY;
-                		totalError += diff * diff;
+                		//computing line coefficients
+                		double[] coeffs = getCoefficients(tip, connection);
+                		//generating predicted Y values along the line
+                		ArrayList<Double> predictedY = fillLateralRoot(coeffs, latPoints);
+                	
+                		//compute rmse
+                		double totalError = 0.0;
+                		for (int i = 0; i < latPoints.size(); i++) {
+                			double actualY = latPoints.get(i).q;
+                			double bestY = predictedY.get(i);
+                			double diff = bestY - actualY;
+                			totalError += diff * diff;
+                		}
                 	}
                 	
                 	//root mean square error
                 	//low rmse = close to actual, high = far from actual
                 	double rmse = Math.sqrt(totalError / latPoints.size());
+                	totalRMSE += rmse;
+                	rootCount++;
                 	System.out.printf("Lat Root: %s | RMSE: %.4f%n", ID, rmse);
                 }
+                
+                double avgRMSE;
+                if (rootCount > 0) {
+                	avgRMSE = totalRMSE / rootCount;
+                }
+                else {
+                	avgRMSE = 0.0;
+                }
+                
+                double wiringCost = BestArbor.computeWiringCost(arbor, bestConnections);
+                double conductionDelay = BestArbor.computeConductionDelay(arbor, bestConnections);
+                
+                writer.write(String.format(Locale.US, "%.2f,%.4f,%.4f,%.4f\n", alpha, wiringCost, conductionDelay, avgRMSE));
+                
+                if (avgRMSE < minRMSE) {
+                	minRMSE = avgRMSE;
+                	bestAlpha = alpha;
+                	bestWiringCost = wiringCost;
+                	bestConductionDelay = conductionDelay;
+                }
             }
+            
+            System.out.printf("Best alpha for %s: %.2f (RMSE=%.4f)\n", file.getName(), bestAlpha, minRMSE);
         }
     }
 
