@@ -114,9 +114,8 @@ public class PointDistance {
                 	bestWiringCost = wiringCost;
                 	bestConductionDelay = conductionDelay;
                 }
+                System.out.printf("Best alpha for %s: %.2f (RMSE=%.4f)\n", file.getName(), bestAlpha, minRMSE);
             }
-            
-            System.out.printf("Best alpha for %s: %.2f (RMSE=%.4f)\n", file.getName(), bestAlpha, minRMSE);
         }
     }
 
