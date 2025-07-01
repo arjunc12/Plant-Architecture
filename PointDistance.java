@@ -60,7 +60,7 @@ public class PointDistance {
             	
             		//finding best connection points for given alpha
             		BestArbor.BestConnectionResult result = BestArbor.findBestConnection(arbor, alpha);
-                	Map<String, Point> bestConnections = result.connections;
+                	Map<String, Point> connections = result.connections;
                 
                 	double totalRMSE = 0.0;
                 	int rootCount = 0;

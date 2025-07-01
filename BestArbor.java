@@ -32,7 +32,7 @@ public class BestArbor {
 			double minCost = Double.MAX_VALUE;
 			Point bestPoint = null;
 			
-			double bestWiring = 0.0
+			double bestWiring = 0.0;
 			double bestDelay = 0.0;
 	
 			//looping through each segment of the main root
