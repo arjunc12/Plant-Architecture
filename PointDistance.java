@@ -59,7 +59,8 @@ public class PointDistance {
             		System.out.println("\n---Alpha = " + alpha + "---\n");
             	
             		//finding best connection points for given alpha
-                	Map<String, Point> bestConnections = BestArbor.findBestConnection(arbor, alpha);
+            		BestArbor.BestConnectionResult result = BestArbor.findBestConnection(arbor, alpha);
+                	Map<String, Point> bestConnections = result.connections;
                 
                 	double totalRMSE = 0.0;
                 	int rootCount = 0;
@@ -102,8 +103,8 @@ public class PointDistance {
                 		avgRMSE = 0.0;
                 	}
                 
-                	double wiringCost = BestArbor.computeWiringCost(arbor, bestConnections);
-                	double conductionDelay = BestArbor.computeConductionDelay(arbor, bestConnections);
+                	double wiringCost = result.totalWiringCost;
+                	double conductionDelay = result.totalConductionDelay;
                 
                 	writer.write(String.format(Locale.US, "%.2f,%.4f,%.4f,%.4f\n", alpha, wiringCost, conductionDelay, avgRMSE));
                 

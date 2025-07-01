@@ -8,9 +8,9 @@ import java.util.*;
 
 //finds best place to connect a lateral root the the main root
 public class BestArbor {
-	public static Map<String, Point> findBestConnection(Arbor arbor, double alpha) {
+	public static BestConnectionResult findBestConnection(Arbor arbor, double alpha) {
 		//creating a place to store the best connection points
-		Map<String, Point> bestConnection = new LinkedHashMap<>();
+		BestConnectionResult bestConnection = new BestConnectionResult();
 		
 		//getting main and lateral roots
 		List<Point> mainRoot = arbor.getMainRoot();
@@ -58,10 +58,14 @@ public class BestArbor {
 					if (cost < minCost) {
 						minCost = cost;
 						bestPoint = new Point(px, py);
+						bestWiring = wiringCost;
+						bestDelay = conductionDelay;
 					}
 				}
 			}
-			bestConnection.put(latID, bestPoint);
+			result.connections.put(latID, bestPoint);
+			result.totalWiringCost += bestWiring;
+			result.totalConductionDelay += bestDelay;
 		}
 		return bestConnection;
 	}
@@ -93,4 +97,10 @@ public class BestArbor {
 		}
 		return total;
 	}
+}
+
+public static class BestConnectionResult {
+	public Map<String, Point> connections = new LinkedHashMap<>();
+	public double totalWiringCost = 0.0;
+	public double totalConductionDelay = 0.0;
 }
