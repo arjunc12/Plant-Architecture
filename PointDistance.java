@@ -66,12 +66,12 @@ public class PointDistance {
                 	int rootCount = 0;
                 	
                 	//going through lat roots
-                	for (String ID : bestConnections.keySet()) {
+                	for (String ID : connections.keySet()) {
                 		List<Point> latPoints = arbor.getLateralRoots().get(ID);
                 	
                 		//getting tip & best connection point
                 		Point tip = latPoints.get(latPoints.size() - 1);
-                		Point connection = bestConnections.get(ID);
+                		Point connection = connections.get(ID);
                 	
                 		//computing line coefficients
                 		double[] coeffs = getCoefficients(tip, connection);
