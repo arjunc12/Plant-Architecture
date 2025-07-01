@@ -52,7 +52,7 @@ public class PointDistance {
     			double minRMSE = Double.MAX_VALUE;
     			double bestWiringCost = 0.0;
     			double bestConductionDelay = 0.0;
-    			
+    		
     			//getting best connections for alphas 0.0 - 1.0
             	for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
             		alpha = Math.round(alpha * 100.0) / 100.0;
@@ -85,36 +85,38 @@ public class PointDistance {
                 			double diff = bestY - actualY;
                 			totalError += diff * diff;
                 		}
-                	}
                 	
-                	//root mean square error
-                	//low rmse = close to actual, high = far from actual
-                	double rmse = Math.sqrt(totalError / latPoints.size());
-                	totalRMSE += rmse;
-                	rootCount++;
-                	System.out.printf("Lat Root: %s | RMSE: %.4f%n", ID, rmse);
-                }
+                		//root mean square error
+                		//low rmse = close to actual, high = far from actual
+                		double rmse = Math.sqrt(totalError / latPoints.size());
+                		totalRMSE += rmse;
+                		rootCount++;
+                		System.out.printf("Lat Root: %s | RMSE: %.4f%n", ID, rmse);
+                	}
                 
-                double avgRMSE;
-                if (rootCount > 0) {
-                	avgRMSE = totalRMSE / rootCount;
-                }
-                else {
-                	avgRMSE = 0.0;
-                }
+                	double avgRMSE;
+                	if (rootCount > 0) {
+                		avgRMSE = totalRMSE / rootCount;
+                	}
+                	else {
+                		avgRMSE = 0.0;
+                	}
                 
-                double wiringCost = BestArbor.computeWiringCost(arbor, bestConnections);
-                double conductionDelay = BestArbor.computeConductionDelay(arbor, bestConnections);
+                	double wiringCost = BestArbor.computeWiringCost(arbor, bestConnections);
+                	double conductionDelay = BestArbor.computeConductionDelay(arbor, bestConnections);
                 
-                writer.write(String.format(Locale.US, "%.2f,%.4f,%.4f,%.4f\n", alpha, wiringCost, conductionDelay, avgRMSE));
+                	writer.write(String.format(Locale.US, "%.2f,%.4f,%.4f,%.4f\n", alpha, wiringCost, conductionDelay, avgRMSE));
                 
-                if (avgRMSE < minRMSE) {
-                	minRMSE = avgRMSE;
-                	bestAlpha = alpha;
-                	bestWiringCost = wiringCost;
-                	bestConductionDelay = conductionDelay;
+                	if (avgRMSE < minRMSE) {
+                		minRMSE = avgRMSE;
+                		bestAlpha = alpha;
+                		bestWiringCost = wiringCost;
+                		bestConductionDelay = conductionDelay;
+                	}
                 }
+                writer.write(String.format(Locale.US, "BEST,%.4f,%.4f,%.4f\n", bestWiringCost, bestConductionDelay, minRMSE));
                 System.out.printf("Best alpha for %s: %.2f (RMSE=%.4f)\n", file.getName(), bestAlpha, minRMSE);
+                
             }
         }
     }
