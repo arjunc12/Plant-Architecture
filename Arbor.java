@@ -97,7 +97,8 @@ public class Arbor {
     			alpha = Math.round(alpha * 100.0) / 100.0;
 		
     			//stores best connection for each lat root
-    			Map<String, Point> connections = BestArbor.findBestConnection(arbor, alpha);
+    			BestArbor.BestConnectionResult result = BestArbor.findBestConnection(arbor, alpha);
+    			Map<String, Point> connections = result.connections;
     	
 				double totalWiring = 0.0;
     			double totalDelay = 0.0;
