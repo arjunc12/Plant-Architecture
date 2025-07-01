@@ -10,7 +10,7 @@ import java.util.*;
 public class BestArbor {
 	public static BestConnectionResult findBestConnection(Arbor arbor, double alpha) {
 		//creating a place to store the best connection points
-		BestConnectionResult bestConnection = new BestConnectionResult();
+		BestConnectionResult result = new BestConnectionResult();
 		
 		//getting main and lateral roots
 		List<Point> mainRoot = arbor.getMainRoot();
@@ -31,6 +31,9 @@ public class BestArbor {
 			
 			double minCost = Double.MAX_VALUE;
 			Point bestPoint = null;
+			
+			double bestWiring = 0.0
+			double bestDelay = 0.0;
 	
 			//looping through each segment of the main root
 			for(int i = 0; i < mainRoot.size() - 1; i++) {
@@ -67,7 +70,7 @@ public class BestArbor {
 			result.totalWiringCost += bestWiring;
 			result.totalConductionDelay += bestDelay;
 		}
-		return bestConnection;
+		return result;
 	}
 	
 	//helper method to compute path distance to any point along main root
@@ -97,10 +100,10 @@ public class BestArbor {
 		}
 		return total;
 	}
-}
-
-public static class BestConnectionResult {
-	public Map<String, Point> connections = new LinkedHashMap<>();
-	public double totalWiringCost = 0.0;
-	public double totalConductionDelay = 0.0;
+	
+	public static class BestConnectionResult {
+		public Map<String, Point> connections = new LinkedHashMap<>();
+		public double totalWiringCost = 0.0;
+		public double totalConductionDelay = 0.0;
+	}
 }
