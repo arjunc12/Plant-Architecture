@@ -82,13 +82,13 @@ public class BestArbor {
 		BestConnectionResult result = new BestConnectionResult();
 		
 		List<Point> mainRoot = arbor.getMainRoot();
-		Map,String, List<Point>> lateralRoots = arbor.getLateralRoots();
+		Map,<String, List<Point>> lateralRoots = arbor.getLateralRoots();
 		
 		//computing cumulative distance along main root
 		double[] cumulativeDistances = new double[mainRoot.size()];
 		cumulativeDistances[0] = 0.0;
 		for(int i = 1; i < mainRoot.size(); i++) {
-			double dist = mainRoot.get(i).distnceTo(mainRoot.get(i - 1));
+			double dist = mainRoot.get(i).distanceTo(mainRoot.get(i - 1));
 			cumulativeDistances[i] = cumulativeDistances[i - 1] + dist;
 		}
 		
@@ -127,15 +127,15 @@ public class BestArbor {
 					
 					if (cost < minCost) {
 						minCost = cost;
-						bestPoints = new Point(px, py);
+						bestPoint = new Point(px, py);
 						bestWiring = wiringCost;
 						bestDelay = conductionDelay;
 					}
 				}
 			}
-			result.connections.put(latID, bestPoints);
+			result.connections.put(latID, bestPoint);
 			result.totalWiringCost += bestWiring;
-			result.totalConductionDelay = bestDelay;
+			result.totalConductionDelay += bestDelay;
 		}
 		return result;
 	}

@@ -4,24 +4,42 @@ import java.util.*;
 
 public class PointDistance {
     public static void main(String[] args) throws IOException {
+    	//parse args
+    	boolean useNewMethod = false;
+    	File specifiedFile = null;
+    	
+    	for (String args : args) {
+    		if (arg.equals("--new")) {
+    			useNewMethod = true;
+    		}
+    		else {
+    			specifiedFile = new File(arg);
+    		}
+    	}
+    	
         //Dir containing data files
     	File inputDir = new File("data/architecture-data/arbor-reconstructions");
     	
     	//Dir where output results are stored
-    	File outputDir = new File("data/results/pareto_fronts");
-    	outputDir.mkdirs();
+		File outputDir;
+		if (useNewMethod) {
+			outputDir = new File("data/results/heterogeneous_pareto_fronts");
+		}
+		else {
+			outputDir = new File("data/results/pareto_fronts");
+		}
+		
+		outputDir.mkdirs();
     	
     	File[] files;
-    	
+
     	//run of specific file
-    	if (args.length > 0) {
-    		File specifiedFile = new File(args[0]);
+    	if (specifiedFile != null) {
     		if (!specifiedFile.exists() | !specifiedFile.isFile()) {
     			System.err.println("Specified file does not exist or is not a file: " + args[0]);
     			return;
     		}
-    		files = new File[1];
-    		files[0] = specifiedFile;
+    		files = new File[]{specifiedFile};
     	}
     	//run on all files in the input dir
     	else {
@@ -59,7 +77,14 @@ public class PointDistance {
             		System.out.println("\n---Alpha = " + alpha + "---\n");
             	
             		//finding best connection points for given alpha
-            		BestArbor.BestConnectionResult result = BestArbor.findBestConnection(arbor, alpha);
+            		BestArbor.BestConnectionResult result;
+            		if (useNewMethod) {
+            			result = BestArbor.findBestConnectionEnhanced(arbor, alpha);
+            		}
+            		else {
+            			result = BestArbor.findBestConnection(arbor, apha);
+            		}
+            		
                 	Map<String, Point> connections = result.connections;
                 
                 	double totalRMSE = 0.0;
