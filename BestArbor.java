@@ -73,6 +73,73 @@ public class BestArbor {
 		return result;
 	}
 	
+	//constants for Kl and Kr
+	private static final double K_L = 1.0;
+	private static final double K_R = 1.0;
+	
+	//method for the updated wiring cost and conduction delay formulas
+	public static BestConnectionResult findBestConnectionEnhanced(Arbor arbor, double alpha) {
+		BestConnectionResult result = new BestConnectionResult();
+		
+		List<Point> mainRoot = arbor.getMainRoot();
+		Map,String, List<Point>> lateralRoots = arbor.getLateralRoots();
+		
+		//computing cumulative distance along main root
+		double[] cumulativeDistances = new double[mainRoot.size()];
+		cumulativeDistances[0] = 0.0;
+		for(int i = 1; i < mainRoot.size(); i++) {
+			double dist = mainRoot.get(i).distnceTo(mainRoot.get(i - 1));
+			cumulativeDistances[i] = cumulativeDistances[i - 1] + dist;
+		}
+		
+		for (Map.Entry,String, List<Point>> entry : lateralRoots.entrySet()) {
+			String latID = entry.getKey();
+			List<Point> latPoints = entry.getValue();
+			Point tip = latPoints.get(latPoints.size() - 1);
+			
+			//length of lat root
+			double x = tip.distanceTo(latPoints.get(0));
+			
+			double minCost = Double.MAX_VALUE;
+			Point bestPoint = null;
+			
+			double bestWiring = 0.0;
+			double bestDelay = 0.0;
+			
+			for (int i = 0; i < mainRoot.size() - 1; i++) {
+				Point p0 = mainRoot.get(i);
+				Point p1 = mainRoot.get(i + 1);
+				
+				double dx = p1.p - p0.p;
+				double dy = p1.q - p0.q;
+				double segLen = Math.sqrt(dx * dx + dy * dy);
+				
+				for (double t = 0.0; t <= 1.0; t += 0.01) {
+					double px = p0.p + t * dx;
+					double py = p0.q + t * dy;
+					
+					double y = cumulativeDistances[i] + t * segLen;
+					
+					//new cost functions
+					double wiringCost = 0.5 * K_L * x * x;
+					double conductionDelay = K_L * Math.log(1 + x) + K_R * Math.log(1 + y);
+					double cost = alpha * wiringCost + (1 - alpha) * conductionDelay;
+					
+					if (cost < minCost) {
+						minCost = cost;
+						bestPoints = new Point(px, py);
+						bestWiring = wiringCost;
+						bestDelay = conductionDelay;
+					}
+				}
+			}
+			result.connections.put(latID, bestPoints);
+			result.totalWiringCost += bestWiring;
+			result.totalConductionDelay = bestDelay;
+		}
+		return result;
+	}
+	
 	//helper method to compute path distance to any point along main root
 	public static double getPathDistanceTo(List<Point> mainRoot, Point target) {
 		double total = 0.0;
