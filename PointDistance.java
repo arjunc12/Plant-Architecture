@@ -8,7 +8,7 @@ public class PointDistance {
     	boolean useNewMethod = false;
     	File specifiedFile = null;
     	
-    	for (String args : args) {
+    	for (String arg : args) {
     		if (arg.equals("--new")) {
     			useNewMethod = true;
     		}
@@ -82,7 +82,7 @@ public class PointDistance {
             			result = BestArbor.findBestConnectionEnhanced(arbor, alpha);
             		}
             		else {
-            			result = BestArbor.findBestConnection(arbor, apha);
+            			result = BestArbor.findBestConnection(arbor, alpha);
             		}
             		
                 	Map<String, Point> connections = result.connections;
