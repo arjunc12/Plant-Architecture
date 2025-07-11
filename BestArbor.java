@@ -92,7 +92,7 @@ public class BestArbor {
 			cumulativeDistances[i] = cumulativeDistances[i - 1] + dist;
 		}
 		
-		for (Map.Entry,String, List<Point>> entry : lateralRoots.entrySet()) {
+		for (Map.Entry<String, List<Point>> entry : lateralRoots.entrySet()) {
 			String latID = entry.getKey();
 			List<Point> latPoints = entry.getValue();
 			Point tip = latPoints.get(latPoints.size() - 1);
