@@ -82,7 +82,7 @@ public class BestArbor {
 		BestConnectionResult result = new BestConnectionResult();
 		
 		List<Point> mainRoot = arbor.getMainRoot();
-		Map,<String, List<Point>> lateralRoots = arbor.getLateralRoots();
+		Map<String, List<Point>> lateralRoots = arbor.getLateralRoots();
 		
 		//computing cumulative distance along main root
 		double[] cumulativeDistances = new double[mainRoot.size()];
