@@ -8,7 +8,7 @@ public class PointDistance {
     	File inputDir = new File("data/architecture-data/arbor-reconstructions");
     	
     	//Dir where output results are stored
-    	File outputDir = new File("data/results/hetereogeneous_pareto_fronts");
+    	File outputDir = new File("data/results/pareto_fronts");
     	outputDir.mkdirs();
     	
     	File[] files;
