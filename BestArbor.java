@@ -87,6 +87,7 @@ public class BestArbor {
 		//computing cumulative distance along main root
 		double[] cumulativeDistances = new double[mainRoot.size()];
 		cumulativeDistances[0] = 0.0;
+		
 		for(int i = 1; i < mainRoot.size(); i++) {
 			double dist = mainRoot.get(i).distanceTo(mainRoot.get(i - 1));
 			cumulativeDistances[i] = cumulativeDistances[i - 1] + dist;
@@ -96,9 +97,6 @@ public class BestArbor {
 			String latID = entry.getKey();
 			List<Point> latPoints = entry.getValue();
 			Point tip = latPoints.get(latPoints.size() - 1);
-			
-			//length of lat root
-			double x = tip.distanceTo(latPoints.get(0));
 			
 			double minCost = Double.MAX_VALUE;
 			Point bestPoint = null;
@@ -119,6 +117,7 @@ public class BestArbor {
 					double py = p0.q + t * dy;
 					
 					double y = cumulativeDistances[i] + t * segLen;
+					double x = tip.distanceTo(new Point(px, py));
 					
 					//new cost functions
 					double wiringCost = 0.5 * K_L * x * x;
