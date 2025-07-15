@@ -70,6 +70,10 @@ public class BestArbor {
 			result.totalWiringCost += bestWiring;
 			result.totalConductionDelay += bestDelay;
 		}
+		//including main root length in wiring cost
+		double mainRootLength = cumulativeDistances[cumulativeDistances.length - 1];
+		result.totalWiringCost += mainRootLength;
+		
 		return result;
 	}
 	
@@ -136,6 +140,10 @@ public class BestArbor {
 			result.totalWiringCost += bestWiring;
 			result.totalConductionDelay += bestDelay;
 		}
+		//including the main root length in wiring cost
+		double mainRootLength = cumulativeDistances[cumulativeDistances.length - 1];
+		result.totalWiringCost += mainRootLength;
+		
 		return result;
 	}
 	
