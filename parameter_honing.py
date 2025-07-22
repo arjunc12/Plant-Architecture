@@ -675,7 +675,7 @@ def main():
     parser.add_argument('--smart', action = 'store_true')
     parser.add_argument('--smartNumPoints', default = 1, type=float)
     #parser.add_argument('--smartStep', default = 0.05, type=float)
-    parser.add_argument('--smartGridSize', default = 1, type=float)
+    parser.add_argument('--smartGridSize', default = 3, type=float)
 
     args = parser.parse_args()
     amin = round(args.amin, 2)
