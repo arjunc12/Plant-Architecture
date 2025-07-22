@@ -611,7 +611,7 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
                     point_dist += modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
                 wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
 
-                f.write('%s, %0.2f, %0.2f, %f, %f, %f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
+                f.write('%s, %.10f, %.10f, %.6f, %.6f, %.6f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
 
 def main_root_distance(line_segments):
     distance = 0
@@ -674,7 +674,7 @@ def main():
 
     parser.add_argument('--smart', action = 'store_true')
     parser.add_argument('--smartNumPoints', default = 1, type=float)
-    parser.add_argument('--smartStep', default = 0.05, type=float)
+    #parser.add_argument('--smartStep', default = 0.05, type=float)
     parser.add_argument('--smartGridSize', default = 1, type=float)
 
     args = parser.parse_args()
@@ -687,17 +687,15 @@ def main():
     Gstep = round(args.Gstep, 2)
     smart = args.smart
     smartNumPoints = int(args.smartNumPoints)
-    smartStep = args.smartStep
+    #smartStep = args.smartStep
     smartGridSize = int(args.smartGridSize)
 
     #fname = '%s/plant_gravitropism.csv' % ARCHITECTURE_DIR
     #first_time = not os.path.exists(fname)
-    #G_alpha_file = '%s/G_alpha_combinations.pkl' % RESULTS_DIR
     path = '%s/new_gravitropism_pareto_fronts' % RESULTS_DIR
     last_day_files = get_last_day_files()
     if not os.path.exists(path):
         os.mkdir(path)
-    #processed_arbors = load_processed_arbors()
     #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
     if smart:
         for arbor in os.listdir('%s/new_gravitropism_pareto_fronts' % RESULTS_DIR):
@@ -709,12 +707,29 @@ def main():
             line_segs = get_line_segments(G)
 
             df_optimal = df[df['arbor type'] == 'optimal']
-
+            skip = set(zip(df_optimal[' G'].astype(float), df_optimal[' alpha'].astype(float)))
             best_points = df_optimal.nsmallest(smartNumPoints, ' point distance')[[' G', ' alpha']]
             print(best_points)
-            def generate_local_grid(G_center, alpha_center, window=smartStep, n=smartGridSize):
-                G_vals = np.linspace(float(G_center) - window, float(G_center) + window, n)
-                alpha_vals = np.linspace(float(alpha_center) - window, float(alpha_center) + window, n)
+            def generate_local_grid(G_center, alpha_center, skip_set, max_step = 0.1, min_step = 0.01, n=smartGridSize):
+                def distance_to_nearest(G, alpha):
+                    return min([math.sqrt((float(G) - float(g))**2 + (float(alpha) - float(a))**2) for g, a in skip_set if round(float(g), 4) != round(float(G), 4) or round(float(a), 4) != round(float(alpha), 4)
+    ] or [1.0], default=1.0)
+                def compute_step(distance, min_step=0.01, max_step=0.1, d_min=0.05, d_max=0.5):
+                    # Clamp the distance
+                    distance = max(min(distance, d_max), d_min)
+                    # Normalize distance to [0, 1]
+                    norm = (distance - d_min) / (d_max - d_min)
+                    # Interpolate step size
+                    return min_step + norm * (max_step - min_step)
+                distance = distance_to_nearest(G_center, alpha_center)
+                step = compute_step(distance, min_step = 0.01, max_step = 0.1, d_min = 0.01, d_max = 0.5)
+                print(distance)
+                print(step)
+                
+       
+                    
+                G_vals = np.linspace(float(G_center) - step, float(G_center) + step, n)
+                alpha_vals = np.linspace(float(alpha_center) - step, float(alpha_center) + step, n)
                 grid = [(round(G, 4), round(alpha, 4)) 
                         for G in G_vals 
                         for alpha in alpha_vals if 0 <= alpha <= 1]
@@ -723,12 +738,12 @@ def main():
             refined_params = set()
             
             for _, row in best_points.iterrows():
-                refined_params.update(generate_local_grid(row[' G'], row[' alpha']))
+                refined_params.update(generate_local_grid(row[' G'], row[' alpha'], skip, max_step = 0.1, min_step = 0.01, n=smartGridSize))
             print(refined_params)
             for g, alpha in refined_params:
-                G_skip = df_optimal[' G'].astype(float)
-                alpha_skip = df_optimal[' alpha'].astype(float)
-                skip = set(zip(G_skip, alpha_skip))
+                #G_skip = df_optimal[' G'].astype(float)
+                #alpha_skip = df_optimal[' alpha'].astype(float)
+                #skip = set(zip(G_skip, alpha_skip))
                 if (g, alpha) in skip:
                     print("repeated G and alpha combination")
                     continue
@@ -746,7 +761,7 @@ def main():
                     point_dist += modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
                 wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
                 with open(fname, 'a') as f:
-                    f.write('%s, %0.2f, %0.2f, %f, %f, %f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
+                    f.write('%s, %.10f, %.10f, %.6f, %.6f, %.6f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
                     print("arbor: " + arbor + " was appended to.")
 
     else: 

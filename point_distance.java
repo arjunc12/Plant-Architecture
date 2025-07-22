@@ -45,6 +45,7 @@ public class pointDistance {
                         i++;
                     }
 
+                    System.out.println(distance);
                     
 
                     
@@ -60,8 +61,8 @@ public class pointDistance {
         
         // Arbor arbor = new Arbor();
         Map<String, ArrayList<Point>> map = new HashMap<>();
-        boolean firstTime = true
-        ArrayList<Point> points 
+        boolean firstTime = true;
+        ArrayList<Point> points;
 		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
 			String line;
 			String currentID = null;
@@ -80,7 +81,7 @@ public class pointDistance {
 				else if (line.contains("-") && line.split(",").length <= 1) {
                     if(firstTime == true) {
                         ArrayList<Point> points;
-                        firstTime == false
+                        firstTime = false
                     }
                     else {
                         map.put(currentID, points);
@@ -96,11 +97,10 @@ public class pointDistance {
 						double p = Double.parseDouble(tokens[0].trim());
         				double q = Double.parseDouble(tokens[1].trim());
         				Point point = new Point(p, q);
-            			points.add(point)
+            			points.add(point);
         				//adding lat root
         				if (currentID != null) {
         					///arbor.addLatRoots(currentID, point);
-                            points.put(currentID, point
         					System.out.println("Added to " + currentID + ": " + point);
         				}
         				///else {
