@@ -8,9 +8,9 @@ import java.util.*;
 
 //finds best place to connect a lateral root the the main root
 public class BestArbor {
-	public static Map<String, Point> findBestConnection(Arbor arbor, double alpha) {
+	public static BestConnectionResult findBestConnection(Arbor arbor, double alpha) {
 		//creating a place to store the best connection points
-		Map<String, Point> bestConnection = new LinkedHashMap<>();
+		BestConnectionResult result = new BestConnectionResult();
 		
 		//getting main and lateral roots
 		List<Point> mainRoot = arbor.getMainRoot();
@@ -31,6 +31,9 @@ public class BestArbor {
 			
 			double minCost = Double.MAX_VALUE;
 			Point bestPoint = null;
+			
+			double bestWiring = 0.0;
+			double bestDelay = 0.0;
 	
 			//looping through each segment of the main root
 			for(int i = 0; i < mainRoot.size() - 1; i++) {
@@ -58,12 +61,90 @@ public class BestArbor {
 					if (cost < minCost) {
 						minCost = cost;
 						bestPoint = new Point(px, py);
+						bestWiring = wiringCost;
+						bestDelay = conductionDelay;
 					}
 				}
 			}
-			bestConnection.put(latID, bestPoint);
+			result.connections.put(latID, bestPoint);
+			result.totalWiringCost += bestWiring;
+			result.totalConductionDelay += bestDelay;
 		}
-		return bestConnection;
+		//including main root length in wiring cost
+		double mainRootLength = cumulativeDistances[cumulativeDistances.length - 1];
+		result.totalWiringCost += mainRootLength;
+		
+		return result;
+	}
+	
+	//constants for Kl and Kr
+	private static final double K_L = 1.0;
+	private static final double K_R = 1.0;
+	
+	//method for the updated wiring cost and conduction delay formulas
+	public static BestConnectionResult findBestConnectionEnhanced(Arbor arbor, double alpha) {
+		BestConnectionResult result = new BestConnectionResult();
+		
+		List<Point> mainRoot = arbor.getMainRoot();
+		Map<String, List<Point>> lateralRoots = arbor.getLateralRoots();
+		
+		//computing cumulative distance along main root
+		double[] cumulativeDistances = new double[mainRoot.size()];
+		cumulativeDistances[0] = 0.0;
+		
+		for(int i = 1; i < mainRoot.size(); i++) {
+			double dist = mainRoot.get(i).distanceTo(mainRoot.get(i - 1));
+			cumulativeDistances[i] = cumulativeDistances[i - 1] + dist;
+		}
+		
+		for (Map.Entry<String, List<Point>> entry : lateralRoots.entrySet()) {
+			String latID = entry.getKey();
+			List<Point> latPoints = entry.getValue();
+			Point tip = latPoints.get(latPoints.size() - 1);
+			
+			double minCost = Double.MAX_VALUE;
+			Point bestPoint = null;
+			
+			double bestWiring = 0.0;
+			double bestDelay = 0.0;
+			
+			for (int i = 0; i < mainRoot.size() - 1; i++) {
+				Point p0 = mainRoot.get(i);
+				Point p1 = mainRoot.get(i + 1);
+				
+				double dx = p1.p - p0.p;
+				double dy = p1.q - p0.q;
+				double segLen = Math.sqrt(dx * dx + dy * dy);
+				
+				for (double t = 0.0; t <= 1.0; t += 0.01) {
+					double px = p0.p + t * dx;
+					double py = p0.q + t * dy;
+					
+					double y = cumulativeDistances[i] + t * segLen;
+					double x = tip.distanceTo(new Point(px, py));
+					
+					//new cost functions
+					double wiringCost = 0.5 * K_L * x * x;
+					double conductionDelay = K_L * Math.log(1 + x) + K_R * Math.log(1 + y);
+					double cost = alpha * wiringCost + (1 - alpha) * conductionDelay;
+					
+					if (cost < minCost) {
+						minCost = cost;
+						bestPoint = new Point(px, py);
+						bestWiring = wiringCost;
+						bestDelay = conductionDelay;
+					}
+				}
+			}
+			result.connections.put(latID, bestPoint);
+			result.totalWiringCost += bestWiring;
+			result.totalConductionDelay += bestDelay;
+		}
+		//including the main root length in wiring cost
+		double mainRootLength = cumulativeDistances[cumulativeDistances.length - 1];
+		result.totalWiringCost += mainRootLength;
+		
+		return result;
 	}
 	
 	//helper method to compute path distance to any point along main root
@@ -92,5 +173,11 @@ public class BestArbor {
 			total += segLen;
 		}
 		return total;
+	}
+	
+	public static class BestConnectionResult {
+		public Map<String, Point> connections = new LinkedHashMap<>();
+		public double totalWiringCost = 0.0;
+		public double totalConductionDelay = 0.0;
 	}
 }
