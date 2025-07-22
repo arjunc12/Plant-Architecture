@@ -692,15 +692,15 @@ def main():
 
     #fname = '%s/plant_gravitropism.csv' % ARCHITECTURE_DIR
     #first_time = not os.path.exists(fname)
-    path = '%s/new_gravitropism_pareto_fronts' % RESULTS_DIR
+    path = '%s/gravitropism_pareto_fronts' % RESULTS_DIR
     last_day_files = get_last_day_files()
     if not os.path.exists(path):
         os.mkdir(path)
     #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
     if smart:
-        for arbor in os.listdir('%s/new_gravitropism_pareto_fronts' % RESULTS_DIR):
+        for arbor in os.listdir('%s/gravitropism_pareto_fronts' % RESULTS_DIR):
             skip = set()
-            path = '%s/new_gravitropism_pareto_fronts' % RESULTS_DIR
+            path = '%s/gravitropism_pareto_fronts' % RESULTS_DIR
             fname = '%s/%s' % (path, arbor)
             df = pd.read_csv(fname)  # Update this line to match your filename
             G = rar.read_arbor_full(arbor)
