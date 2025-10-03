@@ -1,9 +1,29 @@
 # Plant-Architecture
 Studying whether plants grow in a Pareto-optimal manner
 
-Authors: Magdalena Julkowska and Arjun Chandrasekhar
+## Overview
 
-Contributors: 
+This repository contains code and analysis for understanding how wild tomato plants grow their root systems in response to environmental stresses. This work is fundamentally about **mechanistic interpretability** - reverse-engineering the computational "program" that determines root architecture from observable behavior.
+
+## The Core Question
+
+How do tomato plants decide where to grow roots? They have no central processor, no global view of their environment, yet they produce remarkably adaptive root architectures that optimize for water uptake, nutrient access, and stress resistance. This is a **distributed algorithm** problem: local growth decisions at individual root tips somehow coordinate to produce globally optimal structures.
+
+## Publications
+
+- Chandrasekhar, A. (2025). [Gottfried Green Tomatoes: Using Leibniz's Rule to Find the Roots of Tomato Plant Equations." *Mathematics Magazine*](https://doi.org/10.1080/0025570X.2024.2436481)
+
+- Chandrasekhar, A. & Julkowska, M. (2022). [A mathematical framework for analyzing wild tomato root architecture. *Journal of Computational Biology*, 29(6), 711-727](https://doi.org/10.1089/cmb.2021.0593)
+
+## Funding Acknowledgment
+
+This work is supported by the National Science Foundation, Division of Mathematical Sciences, Mathematical Biology Program (Grant DMS-2220168).RetryClaude does not have the ability to run the code it generates yet.
+
+## Contributors
+
+Principal Investigators: Magdalena Julkowska and Arjun Chandrasekhar
+
+Undergraduate researchers: 
 - Kathryn Altman
 - Alley Koenig
 - Joanna Blatt
