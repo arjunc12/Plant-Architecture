@@ -17,7 +17,7 @@ How do tomato plants decide where to grow roots? They have no central processor,
 
 ## Funding Acknowledgment
 
-This work is supported by the National Science Foundation, Division of Mathematical Sciences, Mathematical Biology Program (Grant DMS-2220168).RetryClaude does not have the ability to run the code it generates yet.
+This work is supported by the National Science Foundation, Division of Mathematical Sciences, Mathematical Biology Program (Grant DMS-2220168).
 
 ## Contributors
 
