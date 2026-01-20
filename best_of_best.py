@@ -7,13 +7,11 @@ import csv
 
 def main():
     path = '%s/gravitropism_pareto_fronts' % RESULTS_DIR
-    
+
     fname = '%s/best_of_best.csv' % RESULTS_DIR
-    first_time = not os.path.exists(fname)
-    
-    with open(fname, 'a') as f:
-        if first_time: 
-            f.write('arbor name, optimal G, optimal alpha, optimal pt distance\n')
+
+    with open(fname, 'w') as f:
+        f.write('arbor name, optimal G, optimal alpha, optimal pt distance\n')
         for pareto_front in os.listdir(path):
             min_distance = math.inf
             best_row = None
@@ -32,9 +30,9 @@ def main():
                 arbor_name = pareto_front.strip('.csv')
                 print("Handling %s" % (pareto_front))
                 f.write('%s, %s, %s, %s\n' % (arbor_name, opt_G, opt_alpha, opt_dist))
-                
-             
-            
-    
+
+
+
+
 if __name__ == '__main__':
     main()
