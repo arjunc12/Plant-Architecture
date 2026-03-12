@@ -23,10 +23,10 @@ public class PointDistance {
     	//Dir where output results are stored
 		File outputDir;
 		if (useNewMethod) {
-			outputDir = new File("data/results/heterogeneous_pareto_fronts");
+			outputDir = new File("data/results/heterogeneous-pareto-fronts");
 		}
 		else {
-			outputDir = new File("data/results/pareto_fronts");
+			outputDir = new File("data/results/homogeneous-pareto-fronts");
 		}
 		
 		outputDir.mkdirs();
