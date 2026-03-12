@@ -60,7 +60,7 @@ public class Arbor {
     	//object that tells program where to find arbor files
     	File inputDir = new File("data/architecture-data/arbor-reconstructions");
     	//preparing result output 
-    	File outputDir = new File("data/results/hetereogeneous_pareto_fronts");
+    	File outputDir = new File("data/results/hetereogeneous-pareto-fronts");
     	outputDir.mkdirs();
     	
     	File[] files = inputDir.listFiles();
