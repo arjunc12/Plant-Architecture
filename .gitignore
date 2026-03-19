@@ -36,3 +36,5 @@ cornell-ssh-login.txt
 *.swp
 
 paper-data
+
+*.class
