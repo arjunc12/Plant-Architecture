@@ -87,7 +87,7 @@ public class ArborTest {
     		for (double alpha = 0.0; alpha <= 1.0; alpha += 0.01) {
     			alpha = Math.round(alpha * 100.0) / 100.0;
     			
-    			BestArbor.BestConnectionResult result = BestArbor.findBestConnection(arbor, alpha)
+    			BestArbor.BestConnectionResult result = BestArbor.findBestConnection(arbor, alpha);
     			Map<String, Point> connections = result.connections;
     			double totalWiring = 0.0;
     			double totalDelay = 0.0;
