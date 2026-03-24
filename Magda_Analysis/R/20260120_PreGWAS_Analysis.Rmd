@@ -1,0 +1,377 @@
+---
+title: "New Paretho Front Calculations - January 2026"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is a small notebook describing the evaluation of the new and cool methods developed by Arjun Chandrasekhar - but visualized / summarized by Magda Julkowska - so that the data will be ready for GWAS:
+
+# data import
+
+```{r}
+data <- read.csv("best_of_best.csv")
+meta <- read.csv("metadata.csv")
+data
+meta 
+```
+
+```{r}
+meta$arbor.name2 <- paste(meta$genotype,"_",meta$replicate,"_",meta$condition,"_day",meta$day, sep="")
+meta$arbor.name2 <- gsub(" ", "", meta$arbor.name2)
+meta$arbor.name <- gsub(" ", "", meta$arbor.name)
+meta$arbor.name %in% meta$arbor.name2
+```
+
+
+OK - let's get the natural diversity panel out of the data:
+
+```{r}
+unique(meta$experiment)
+
+meta_GWAS <- c("PimpiBig1", "PimpiBig2", "PimpiBig3", "PimpiBig4", "PimpiBig5", "PimpiBig6")
+meta_GWAS2 <- subset(meta, meta$experiment %in% meta_GWAS)
+data$arbor.name %in% meta_GWAS2$arbor.name
+
+data2 <- merge(data, meta_GWAS2, by = c("arbor.name"))
+data2
+```
+
+OK - now let's summarize this so we have only one value for each genotype / condition:
+
+```{r}
+GWAS_means <- aggregate(
+  cbind(optimal.G, optimal.alpha, optimal.pt.distance) ~ genotype + condition,
+  data = data2,
+  FUN = function(x) mean(x, na.rm = TRUE)
+)
+GWAS_means
+```
+
+OK - let's reshape this dataframe a little bit:
+
+```{r}
+unique(GWAS_means$condition)
+GWAS_means$condition <- gsub(" ", "", GWAS_means$condition)
+GWAS_means$condition <- gsub("s", "S", GWAS_means$condition)
+GWAS_means_C <- subset(GWAS_means, GWAS_means$condition == "C")
+GWAS_means_S <- subset(GWAS_means, GWAS_means$condition == "S")
+
+colnames(GWAS_means_C)[3] <- "optimal.G.C"
+colnames(GWAS_means_C)[4] <- "optimal.alpha.C"
+colnames(GWAS_means_C)[5] <- "optimal.pt.dist.C"
+
+colnames(GWAS_means_S)[3] <- "optimal.G.S"
+colnames(GWAS_means_S)[4] <- "optimal.alpha.S"
+colnames(GWAS_means_S)[5] <- "optimal.pt.dist.S"
+
+GWAS_means_C <- GWAS_means_C[,c(1,3:5)]
+GWAS_means_S <- GWAS_means_S[,c(1,3:5)]
+
+GWAS <- merge(GWAS_means_C, GWAS_means_S, by = c("genotype"), all = T)
+GWAS
+```
+ok - now let's save this file as GWAS_ready:
+
+```{r}
+write.csv(GWAS, "GWAS_ready.csv", row.names = F)
+```
+
+Cool - now let's have a look at how the values behave within one genotype under control vs salt stress:
+
+```{r}
+library(ggplot2)
+library(ggsci)
+library(ggpubr)
+library(plotly)
+
+pdf("Correlation_Alpha_Control_vs_Salt.pdf")
+plot(
+ggscatter(GWAS, x = "optimal.alpha.C", y = "optimal.alpha.S",
+          add = "reg.line",                                 # Add regression line
+          conf.int = TRUE,                                  # Add confidence interval
+          add.params = list(color = "blue",
+                            fill = "lightgray")
+          )+
+  stat_cor(method = "pearson", label.x = 0.03, label.y = 0.930)  # Add correlation coefficient
+)
+dev.off()
+```
+
+```{r}
+pdf("Correlation_G_Control_vs_Salt.pdf")
+plot(
+ggscatter(GWAS, x = "optimal.G.C", y = "optimal.G.S",
+          add = "reg.line",                                 # Add regression line
+          conf.int = TRUE,                                  # Add confidence interval
+          add.params = list(color = "blue",
+                            fill = "lightgray")
+          )+
+  stat_cor(method = "pearson", label.x = -0.4, label.y = 1)  # Add correlation coefficient
+)
+dev.off()
+```
+
+```{r}
+pdf("Correlation_dist_Control_vs_Salt.pdf")
+plot(
+ggscatter(GWAS, x = "optimal.pt.dist.C", y = "optimal.pt.dist.S",
+          add = "reg.line",                                 # Add regression line
+          conf.int = TRUE,                                  # Add confidence interval
+          add.params = list(color = "blue",
+                            fill = "lightgray")
+          )+
+  stat_cor(method = "pearson", label.x = -0.4, label.y = 1500)  # Add correlation coefficient
+)
+dev.off()
+```
+
+ok - now let's see how it compares with the ideotypes scored by hand:
+
+```{r}
+topology <- read.csv("manual-scoring-last-day.csv")
+data2
+topology
+
+topology2 <- topology[,c(1:2,5)]
+
+data3 <- merge(topology2, data2, by = c("experiment", "Picture.."))
+data3
+```
+OK - so now let's see if we have significant differences in any of the newly calculated traits per condition and topology. First - lets rename the ideotype for topology tho:
+
+```{r}
+colnames(data3)[3] <- "topology"
+unique(data3$condition)
+data3$condition <- gsub(" ", "", data3$condition)
+data3$condition <- gsub("s", "S", data3$condition)
+data3$topology <- gsub("DT", "dT", data3$topology)
+data3$topology <- gsub("CT", "C", data3$topology)
+topology_ok <- c("C", "T", "dT", "B")
+data4 <- subset(data3, data3$topology %in% topology_ok)
+
+G_overall <- ggerrorplot(data4, x = "topology", y = "optimal.G", color = "topology", fill = "topology", facet = c("condition"),
+                          desc_stat = "mean_sd", add = "jitter", ncol = 2,
+                          xlab="topology", ylab= "Optimal G", add.params = list(color = "darkgray")) + scale_color_d3("category10") 
+G_overall <- G_overall + stat_compare_means(method = "anova", label.y = 3) #+ stat_pvalue_manual(test, label = "Tukey", y.position = 25) 
+G_overall <- G_overall + rremove("legend") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+G_overall
+```
+
+
+Interesting - let's add some Tukey comparison per each population:
+
+```{r}
+library(multcompView)
+C <- subset(data4, data4$condition == "C")
+Output <- TukeyHSD(aov(optimal.G ~ topology, data = C))
+P9 = Output$topology[,'p adj']
+stat.test<- multcompLetters(P9)
+test <- as.data.frame(stat.test$Letters)
+test$group1 <- rownames(test)
+test$group2 <- rownames(test)
+colnames(test)[1] <- "Tukey"
+test$topology <- test$group1
+test$condition <- "C"
+test_all <- test
+
+
+S <- subset(data4, data4$condition == "S")
+Output <- TukeyHSD(aov(optimal.G ~ topology, data = S))
+P9 = Output$topology[,'p adj']
+stat.test<- multcompLetters(P9)
+test <- as.data.frame(stat.test$Letters)
+test$group1 <- rownames(test)
+test$group2 <- rownames(test)
+colnames(test)[1] <- "Tukey"
+test$topology <- test$group1
+test$condition <- "S"
+test_all <- rbind(test, test_all)
+test_all
+```
+
+```{r}
+G_overall <- ggerrorplot(data4, x = "topology", y = "optimal.G", color = "topology", fill = "topology", facet = c("condition"),
+                          desc_stat = "mean_sd", add = "jitter", ncol = 2,
+                          xlab="topology", ylab= "Optimal G", add.params = list(color = "darkgray")) + scale_color_d3("category10") 
+G_overall <- G_overall + stat_compare_means(method = "anova", label.y = 3) + stat_pvalue_manual(test_all, label = "Tukey", y.position = 2.5) 
+G_overall <- G_overall + rremove("legend") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+G_overall
+```
+```{r}
+pdf("Topology_of_OptimalG.pdf")
+plot(G_overall)
+dev.off()
+```
+
+```{r}
+G_overall <- ggerrorplot(data4, x = "topology", y = "optimal.alpha", color = "topology", fill = "topology", facet = c("condition"),
+                          desc_stat = "mean_sd", add = "jitter", ncol = 2,
+                          xlab="topology", ylab= "Optimal alpha", add.params = list(color = "darkgray")) + scale_color_d3("category10") 
+G_overall <- G_overall + stat_compare_means(method = "anova", label.y = 1.2) #+ stat_pvalue_manual(test, label = "Tukey", y.position = 25) 
+G_overall <- G_overall + rremove("legend") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+G_overall
+```
+
+
+Interesting - let's add some Tukey comparison per each population:
+
+```{r}
+library(multcompView)
+C <- subset(data4, data4$condition == "C")
+Output <- TukeyHSD(aov(optimal.alpha ~ topology, data = C))
+P9 = Output$topology[,'p adj']
+stat.test<- multcompLetters(P9)
+test <- as.data.frame(stat.test$Letters)
+test$group1 <- rownames(test)
+test$group2 <- rownames(test)
+colnames(test)[1] <- "Tukey"
+test$topology <- test$group1
+test$condition <- "C"
+test_all <- test
+
+
+S <- subset(data4, data4$condition == "S")
+Output <- TukeyHSD(aov(optimal.alpha ~ topology, data = S))
+P9 = Output$topology[,'p adj']
+stat.test<- multcompLetters(P9)
+test <- as.data.frame(stat.test$Letters)
+test$group1 <- rownames(test)
+test$group2 <- rownames(test)
+colnames(test)[1] <- "Tukey"
+test$topology <- test$group1
+test$condition <- "S"
+test_all <- rbind(test, test_all)
+test_all
+```
+
+```{r}
+G_overall <- ggerrorplot(data4, x = "topology", y = "optimal.alpha", color = "topology", fill = "topology", facet = c("condition"),
+                          desc_stat = "mean_sd", add = "jitter", ncol = 2,
+                          xlab="topology", ylab= "Optimal alpha", add.params = list(color = "darkgray")) + scale_color_d3("category10") 
+G_overall <- G_overall + stat_compare_means(method = "anova", label.y = 1.2) + stat_pvalue_manual(test_all, label = "Tukey", y.position = 1.1) 
+G_overall <- G_overall + rremove("legend") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+G_overall
+```
+```{r}
+pdf("Topology_of_OptimalAlpha.pdf")
+plot(G_overall)
+dev.off()
+```
+
+```{r}
+G_overall <- ggerrorplot(data4, x = "topology", y = "optimal.pt.distance", color = "topology", fill = "topology", facet = c("condition"),
+                          desc_stat = "mean_sd", add = "jitter", ncol = 2,
+                          xlab="topology", ylab= "Optimal pt distance", add.params = list(color = "darkgray")) + scale_color_d3("category10") 
+G_overall <- G_overall + stat_compare_means(method = "anova", label.y = 6000) #+ stat_pvalue_manual(test, label = "Tukey", y.position = 25) 
+G_overall <- G_overall + rremove("legend") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+G_overall
+```
+
+
+Interesting - let's add some Tukey comparison per each population:
+
+```{r}
+library(multcompView)
+C <- subset(data4, data4$condition == "C")
+Output <- TukeyHSD(aov(optimal.pt.distance ~ topology, data = C))
+P9 = Output$topology[,'p adj']
+stat.test<- multcompLetters(P9)
+test <- as.data.frame(stat.test$Letters)
+test$group1 <- rownames(test)
+test$group2 <- rownames(test)
+colnames(test)[1] <- "Tukey"
+test$topology <- test$group1
+test$condition <- "C"
+test_all <- test
+
+
+S <- subset(data4, data4$condition == "S")
+Output <- TukeyHSD(aov(optimal.pt.distance ~ topology, data = S))
+P9 = Output$topology[,'p adj']
+stat.test<- multcompLetters(P9)
+test <- as.data.frame(stat.test$Letters)
+test$group1 <- rownames(test)
+test$group2 <- rownames(test)
+colnames(test)[1] <- "Tukey"
+test$topology <- test$group1
+test$condition <- "S"
+test_all <- rbind(test, test_all)
+test_all
+```
+
+```{r}
+G_overall <- ggerrorplot(data4, x = "topology", y = "optimal.pt.distance", color = "topology", fill = "topology", facet = c("condition"),
+                          desc_stat = "mean_sd", add = "jitter", ncol = 2,
+                          xlab="topology", ylab= "Optimal pt distance", add.params = list(color = "darkgray")) + scale_color_d3("category10") 
+G_overall <- G_overall + stat_compare_means(method = "anova", label.y = 6000) + stat_pvalue_manual(test_all, label = "Tukey", y.position = 5500) 
+G_overall <- G_overall + rremove("legend") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+G_overall
+```
+```{r}
+pdf("Topology_of_OptimalPtDistance.pdf")
+plot(G_overall)
+dev.off()
+```
+
+
+Hmmm - this is all good and dandy - but how do I compare the variance for G :
+
+```{r}
+G_overall <- ggerrorplot(data4, x = "condition", y = "optimal.G", color = "condition", fill = "condition", facet = c("topology"),
+                          desc_stat = "mean_sd", add = "jitter", ncol = 4,
+                          xlab="condition", ylab= "Optimal G", add.params = list(color = "darkgray")) + scale_color_d3("category10") 
+G_overall <- G_overall + stat_compare_means(method = "", label.y = 3) 
+G_overall <- G_overall + rremove("legend") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+G_overall
+```
+```{r}
+library(dplyr)
+library(purrr)
+library(broom)
+library(ggplot2)
+
+# df has: topology, condition (2 levels), optimal.G
+vt <- data4 %>%
+  group_by(topology) %>%
+  summarise(
+    p = tryCatch(var.test(optimal.G ~ condition, data = cur_data())$p.value,
+                 error = function(e) NA_real_),
+    .groups = "drop"
+  ) %>%
+  mutate(label = paste0("F-test p = ", signif(p, 3)))
+
+# pick an annotation position per facet (top-left-ish)
+pos <- data4 %>%
+  group_by(topology) %>%
+  summarise(
+    x = 1,  # assumes condition is on x and has at least 2 levels
+    y = max(optimal.G, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ann <- left_join(vt, pos, by = "topology")
+ann
+
+ggplot(data4, aes(x = condition, y = optimal.G)) +
+  geom_boxplot(outlier.alpha = 0.5) +
+  facet_wrap(~ topology, scales = "free_y", ncol = 4) +
+  geom_text(
+    data = ann,
+    aes(x = x, y = y, label = label),
+    inherit.aes = FALSE,
+    hjust = 0, vjust = 1
+  )
+
+p <- ggerrorplot(data4, x = "condition", y = "optimal.G", color = "condition", fill = "condition", facet.by = c("topology"),
+                 desc_stat = "mean_sd", add = "jitter", ncol = 4, xlab="condition", ylab= "Optimal G", 
+                 add.params = list(color = "darkgray")) + scale_color_d3("category10")
+p <- p +geom_text(data = ann, aes(x = x, y = y, label = label), inherit.aes = FALSE, hjust = 0, vjust = 1, size = 3)
+p
+```
+```{r}
+pdf("G_over_Treatment_per_Topology.pdf")
+plot(p)
+dev.off()
+```
+
