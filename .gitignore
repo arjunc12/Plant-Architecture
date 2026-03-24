@@ -29,6 +29,7 @@ Maryam-Hormone-Analysis/*.csv
 Magda_Analysis/R/*.csv
 Magda_Analysis/R/*.pdf
 Magda_Analysis/R/*.html
+Magda_Analysis/R/*.tsv
 
 data.zip
 
