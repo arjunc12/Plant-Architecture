@@ -171,7 +171,7 @@ def read_arbor_condensed(fname):
 
 def main():
     for arbor in os.listdir(RECONSTRUCTIONS_DIR):
-        if len(argv) > 1 and argv[1] in arbor:
+        if len(argv) == 1 or arbor in argv[1]:
             print(arbor)
             G = read_arbor_full(arbor)
 
