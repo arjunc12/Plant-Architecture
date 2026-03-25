@@ -4,6 +4,7 @@ import pylab
 import os
 import re
 from constants import DRAWINGS_DIR
+from pathlib import Path
 
 NODE_SIZE = {'main root' : 30, 'main root base' : 30, 'lateral root' : 10, 'insertion point' : 10, 'lateral root tip' : 30}
 NODE_COLOR = {'main root' : 'm' , 'main root base' : 'k', 'lateral root' : 'b', 'insertion point' : 'r', 'lateral root tip' : 'k'}
@@ -185,7 +186,11 @@ def get_day(image):
     image_items = image.split('_')
     return image_items[1]
 
+def get_filename(path):
+    return Path(path).name
+
 def arbor_name(raw_data_fname, image, main_root_name):
+    raw_data_fname = get_filename(raw_data_fname)
     raw_data_fname = raw_data_fname.strip("_Root_Nodes.csv")
     image = image.strip(".rsml")
     return raw_data_fname + image + "_" + main_root_name
