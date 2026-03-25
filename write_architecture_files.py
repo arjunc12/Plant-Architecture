@@ -52,8 +52,10 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
         if image != curr_image:
             # if this is not the first image, write the arbor file for the previous image
             if curr_main_root_name != None and len(curr_lateral_roots) > 0:
-                reconstruction_fname = utils.arbor_name(curr_image, curr_main_root_name)
+                reconstruction_fname = utils.arbor_name(raw_data_fname, curr_image, curr_main_root_name)
                 output_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
+                if os.path.exists(output_fname):
+                    print("ERROR: Duplicate filename " + output_fname)
                 assert not os.path.exists(output_fname)
                 #print("write_full_1 output_fname = %s" % output_fname)
                 #data/architecture-data/arbor-reconstructions/282_1_C_day3.csv

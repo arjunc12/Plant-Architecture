@@ -185,8 +185,10 @@ def get_day(image):
     image_items = image.split('_')
     return image_items[1]
 
-def arbor_name(image, main_root_name):
-    return main_root_name + image.strip('.rsml')
+def arbor_name(raw_data_fname, image, main_root_name):
+    raw_data_fname = raw_data_fname.strip("_Root_Nodes.csv")
+    image = image.strip(".rsml")
+    return raw_data_fname + image + "_" + main_root_name
 
 def get_experiment(fname):
     fname_items = fname.split('_')
