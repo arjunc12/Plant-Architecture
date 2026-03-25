@@ -14,7 +14,7 @@ def write_arbor_file_condensed(output_fname, points):
         f.write('root order, x coordinate, y coordinate, insertion point\n')
         for root_type, x, y, insertion in points:
             f.write('%d, %f, %f, %f\n' % (root_type, x, y, insertion))
-            
+
 #write_full_2
 def write_arbor_file_full(output_fname, main_root_points, lateral_roots):
     with open(output_fname, 'w') as f:
@@ -54,6 +54,7 @@ def write_arbor_files_full(raw_data_fname, reconstruction_dir):
             if curr_main_root_name != None and len(curr_lateral_roots) > 0:
                 reconstruction_fname = utils.arbor_name(curr_image, curr_main_root_name)
                 output_fname = '%s/%s.csv' % (reconstruction_dir, reconstruction_fname)
+                assert not os.path.exists(output_fname)
                 #print("write_full_1 output_fname = %s" % output_fname)
                 #data/architecture-data/arbor-reconstructions/282_1_C_day3.csv
                 write_arbor_file_full(output_fname, curr_main_root_points, curr_lateral_roots) #write_full_2
