@@ -37,7 +37,7 @@ def write_metadata(tracing_fname, output_fname):
             day, picture_num = utils.image_metadata(image)
             genotype, replicate, condition, hormone = utils.root_name_metadata(root_name)
 
-            arbor = utils.arbor_name(image, root_name)
+            arbor = utils.arbor_name(tracing_fname, image, root_name)
 
             f.write('%s, %s, %s, %s, %s, %s, %s, %s\n' \
                     % (experiment, arbor, day, picture_num, genotype, replicate, condition, hormone))
