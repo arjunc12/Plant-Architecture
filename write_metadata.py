@@ -17,8 +17,7 @@ def check_df(df):
         sys.exit(1)
 
 def write_metadata(tracing_fname, output_fname):
-    tracing_fname_items = tracing_fname.split('/')
-    relative_fname = tracing_fname_items[-1]
+    relative_fname = utils.get_filename(tracing_fname)
     experiment = utils.get_experiment(relative_fname)
 
     df = pd.read_csv(tracing_fname, skipinitialspace=True)
@@ -47,7 +46,7 @@ def main():
     output_fname = '%s/%s' % (METADATA_DIR, 'metadata.csv')
     for fname in os.listdir(CLEANED_ROOT_NODES_DIR):
         if 'Root_Nodes' in fname and fname.endswith('.csv'):
-            raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)  #for file in cleaned_root_nodes_dir 
+            raw_data_fname = '%s/%s' % (CLEANED_ROOT_NODES_DIR, fname)  #for file in cleaned_root_nodes_dir
         #data/architecture-data/raw-data/root-nodes-cleaned
             print(raw_data_fname)
             write_metadata(raw_data_fname, output_fname)
