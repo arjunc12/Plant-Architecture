@@ -43,3 +43,5 @@ cornell-ssh-login.txt
 paper-data
 
 *.class
+
+data*.zip
