@@ -342,7 +342,7 @@ def get_closest_and_valid_segments(lat_tips, line_segments):
 
     return all_closest, all_valid_segs
 
-def modified_arbor_best_cost(fname, alpha, G, root_distance):
+def modified_arbor_best_cost(fname, G, alpha, root_distance):
     final = []
     arbor = rar.read_arbor_full(fname)
     point_drawing = go.Figure()
@@ -548,7 +548,7 @@ def calc_pareto_front(fname, amin=0, amax=1, astep=0.05, Gmin=-2, Gmax=2, Gstep=
             G_opt = nx.Graph(Gravity = g)
             line_segs = get_line_segments(G)
             graph_main_root(G_opt, line_segs)
-            final = modified_arbor_best_cost(fname, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
+            final = modified_arbor_best_cost(fname, G=g, alpha=alpha, root_distance=0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
             graph_opt_lines(G_opt, final)
             point_dist = 0
             #print("Calculating distances for alpha: " + str(alpha) + " and G = " + str(g))
