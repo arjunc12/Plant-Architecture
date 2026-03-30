@@ -572,7 +572,7 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
     with open(fname, 'a') as f:
         skip = set()
         if first_time:
-            f.write('arbor type, G, alpha, wiring cost, conduction delay, absolute error, squared error\n')
+            f.write('arbor type, G, alpha, wiring cost, conduction delay, total absolute error, total squared error\n')
             observed_graph = rar.read_arbor_full(arbor)
             observed_wiring = pf.wiring_cost(observed_graph)
             observed_delay = modified_conduction_delay(observed_graph)
@@ -602,7 +602,10 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
                 graph_main_root(G_opt, line_segs)
                 final = modified_arbor_best_cost(arbor, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
                 graph_opt_lines(G_opt, final)
-                point_dist = 0
+
+                total_absolute_error = 0
+                total_squared_error = 0
+
                 #print("Calculating distances for alpha: " + str(alpha) + " and G = " + str(g))
                 wiring = 0
                 delay = 0
@@ -611,10 +614,12 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
                     delay += result[2]
                     main_root = result[4], result[5]
                     lateral_tip = result[6], result[7]
-                    point_dist += modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
+                    sum_absolute_error, sum_squared_error = modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
+                    total_absolute_error += sum_absolute_error
+                    total_squared_error += sum_squared_error
                 wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
 
-                f.write('%s, %.10f, %.10f, %.6f, %.6f, %.6f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
+                f.write('%s, %f, %f, %f, %f, %f, %f\n' % ("optimal", g, alpha, wiring, delay, total_absolute_error, total_squared_error))
 
 def main_root_distance(line_segments):
     distance = 0
@@ -768,41 +773,29 @@ def main():
                     print("arbor: " + arbor + " was appended to.")
 
     else:
-        for key, arbor in last_day_files.items():
+        for arbor in last_day_files:
             fname = '%s/%s' % (path, arbor)
             write_new_pareto_front_values(fname, arbor, amin=amin, amax=amax, astep=astep, Gmin=Gmin, Gmax=Gmax, Gstep=Gstep)
 
 
 def get_last_day_files():
-    files_by_genotype = {}
+    # Load your metadata
+    df = pd.read_csv("%s/metadata.csv" % METADATA_DIR)
 
-    for file_name in os.listdir(RECONSTRUCTIONS_DIR):
-        if not file_name.endswith(".csv"):
-            continue
-        parts = file_name.split('_')
+    # Ensure hormone NaNs don't break grouping
+    df['hormone'] = df['hormone'].fillna('')
 
-        genotype = parts[0]
-        replicate = parts[1]
-        condition = parts[2]
-        hormone = None
-        if len(parts) >= 3:
-            hormone = parts[3]
-        day = parts[-1].replace('.csv', '')
-        day = int(day.strip('day'))
+    # Find max day per group
+    group_cols = ['genotype', 'replicate', 'condition', 'hormone']
+    max_days = df.groupby(group_cols)['day'].transform('max')
 
-        key = (genotype, replicate, condition)
-        if key not in files_by_genotype:
-            files_by_genotype[key] = {}
+    # Filter rows where day == max day within each group
+    latest = df[df['day'] == max_days]
 
-        files_by_genotype[key][day] = file_name
+    # Get arbor names with ".csv" appended
+    result = (latest['arbor name'] + '.csv').tolist()
 
-    last_day_files = {}
-    for key, day_files in files_by_genotype.items():
-        last_day = max(day_files.keys())
-        if last_day not in [5, 9]:
-            continue
-        last_day_files[key] = day_files[last_day]
-    return last_day_files
+    return result
 
 if __name__ == '__main__':
     try:
