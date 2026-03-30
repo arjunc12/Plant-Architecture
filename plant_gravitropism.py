@@ -565,61 +565,236 @@ def calc_pareto_front(fname, amin=0, amax=1, astep=0.05, Gmin=-2, Gmax=2, Gstep=
 
     return values
 
-def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin=-2, Gmax=2, Gstep=0.2):
+# -------------------------
+# Core evaluation logic
+# -------------------------
+def evaluate_parameters(arbor, G, alpha):
+    """
+    Evaluate a single (G, alpha) parameter combination for a given arbor.
+
+    This function computes:
+    - wiring cost
+    - conduction delay
+    - total absolute error
+    - total squared error
+
+    Parameters
+    ----------
+    arbor : str
+        Arbor filename or identifier.
+    G : float
+        Gravity parameter.
+    alpha : float
+        Alpha parameter.
+
+    Returns
+    -------
+    tuple
+        (wiring, delay, total_absolute_error, total_squared_error)
+    """
+    # Load the observed arbor graph
+    G_graph = rar.read_arbor_full(arbor)
+
+    # Initialize optimization graph with given gravity
+    G_opt = nx.Graph(Gravity=G)
+
+    # Build base structure (main root)
+    line_segs = get_line_segments(G_graph)
+    graph_main_root(G_opt, line_segs)
+
+    # Compute optimal arbor configuration under parameters
+    results = modified_arbor_best_cost(arbor, alpha, G, 0)
+
+    # Add optimized edges to graph
+    graph_opt_lines(G_opt, results)
+
+    wiring = 0
+    delay = 0
+    total_abs = 0
+    total_sq = 0
+
+    # Aggregate metrics across all segments
+    for result in results:
+        wiring += result[1]
+        delay += result[2]
+
+        main_root = (result[4], result[5])
+        lateral_tip = (result[6], result[7])
+
+        abs_err, sq_err = modified_calculate_distance(
+            G, G_graph, G_opt, main_root, lateral_tip
+        )
+
+        total_abs += abs_err
+        total_sq += sq_err
+
+    # Add main root contribution to wiring cost
+    wiring += main_root_distance(line_segs)
+
+    return wiring, delay, total_abs, total_sq
+
+# -------------------------
+# Parameter generation
+# -------------------------
+def generate_grid(amin, amax, astep, Gmin, Gmax, Gstep):
+    """
+    Generate a full parameter grid over (G, alpha).
+
+    This is used in non-smart mode to exhaustively evaluate
+    all combinations.
+
+    Yields
+    ------
+    tuple
+        (G, alpha) pairs
+    """
+    for g in pylab.arange(Gmin, Gmax + Gstep, Gstep):
+        g = round(abs(g), 2)  # ensure positive + clean rounding
+
+        for alpha in pylab.arange(amin, amax + astep, astep):
+            alpha = round(abs(alpha), 2)
+
+            yield g, alpha
+
+def generate_smart_grid(df, smart_num, grid_size):
+    """
+    Generate refined parameter candidates around best-performing points.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Existing results dataframe.
+    smart_num : int
+        Number of best points to refine around.
+    grid_size : int
+        Number of samples per dimension in local grid.
+
+    Returns
+    -------
+    tuple
+        (set of new parameter tuples, set of parameters to skip)
+    """
+    # Filter only optimal rows
+    df_opt = df[df['arbor type'] == 'optimal']
+
+    # Existing evaluated points to skip
+    skip = set(zip(df_opt['G'].astype(float), df_opt['alpha'].astype(float)))
+
+    # Select best-performing points based on absolute error
+    best = df_opt.nsmallest(smart_num, 'total absolute error')[['G', 'alpha']]
+
+    def local_grid(Gc, ac):
+        """
+        Generate a small local grid around a center point.
+        """
+        step = 0.05  # fixed step (can be made adaptive later)
+
+        G_vals = np.linspace(Gc - step, Gc + step, grid_size)
+        A_vals = np.linspace(ac - step, ac + step, grid_size)
+
+        return {
+            (round(g, 4), round(a, 4))
+            for g in G_vals
+            for a in A_vals
+            if 0 <= a <= 1  # enforce valid alpha range
+        }
+
+    # Collect refined parameter set
+    params = set()
+    for _, row in best.iterrows():
+        params.update(local_grid(row['G'], row['alpha']))
+
+    return params, skip
+
+# -------------------------
+# File writing
+# -------------------------
+def initialize_file(fname, arbor):
+    """
+    Initialize output file and determine which parameter combinations
+    have already been evaluated.
+
+    Parameters
+    ----------
+    fname : str
+        Output file path.
+    arbor : str
+        Arbor identifier.
+
+    Returns
+    -------
+    set
+        Set of (G, alpha) pairs to skip.
+    """
     first_time = not os.path.exists(fname) or os.path.getsize(fname) == 0
-    G = rar.read_arbor_full(arbor)
-    print("Writing pareto front values for " + arbor)
+
+    if not first_time:
+        # Load existing results and extract evaluated parameters
+        df = pd.read_csv(fname, skipinitialspace=True)
+        df = df[df['arbor type'] == 'optimal']
+        return set(zip(df['G'], df['alpha']))
+
+    # Create new file with header + observed baseline
+    with open(fname, 'w') as f:
+        f.write(
+            'arbor type, G, alpha, wiring cost, conduction delay, '
+            'total absolute error, total squared error\n'
+        )
+
+        observed = rar.read_arbor_full(arbor)
+
+        f.write(
+            '%s, %s, %s, %f, %f, %f, %f\n'
+            % (
+                "observed", "", "",
+                pf.wiring_cost(observed),
+                modified_conduction_delay(observed),
+                0, 0
+            )
+        )
+
+    return set()
+
+
+def append_result(fname, g, alpha, wiring, delay, abs_err, sq_err):
+    """
+    Append a single evaluation result to file.
+    """
     with open(fname, 'a') as f:
-        skip = set()
-        if first_time:
-            f.write('arbor type, G, alpha, wiring cost, conduction delay, total absolute error, total squared error\n')
-            observed_graph = rar.read_arbor_full(arbor)
-            observed_wiring = pf.wiring_cost(observed_graph)
-            observed_delay = modified_conduction_delay(observed_graph)
-            f.write('%s, %s, %s, %f, %f, %f\n' % ("observed", "", "", observed_wiring, observed_delay, 0, 0))
-        else:
-            df = pd.read_csv(fname, skipinitialspace=True)
-            df = df[df['arbor type'] == 'optimal']
-            G_skip = list(df['G'])
-            alpha_skip = list(df['alpha'])
-            skip = set(zip(G_skip, alpha_skip))
+        f.write(
+            '%s, %f, %f, %f, %f, %f, %f\n'
+            % ("optimal", g, alpha, wiring, delay, abs_err, sq_err)
 
-        #print(pylab.arange(Gmin, Gmax + Gstep, Gstep))
-        for g in pylab.arange(Gmin, Gmax + Gstep, Gstep):
-            g = round(g, 2)
-            #print(pylab.arange(amin, amax + astep, astep))
-            for alpha in pylab.arange(amin, amax + astep, astep):
-                alpha = round(alpha, 2)
-                if (g, alpha) in skip:
-                    continue
-                if g == 0:
-                    g = abs(g)
-                if alpha == 0:
-                    alpha = abs(alpha)
-                print(g, alpha)
-                G_opt = nx.Graph(Gravity = g)
-                line_segs = get_line_segments(G)
-                graph_main_root(G_opt, line_segs)
-                final = modified_arbor_best_cost(arbor, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
-                graph_opt_lines(G_opt, final)
+# -------------------------
+# Processing logic
+# -------------------------
+def process_arbor(arbor, fname, params, skip):
+    """
+    Evaluate all parameter combinations for a given arbor.
 
-                total_absolute_error = 0
-                total_squared_error = 0
+    Parameters
+    ----------
+    arbor : str
+        Arbor identifier.
+    fname : str
+        Output file path.
+    params : iterable
+        Iterable of (G, alpha) parameter pairs.
+    skip : set
+        Set of already evaluated parameter pairs.
+    """
+    for g, alpha in params:
+        # Skip previously evaluated combinations
+        if (g, alpha) in skip:
+            continue
 
-                #print("Calculating distances for alpha: " + str(alpha) + " and G = " + str(g))
-                wiring = 0
-                delay = 0
-                for result in final:
-                    wiring += result[1]
-                    delay += result[2]
-                    main_root = result[4], result[5]
-                    lateral_tip = result[6], result[7]
-                    sum_absolute_error, sum_squared_error = modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
-                    total_absolute_error += sum_absolute_error
-                    total_squared_error += sum_squared_error
-                wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
+        print(f"Processing {arbor}: G={g}, alpha={alpha}")
 
-                f.write('%s, %f, %f, %f, %f, %f, %f\n' % ("optimal", g, alpha, wiring, delay, total_absolute_error, total_squared_error))
+        # Compute metrics
+        wiring, delay, abs_err, sq_err = evaluate_parameters(arbor, g, alpha)
+
+        # Save result
+        append_result(fname, g, alpha, wiring, delay, abs_err, sq_err)
 
 def main_root_distance(line_segments):
     distance = 0
@@ -669,118 +844,82 @@ def modified_conduction_delay(G):
 
     return delay
 
+# -------------------------
+# CLI entry point
+# -------------------------
 def main():
+    """
+    Entry point for parameter sweep script.
+
+    Supports:
+    - Full grid search
+    - Smart refinement around best points
+
+    Workflow:
+    1. Parse CLI arguments
+    2. Determine arbors to process
+    3. Initialize output files
+    4. Generate parameter sets
+    5. Evaluate and save results
+    """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--amin', default=0, type=float)
-    parser.add_argument('--amax', default=1, type=float)
-    parser.add_argument('--astep', default=0.05, type=float)
+    # Grid search parameters
+    parser.add_argument('--amin', type=float, default=0)
+    parser.add_argument('--amax', type=float, default=1)
+    parser.add_argument('--astep', type=float, default=0.05)
 
-    parser.add_argument('--Gmin', default=-2, type=float)
-    parser.add_argument('--Gmax', default=2, type=float)
-    parser.add_argument('--Gstep', default=0.2, type=float)
+    parser.add_argument('--Gmin', type=float, default=-2)
+    parser.add_argument('--Gmax', type=float, default=2)
+    parser.add_argument('--Gstep', type=float, default=0.2)
 
-    parser.add_argument('--smart', action = 'store_true')
-    parser.add_argument('--smartNumPoints', default = 1, type=float)
-    #parser.add_argument('--smartStep', default = 0.05, type=float)
-    parser.add_argument('--smartGridSize', default = 3, type=float)
+    # Smart refinement parameters
+    parser.add_argument('--smart', action='store_true')
+    parser.add_argument('--smartNumPoints', type=int, default=1)
+    parser.add_argument('--smartGridSize', type=int, default=3)
 
     args = parser.parse_args()
-    amin = round(args.amin, 2)
-    amax = round(args.amax, 2)
-    astep = round(args.astep, 2)
 
-    Gmin = round(args.Gmin, 2)
-    Gmax = round(args.Gmax, 2)
-    Gstep = round(args.Gstep, 2)
-    smart = args.smart
-    smartNumPoints = int(args.smartNumPoints)
-    #smartStep = args.smartStep
-    smartGridSize = int(args.smartGridSize)
+    # Output directory
+    path = f"{RESULTS_DIR}/gravitropism_pareto_fronts"
+    os.makedirs(path, exist_ok=True)
 
-    #fname = '%s/plant_gravitropism.csv' % ARCHITECTURE_DIR
-    #first_time = not os.path.exists(fname)
-    path = '%s/gravitropism_pareto_fronts' % RESULTS_DIR
-    last_day_files = get_last_day_files()
-    if not os.path.exists(path):
-        os.mkdir(path)
-    #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
-    if smart:
-        for arbor in os.listdir('%s/gravitropism_pareto_fronts' % RESULTS_DIR):
-            skip = set()
-            path = '%s/gravitropism_pareto_fronts' % RESULTS_DIR
-            fname = '%s/%s' % (path, arbor)
-            df = pd.read_csv(fname)  # Update this line to match your filename
-            G = rar.read_arbor_full(arbor)
-            line_segs = get_line_segments(G)
-
-            df_optimal = df[df['arbor type'] == 'optimal']
-            skip = set(zip(df_optimal[' G'].astype(float), df_optimal[' alpha'].astype(float)))
-            best_points = df_optimal.nsmallest(smartNumPoints, ' point distance')[[' G', ' alpha']]
-            print(best_points)
-            def generate_local_grid(G_center, alpha_center, skip_set, max_step = 0.1, min_step = 0.01, n=smartGridSize):
-                def distance_to_nearest(G, alpha):
-                    return min([math.sqrt((float(G) - float(g))**2 + (float(alpha) - float(a))**2) for g, a in skip_set if round(float(g), 4) != round(float(G), 4) or round(float(a), 4) != round(float(alpha), 4)
-    ] or [1.0], default=1.0)
-                def compute_step(distance, min_step=0.01, max_step=0.1, d_min=0.05, d_max=0.5):
-                    # Clamp the distance
-                    distance = max(min(distance, d_max), d_min)
-                    # Normalize distance to [0, 1]
-                    norm = (distance - d_min) / (d_max - d_min)
-                    # Interpolate step size
-                    return min_step + norm * (max_step - min_step)
-                distance = distance_to_nearest(G_center, alpha_center)
-                step = compute_step(distance, min_step = 0.01, max_step = 0.1, d_min = 0.01, d_max = 0.5)
-                print(distance)
-                print(step)
-
-
-
-                G_vals = np.linspace(float(G_center) - step, float(G_center) + step, n)
-                alpha_vals = np.linspace(float(alpha_center) - step, float(alpha_center) + step, n)
-                grid = [(round(G, 4), round(alpha, 4))
-                        for G in G_vals
-                        for alpha in alpha_vals if 0 <= alpha <= 1]
-                return grid
-
-            refined_params = set()
-
-            for _, row in best_points.iterrows():
-                refined_params.update(generate_local_grid(row[' G'], row[' alpha'], skip, max_step = 0.1, min_step = 0.01, n=smartGridSize))
-            print(refined_params)
-            for g, alpha in refined_params:
-                #G_skip = df_optimal[' G'].astype(float)
-                #alpha_skip = df_optimal[' alpha'].astype(float)
-                #skip = set(zip(G_skip, alpha_skip))
-                if (g, alpha) in skip:
-                    print("repeated G and alpha combination")
-                    continue
-                wiring = 0
-                delay = 0
-                point_dist = 0
-
-                G_opt = nx.Graph(Gravity = g)
-                results = modified_arbor_best_cost(arbor, alpha, g, 0)
-                for result in results:
-                    wiring += result[1]
-                    delay += result[2]
-                    main_root = result[4], result[5]
-                    lateral_tip = result[6], result[7]
-                    point_dist += modified_calculate_distance(g, G, G_opt, main_root, lateral_tip)
-                wiring += main_root_distance(line_segs) # earlier, did not account for the main root when calculating wiring cost
-                with open(fname, 'a') as f:
-                    f.write('%s, %.10f, %.10f, %.6f, %.6f, %.6f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
-                    print("arbor: " + arbor + " was appended to.")
-
+    # Choose arbor list depending on mode
+    if args.smart:
+        arbors = os.listdir(path)
     else:
-        for arbor in last_day_files:
-            fname = '%s/%s' % (path, arbor)
-            write_new_pareto_front_values(fname, arbor, amin=amin, amax=amax, astep=astep, Gmin=Gmin, Gmax=Gmax, Gstep=Gstep)
+        arbors = get_last_day_files()
 
+    for arbor in arbors:
+        fname = f"{path}/{arbor}"
+
+        # Initialize file + get skip set
+        skip = initialize_file(fname, arbor)
+
+        if args.smart:
+            # Load existing results and generate refined parameters
+            df = pd.read_csv(fname, skipinitialspace=True)
+
+            params, smart_skip = generate_smart_grid(
+                df, args.smartNumPoints, args.smartGridSize
+            )
+
+            # Combine skip sets
+            skip |= smart_skip
+
+        else:
+            # Generate full parameter grid
+            params = generate_grid(
+                args.amin, args.amax, args.astep,
+                args.Gmin, args.Gmax, args.Gstep
+            )
+
+        # Run evaluations
+        process_arbor(arbor, fname, params, skip)
 
 def get_last_day_files():
     # Load your metadata
-    df = pd.read_csv("%s/metadata.csv" % METADATA_DIR)
+    df = pd.read_csv("%s/metadata.csv" % METADATA_DIR, skipinitialspace=True)
 
     # Ensure hormone NaNs don't break grouping
     df['hormone'] = df['hormone'].fillna('')
