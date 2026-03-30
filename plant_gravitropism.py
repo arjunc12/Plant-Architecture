@@ -603,7 +603,7 @@ def evaluate_parameters(arbor, G, alpha):
     graph_main_root(G_opt, line_segs)
 
     # Compute optimal arbor configuration under parameters
-    results = modified_arbor_best_cost(arbor, alpha, G, 0)
+    results = modified_arbor_best_cost(arbor, G, alpha, 0)
 
     # Add optimized edges to graph
     graph_opt_lines(G_opt, results)
