@@ -21,10 +21,10 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-   
+
 def is_between(a, x, b):
         return a < x < b or b < x < a
-        
+
 ## returns the coefficients of the quadratic equation involving gravity
 def calc_coeff(G, x, y, p, q):
     b = ((q - y - G*(p*p - x*x))/(p-x))
@@ -294,12 +294,12 @@ def modified_fill_lateral_root(gravity, G, G_opt, main_root, lateral_tip) :
             added_nodes.append(gravity*x*x + b*x + c)
 
     return added_nodes, y_coords
-    
+
 def get_closest_and_valid_segments(lat_tips, line_segments):
     all_closest = []
     all_valid_segs = []
-    
-    for tip in lat_tips: 
+
+    for tip in lat_tips:
         best_distance = math.inf
         best_seg = None
         best_seg_num = None
@@ -338,7 +338,7 @@ def get_closest_and_valid_segments(lat_tips, line_segments):
         all_valid_segs.append(valid)
 
     return all_closest, all_valid_segs
-    
+
 def modified_arbor_best_cost(fname, alpha, G, root_distance):
     final = []
     arbor = rar.read_arbor_full(fname)
@@ -360,14 +360,14 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
     #closest_segs = []
     #valid_segs = []
     closest_segs, all_valid_segs = get_closest_and_valid_segments(lat_tips, line_segments)
-    for tip in lat_tips: 
+    for tip in lat_tips:
         #print("Lateral root #: " + str(tip_number + 1))
         curr_dist = 0
         results = []
         valid_segs = all_valid_segs[tip_number]
         firstTime = True
-        for seg in valid_segs: 
-                
+        for seg in valid_segs:
+
             x0, y0 = seg[0]
             x0_temp, y0_temp = seg[0]
             x0 -= x0
@@ -391,7 +391,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                     result = find_best_cost(alpha, G, root_distance + curr_dist, x0, y0, x1, y1, p, q)
                     curr_dist += length_func(x0, y0, x1, y1)
                 results.append(result)
-                
+
             # if the tip is not in between a segment, use Dr. Richard's equation
             else:
                 result = 0
@@ -402,7 +402,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                     return math.sin(t)
                 def sqrt(t):
                     return math.sqrt(t)
-                
+
                 l = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)
                 #print("Length is " + str(l))
                 #theta = (math.pi)/3
@@ -416,17 +416,17 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                 E1=p
                 #print(A1, B1, C1, D1, E1)
                 # Define b(t), b'(t), cost'(t)
-                def b(t): 
+                def b(t):
                     return (A1*t**2+B1*t+C1)/(D1*t+E1)
                 def bprime(t):
                     return ((D1*t+E1)*(2*A1*t+B1)-D1*(A1*t**2+B1*t+C1))/(D1*t+E1)**2
                 def costprime(t):
                     return (bprime(t)/(2*G))*(sqrt(1+(2*G*p+b(t))**2)-sqrt(1+(2*G*t*l*cos(theta)+b(t))**2))+(1-alpha)*l-sqrt(1+(2*G*t*l*cos(theta)+b(t))**2)*l*cos(theta)
-                    
+
 
                 import numpy as np
                 import matplotlib.pyplot as plt
-                
+
                 #ts = np.linspace(0, 1, 100)
                 #vals = [costprime(t) for t in ts]
                 #plt.plot(ts, vals, label='costprime(t)')
@@ -453,7 +453,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                 #print("roots of costprime(x) =",roots)
                 valid_roots = [r for r in roots if 0 <= r <= 1]
                 #print(valid_roots)
-            
+
                 # Define the full cost function if not already
                 def cost(t):
                     if is_positive:
@@ -471,7 +471,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                 is_positive = positive_slope(x0, y0, x1, y1)
                 #print("Point 2: " + str(x1) + ", " + str(y1))
                 p, q = tip
-                
+
                 # Get cost at valid root(s)
                 if valid_roots:
                     #print(valid_roots)
@@ -489,7 +489,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                     delay = (curve + to_root)
                     result = (cost(min_root), wiring, delay, best_t, best_x, best_y, p, q)
                     curr_dist += length_func(x0, y0, x1, y1)
-                else: 
+                else:
                     # No root in [0,1], so check endpoints
                     cost_0 = cost(0)
                     cost_1 = cost(1)
@@ -508,19 +508,19 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
                     delay = (curve + to_root)
                     result = (min(cost_0, cost_1), wiring, delay, best_t, best_x, best_y, p, q)
                     curr_dist += length_func(x0, y0, x1, y1)
-                    
+
                 results.append(result)
         if results:
             final.append(min(results))
         else:
             print(f"Warning: No valid results for lateral tip #{tip_number} at {tip}")
-            final.append(float('inf'))  # or some sentinel value       
+            final.append(float('inf'))  # or some sentinel value
         #final.append(min(results))
         tip_number += 1
     #pq_drawings = get_tip_drawings(lat_tips)
     #for p_and_q in pq_drawings:
         #point_drawing.add_trace(p_and_q)
-    
+
     #segment_drawings = get_line_segment_drawings(line_segments)
     #for line in segment_drawings:
         #point_drawing.add_trace(line)
@@ -529,7 +529,7 @@ def modified_arbor_best_cost(fname, alpha, G, root_distance):
     #for opt in opt_lines:
         #point_drawing.add_trace(opt)
     #point_drawing.show()
-    
+
     return final
 
 def calc_pareto_front(fname, amin=0, amax=1, astep=0.05, Gmin=-2, Gmax=2, Gstep=0.2, skip=None):
@@ -569,11 +569,11 @@ def write_new_pareto_front_values(fname, arbor, amin=0, amax=1, astep=0.05, Gmin
     with open(fname, 'a') as f:
         skip = set()
         if first_time:
-            f.write('arbor type, G, alpha, wiring cost, conduction delay, point distance\n')
+            f.write('arbor type, G, alpha, wiring cost, conduction delay, absolute error, squared error\n')
             observed_graph = rar.read_arbor_full(arbor)
             observed_wiring = pf.wiring_cost(observed_graph)
             observed_delay = modified_conduction_delay(observed_graph)
-            f.write('%s, %s, %s, %f, %f, %f\n' % ("observed", "", "", observed_wiring, observed_delay, 0.0))
+            f.write('%s, %s, %s, %f, %f, %f\n' % ("observed", "", "", observed_wiring, observed_delay, 0, 0))
         else:
             df = pd.read_csv(fname, skipinitialspace=True)
             df = df[df['arbor type'] == 'optimal']
@@ -725,18 +725,18 @@ def main():
                 step = compute_step(distance, min_step = 0.01, max_step = 0.1, d_min = 0.01, d_max = 0.5)
                 print(distance)
                 print(step)
-                
-       
-                    
+
+
+
                 G_vals = np.linspace(float(G_center) - step, float(G_center) + step, n)
                 alpha_vals = np.linspace(float(alpha_center) - step, float(alpha_center) + step, n)
-                grid = [(round(G, 4), round(alpha, 4)) 
-                        for G in G_vals 
+                grid = [(round(G, 4), round(alpha, 4))
+                        for G in G_vals
                         for alpha in alpha_vals if 0 <= alpha <= 1]
                 return grid
 
             refined_params = set()
-            
+
             for _, row in best_points.iterrows():
                 refined_params.update(generate_local_grid(row[' G'], row[' alpha'], skip, max_step = 0.1, min_step = 0.01, n=smartGridSize))
             print(refined_params)
@@ -764,8 +764,8 @@ def main():
                     f.write('%s, %.10f, %.10f, %.6f, %.6f, %.6f\n' % ("optimal", g, alpha, wiring, delay, point_dist))
                     print("arbor: " + arbor + " was appended to.")
 
-    else: 
-        for key, arbor in last_day_files.items():            
+    else:
+        for key, arbor in last_day_files.items():
             fname = '%s/%s' % (path, arbor)
             write_new_pareto_front_values(fname, arbor, amin=amin, amax=amax, astep=astep, Gmin=Gmin, Gmax=Gmax, Gstep=Gstep)
 
