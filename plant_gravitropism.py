@@ -227,13 +227,16 @@ def modified_line_equation(G, main_root, lateral_tip):
 
 def modified_calculate_distance(gravity, G, G_opt, main_root, lateral_tip):
     opt_y_coords, actual_y_coords = modified_fill_lateral_root(gravity, G, G_opt, main_root, lateral_tip)
-    distances = []
+
+    sum_absolute_error = 0
+    sum_squared_error = 0
 
     for x in range(len(opt_y_coords)):
-        diff_square = (opt_y_coords[x] - actual_y_coords[x]) ** 2
-        distances.append(diff_square)
+        error = opt_y_coords[x] - actual_y_coords[x]
+        sum_absolute_error += abs(error)
+        sum_squared_error += (error ** 2)
 
-    return sum(distances)
+    return sum_absolute_error, sum_squared_error
 
 
 def modified_fill_lateral_root(gravity, G, G_opt, main_root, lateral_tip) :
