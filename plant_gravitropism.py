@@ -649,23 +649,25 @@ def generate_grid(amin, amax, astep, Gmin, Gmax, Gstep):
         (G, alpha) pairs
     """
     for g in pylab.arange(Gmin, Gmax + Gstep, Gstep):
-        g = round(abs(g), 2)  # ensure positive + clean rounding
-
         for alpha in pylab.arange(amin, amax + astep, astep):
-            alpha = round(abs(alpha), 2)
-
             yield g, alpha
 
 def generate_smart_grid(df, smart_num, grid_size):
     """
-    Generate refined parameter candidates around best-performing points.
+    Generate refined parameter candidates around top-performing points.
+
+    This version:
+    - Uses top N points from BOTH absolute and squared error
+    - Deduplicates overlapping points between metrics
+    - Avoids duplicate parameter generation
+    - Preserves adaptive refinement behavior
 
     Parameters
     ----------
     df : pandas.DataFrame
         Existing results dataframe.
     smart_num : int
-        Number of best points to refine around.
+        Number of top points per metric to refine around.
     grid_size : int
         Number of samples per dimension in local grid.
 
@@ -674,37 +676,64 @@ def generate_smart_grid(df, smart_num, grid_size):
     tuple
         (set of new parameter tuples, set of parameters to skip)
     """
-    # Filter only optimal rows
     df_opt = df[df['arbor type'] == 'optimal']
 
-    # Existing evaluated points to skip
+    # Previously evaluated points
     skip = set(zip(df_opt['G'].astype(float), df_opt['alpha'].astype(float)))
 
-    # Select best-performing points based on absolute error
-    best = df_opt.nsmallest(smart_num, 'total absolute error')[['G', 'alpha']]
+    # --- Get top N per metric ---
+    best_abs = df_opt.nsmallest(smart_num, 'total absolute error')[['G', 'alpha']]
+    best_sq = df_opt.nsmallest(smart_num, 'total squared error')[['G', 'alpha']]
 
-    def local_grid(Gc, ac):
-        """
-        Generate a small local grid around a center point.
-        """
-        step = 0.05  # fixed step (can be made adaptive later)
+    # Combine and deduplicate refinement centers
+    best = pd.concat([best_abs, best_sq]).drop_duplicates().reset_index(drop=True)
 
-        G_vals = np.linspace(Gc - step, Gc + step, grid_size)
-        A_vals = np.linspace(ac - step, ac + step, grid_size)
+    def distance_to_nearest(G, alpha, skip_set):
+        """Distance to nearest previously evaluated point."""
+        distances = [
+            ((float(G) - float(g))**2 + (float(alpha) - float(a))**2) ** 0.5
+            for g, a in skip_set
+            if not (
+                round(float(g), 6) == round(float(G), 6) and
+                round(float(a), 6) == round(float(alpha), 6)
+            )
+        ]
+        return min(distances) if distances else 1.0
+
+    def compute_step(distance, min_step=0.005, max_step=0.1, d_min=0.01, d_max=0.5):
+        """Adaptive step size based on neighborhood density."""
+        distance = max(min(distance, d_max), d_min)
+        norm = (distance - d_min) / (d_max - d_min)
+        return min_step + norm * (max_step - min_step)
+
+    def local_grid(Gc, ac, skip_set):
+        """Generate local refined grid around a center point."""
+        dist = distance_to_nearest(Gc, ac, skip_set)
+        step = compute_step(dist)
+
+        print(f"Refining around ({Gc}, {ac}) | distance={dist:.4f}, step={step:.4f}")
+
+        G_vals = np.linspace(float(Gc) - step, float(Gc) + step, grid_size)
+        A_vals = np.linspace(float(ac) - step, float(ac) + step, grid_size)
 
         return {
-            (round(g, 4), round(a, 4))
+            (round(g, 6), round(a, 6))
             for g in G_vals
             for a in A_vals
-            if 0 <= a <= 1  # enforce valid alpha range
+            if 0 <= a <= 1
         }
 
-    # Collect refined parameter set
+    # --- Generate refined parameter set ---
     params = set()
+
     for _, row in best.iterrows():
-        params.update(local_grid(row['G'], row['alpha']))
+        local_params = local_grid(row['G'], row['alpha'], skip)
+
+        # Avoid adding already-seen parameters early (minor efficiency gain)
+        params.update(p for p in local_params if p not in skip)
 
     return params, skip
+
 
 # -------------------------
 # File writing
@@ -763,7 +792,7 @@ def append_result(fname, g, alpha, wiring, delay, abs_err, sq_err):
     with open(fname, 'a') as f:
         f.write(
             '%s, %f, %f, %f, %f, %f, %f\n'
-            % ("optimal", g, alpha, wiring, delay, abs_err, sq_err)
+            % ("optimal", g, alpha, wiring, delay, abs_err, sq_err))
 
 # -------------------------
 # Processing logic
