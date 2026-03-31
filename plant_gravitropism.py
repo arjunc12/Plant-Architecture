@@ -935,6 +935,13 @@ def main():
     for arbor in arbors:
         fname = f"{path}/{arbor}"
 
+        # skip files that don't exist (most likely no lateral roots so no reconstruction)
+        if not os.path.exists(fname):
+            print(f"Skipping {arbor}: no reconstruction found")
+            continue
+
+
+
         # Initialize file + get skip set
         skip = initialize_file(fname, arbor)
 
