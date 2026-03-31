@@ -499,7 +499,7 @@ def modified_arbor_best_cost(fname, G, alpha, root_distance):
                         - math.sqrt(1+(2*G*t*l*math.cos(theta)+b(t))**2) * l * math.cos(theta)
                     )
 
-                def find_multiple_roots(func, x_range, num_guesses=50):
+                def find_multiple_roots(func, x_range, num_guesses=1):
                     roots = []
                     guesses = np.linspace(x_range[0], x_range[1], num_guesses)
                     for guess in guesses:
