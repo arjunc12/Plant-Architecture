@@ -225,78 +225,95 @@ def modified_line_equation(G, main_root, lateral_tip):
         b, c = calc_coeff(G, x, y, p, q)
         return b, c
 
+def orthogonal_distance_to_curve(G, b, c, obs_x, obs_y, x_start, x_end, num_samples=1000):
+    """
+    Approximate the orthogonal (perpendicular) distance from an observed point
+    to the optimized parabola G*x^2 + b*x + c by sampling along the curve.
+    """
+    xs = pylab.linspace(x_start, x_end, num_samples)
+    min_dist = math.inf
+    for x in xs:
+        y = G * x**2 + b * x + c
+        dist = math.sqrt((obs_x - x)**2 + (obs_y - y)**2)
+        if dist < min_dist:
+            min_dist = dist
+    return min_dist
+
 def modified_calculate_distance(gravity, G, G_opt, main_root, lateral_tip):
-    opt_y_coords, actual_y_coords = modified_fill_lateral_root(gravity, G, G_opt, main_root, lateral_tip)
+    best_x, best_y = main_root
+    tip_x, tip_y = lateral_tip
 
-    sum_absolute_error = 0
-    sum_squared_error = 0
+    b, c = calc_coeff(gravity, best_x, best_y, tip_x, tip_y)
 
-    for x in range(len(opt_y_coords)):
-        error = opt_y_coords[x] - actual_y_coords[x]
-        sum_absolute_error += abs(error)
-        sum_squared_error += (error ** 2)
+    x_start = min(best_x, tip_x)
+    x_end = max(best_x, tip_x)
 
-    return sum_absolute_error, sum_squared_error
-
-
-def modified_fill_lateral_root(gravity, G, G_opt, main_root, lateral_tip) :
-
-    ## This method uses the lateral tip and main root to fill in points of the lateral root
-    ## in order to perform distance calculation
-
-    # get coefficients
-    if gravity == 0:
-        m, y_int = modified_line_equation(gravity, main_root, lateral_tip)
-    else:
-        b, c = modified_line_equation(gravity, main_root, lateral_tip)
-
-
-    observed = {}
-    optimal = {}
-    observed, optimal = ps.create_dict(G, G_opt)
-    backwards = {}
-
-    ## reverses observed dictionary
-    for node in reversed(observed):
-        backwards[node] = observed[node]
-
-    tip_found = False
-    encountered_observed = []
-    index = len(G.nodes) - 2
-
-    ## loop backwards
-    for node in backwards :
-        if G.nodes[node]['label'] == "lateral root tip" and tip_found:
-            break
-        if lateral_tip == node:
-            tip_found = True
-           # print("tip was found")
+    # BFS to collect points belonging to this specific lateral root
+    lateral_points = []
+    visited = set()
+    queue = [lateral_tip]
+    while queue:
+        node = queue.pop(0)
+        if node in visited:
             continue
-        if tip_found == True and (list(G.nodes(data = True))[index][1]["label"] == "lateral root"):
-           # print("not a tip")
-            encountered_observed.append(node)
-        index -= 1
+        visited.add(node)
+        label = G.nodes[node]['label']
+        if label in ('lateral root', 'lateral root tip'):
+            lateral_points.append(node)
+            for neighbor in G.neighbors(node):
+                if neighbor not in visited and G.nodes[neighbor]['label'] in ('lateral root', 'lateral root tip'):
+                    queue.append(neighbor)
 
-    ## need to calculate points based on observed x-coordinates and line equation
-    x_coords = []
-    y_coords = []
-    count = -1
-    for point in encountered_observed:
-        for coords in point:
-          count += 1
-          if count % 2 == 0 :
-              x_coords.append(coords)
-          else :
-              y_coords.append(coords)
-    added_nodes = []
-    if gravity == 0:
-        for x in x_coords:
-            added_nodes.append(m * x + y_int)
-    else:
-        for x in x_coords:
-            added_nodes.append(gravity*x*x + b*x + c)
+    total_orthogonal = 0
+    total_sq_orthogonal = 0
+    for (obs_x, obs_y) in lateral_points:
+        dist = orthogonal_distance_to_curve(gravity, b, c, obs_x, obs_y, x_start, x_end)
+        total_orthogonal += dist
+        total_sq_orthogonal += dist ** 2
 
-    return added_nodes, y_coords
+    return total_orthogonal, total_sq_orthogonal
+
+
+def modified_fill_lateral_root(gravity, G, G_opt, main_root, lateral_tip):
+    best_x, best_y = main_root
+    tip_x, tip_y = lateral_tip
+
+    x_span = abs(tip_x - best_x)
+    if x_span < 1e-6:
+        # Near-vertical: optimized curve can't be parameterized in x
+        # Error is undefined; skip this lateral root's contribution
+        return [], []
+
+    # Get optimized curve coefficients
+    b, c = calc_coeff(gravity, best_x, best_y, tip_x, tip_y)
+
+    # Walk the observed graph from the tip back through lateral root nodes
+    # collecting all points that belong to this specific lateral root
+    lateral_points = []
+    visited = set()
+    queue = [lateral_tip]
+
+    while queue:
+        node = queue.pop(0)
+        if node in visited:
+            continue
+        visited.add(node)
+        label = G.nodes[node]['label']
+        if label in ('lateral root', 'lateral root tip'):
+            lateral_points.append(node)
+            for neighbor in G.neighbors(node):
+                if neighbor not in visited and G.nodes[neighbor]['label'] in ('lateral root', 'lateral root tip'):
+                    queue.append(neighbor)
+
+    # For each observed point, evaluate optimized curve at same x
+    opt_y_coords = []
+    actual_y_coords = []
+    for (obs_x, obs_y) in lateral_points:
+        opt_y = gravity * obs_x**2 + b * obs_x + c
+        opt_y_coords.append(opt_y)
+        actual_y_coords.append(obs_y)
+
+    return opt_y_coords, actual_y_coords
 
 def get_closest_and_valid_segments(lat_tips, line_segments):
     all_closest = []
@@ -342,7 +359,7 @@ def get_closest_and_valid_segments(lat_tips, line_segments):
 
     return all_closest, all_valid_segs
 
-def modified_arbor_best_cost(fname, alpha, G, root_distance):
+def modified_arbor_best_cost(fname, G, alpha, root_distance):
     final = []
     arbor = rar.read_arbor_full(fname)
     point_drawing = go.Figure()
@@ -548,7 +565,7 @@ def calc_pareto_front(fname, amin=0, amax=1, astep=0.05, Gmin=-2, Gmax=2, Gstep=
             G_opt = nx.Graph(Gravity = g)
             line_segs = get_line_segments(G)
             graph_main_root(G_opt, line_segs)
-            final = modified_arbor_best_cost(fname, alpha, g, 0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
+            final = modified_arbor_best_cost(fname, G=g, alpha=alpha, root_distance=0) # 0 is the root distance but I figured it doesn't matter as code calculates proper root distance
             graph_opt_lines(G_opt, final)
             point_dist = 0
             #print("Calculating distances for alpha: " + str(alpha) + " and G = " + str(g))
@@ -603,15 +620,16 @@ def evaluate_parameters(arbor, G, alpha):
     graph_main_root(G_opt, line_segs)
 
     # Compute optimal arbor configuration under parameters
-    results = modified_arbor_best_cost(arbor, alpha, G, 0)
+    results = modified_arbor_best_cost(arbor, G, alpha, 0)
 
     # Add optimized edges to graph
     graph_opt_lines(G_opt, results)
 
     wiring = 0
     delay = 0
-    total_abs = 0
-    total_sq = 0
+
+    total_orthogonal = 0
+    total_sq_orthogonal = 0
 
     # Aggregate metrics across all segments
     for result in results:
@@ -621,17 +639,16 @@ def evaluate_parameters(arbor, G, alpha):
         main_root = (result[4], result[5])
         lateral_tip = (result[6], result[7])
 
-        abs_err, sq_err = modified_calculate_distance(
+        orthogonal, sq_orthogonal = modified_calculate_distance(
             G, G_graph, G_opt, main_root, lateral_tip
         )
-
-        total_abs += abs_err
-        total_sq += sq_err
+        total_orthogonal += orthogonal
+        total_sq_orthogonal += sq_orthogonal
 
     # Add main root contribution to wiring cost
     wiring += main_root_distance(line_segs)
 
-    return wiring, delay, total_abs, total_sq
+    return wiring, delay, total_orthogonal, total_sq_orthogonal
 
 # -------------------------
 # Parameter generation
@@ -767,9 +784,8 @@ def initialize_file(fname, arbor):
     with open(fname, 'w') as f:
         f.write(
             'arbor type, G, alpha, wiring cost, conduction delay, '
-            'total absolute error, total squared error\n'
+            'total orthogonal distance, total squared orthogonal distance\n'
         )
-
         observed = rar.read_arbor_full(arbor)
 
         f.write(
@@ -785,14 +801,11 @@ def initialize_file(fname, arbor):
     return set()
 
 
-def append_result(fname, g, alpha, wiring, delay, abs_err, sq_err):
-    """
-    Append a single evaluation result to file.
-    """
+def append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
     with open(fname, 'a') as f:
         f.write(
             '%s, %f, %f, %f, %f, %f, %f\n'
-            % ("optimal", g, alpha, wiring, delay, abs_err, sq_err))
+            % ("optimal", g, alpha, wiring, delay, orthogonal, sq_orthogonal))
 
 # -------------------------
 # Processing logic
@@ -820,10 +833,10 @@ def process_arbor(arbor, fname, params, skip):
         print(f"Processing {arbor}: G={g}, alpha={alpha}")
 
         # Compute metrics
-        wiring, delay, abs_err, sq_err = evaluate_parameters(arbor, g, alpha)
+        wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha)
 
         # Save result
-        append_result(fname, g, alpha, wiring, delay, abs_err, sq_err)
+        append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
 
 def main_root_distance(line_segments):
     distance = 0
