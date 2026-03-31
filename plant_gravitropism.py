@@ -74,14 +74,36 @@ def distance_from_base(root_distance, x, y, x1, y1):
     return distance + root_distance
 
 ## Returns the total cost along with the wiring and delay used to calculate it
-def total_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q):
+def total_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q, t):
+    """
+    Computes total cost = alpha * wiring + (1 - alpha) * delay
+
+    Parameters
+    ----------
+    root_distance : float
+        Distance from main root base to start of this segment (x0, y0)
+    t : float
+        Position along the segment from (x0, y0) to (x1, y1), in [0, 1]
+    """
+
+    # Length of curved lateral connection
     curve = curve_length(G, x1, y1, p, q)
-    to_root = distance_from_base(root_distance, x0, y0, x1, y1)
+
+    # Length of the main root segment
+    segment_length = length_func(x0, y0, x1, y1)
+
+    # Correct distance from connection point to root base
+    to_root = root_distance + t * segment_length
+
+    # Wiring cost = lateral curve only
     wiring = curve
-    delay = (curve + to_root)
-    cost = (alpha * wiring) +  ((1 - alpha) * delay)
-    #print("curve = ", curve, "to root = " , to_root, "wiring = ", wiring, "delay = ", delay, "total cost = ", cost)
-    #cost = curve + (1 - alpha) * distance_from_base(root_distance, x0, y0, x1, y1)
+
+    # Delay = curve + main root traversal
+    delay = curve + to_root
+
+    # Total cost
+    cost = (alpha * wiring) + ((1 - alpha) * delay)
+
     return cost, wiring, delay
 
 def find_best_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q):
@@ -110,7 +132,7 @@ def find_best_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q):
             new_x = x0 - (t*l*math.cos(theta))
             new_y = y0 + (t*l*math.sin(theta))
         x_curr = pylab.linspace(min(p, new_x), max(p, new_x))
-        cost, wiring, delay = total_cost(alpha, G, root_distance, x0, y0, new_x, new_y, p, q)
+        cost, wiring, delay = total_cost(alpha, G, root_distance, x0, y0, new_x, new_y, p, q, t)
         if cost <= best_cost:
             best_cost = cost
             best_wiring = wiring
@@ -359,196 +381,193 @@ def get_closest_and_valid_segments(lat_tips, line_segments):
 
     return all_closest, all_valid_segs
 
+def compute_main_root_base_distances(arbor):
+    """
+    Returns a dictionary:
+        (x, y) -> distance from main root base along the main root path
+    """
+    base_node = None
+
+    # Find the base node
+    for node in arbor.nodes():
+        if arbor.nodes[node]['label'] == 'main root base':
+            base_node = node
+            break
+
+    assert base_node is not None, "No main root base found"
+
+    base_dist = {base_node: 0}
+    visited = set([base_node])
+    queue = [base_node]
+
+    while queue:
+        curr = queue.pop(0)
+        curr_dist = base_dist[curr]
+
+        for neighbor in arbor.neighbors(curr):
+            if neighbor in visited:
+                continue
+
+            label = arbor.nodes[neighbor]['label']
+
+            if label in ('main root', 'main root base'):
+                edge_length = length_func(curr[0], curr[1], neighbor[0], neighbor[1])
+
+                base_dist[neighbor] = curr_dist + edge_length
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+    return base_dist
+
 def modified_arbor_best_cost(fname, G, alpha, root_distance):
     final = []
     arbor = rar.read_arbor_full(fname)
-    point_drawing = go.Figure()
+
+    # ✅ NEW: compute true base distances
+    base_dist = compute_main_root_base_distances(arbor)
+
     main_root = []
     lat_tips = []
     line_segments = {}
-    #point_drawing = go.Figure()
+
     for node in arbor.nodes():
-        if arbor.nodes[node]["label"] == ("main root") or arbor.nodes[node]["label"] == ("main root base"):
+        if arbor.nodes[node]["label"] in ("main root", "main root base"):
             main_root.append(node)
-        if arbor.nodes[node]["label"] == ("lateral root tip"):
+        if arbor.nodes[node]["label"] == "lateral root tip":
             lat_tips.append(node)
+
     for i in range(1, len(main_root)):
         line_segments[i] = main_root[i - 1], main_root[i]
 
-    #closest_segs = get_closest_main_seg(lat_tips, line_segments)
-    tip_number = 0
-    #closest_segs = []
-    #valid_segs = []
     closest_segs, all_valid_segs = get_closest_and_valid_segments(lat_tips, line_segments)
+
+    tip_number = 0
+
     for tip in lat_tips:
-        #print("Lateral root #: " + str(tip_number + 1))
-        curr_dist = 0
         results = []
         valid_segs = all_valid_segs[tip_number]
-        firstTime = True
-        for seg in valid_segs:
 
+        for seg in valid_segs:
             x0, y0 = seg[0]
-            x0_temp, y0_temp = seg[0]
-            x0 -= x0
-            y0 -= y0
-            #print("Point 1: " + str(x0) + ", " + str(y0))
             x1, y1 = seg[1]
-            x1 -= x0_temp
-            y1 -= y0_temp
-            #print("Point 2: " + str(x1) + ", " + str(y1))
+
             p, q = tip
-            p -= x0_temp
-            q -= y0_temp
-            #print("Tip: " + str(p) + ", " + str(q))
-            # if the tip is in between a segment, brute force the segment
+
+            # 🔑 correct base distance
+            seg_base_dist = base_dist[(x0, y0)]
+
+            # --- CASE 1: tip projects onto segment ---
             if is_between(x0, tip[0], x1):
-                if firstTime == True:
-                    result = find_best_cost(alpha, G, root_distance, x0, y0, x1, y1, p, q)
-                    curr_dist += length_func(x0, y0, x1, y1)
-                    firstTime = False
-                else:
-                    result = find_best_cost(alpha, G, root_distance + curr_dist, x0, y0, x1, y1, p, q)
-                    curr_dist += length_func(x0, y0, x1, y1)
+
+                result = find_best_cost(
+                    alpha,
+                    G,
+                    seg_base_dist,
+                    x0, y0,
+                    x1, y1,
+                    p, q
+                )
+
                 results.append(result)
 
-            # if the tip is not in between a segment, use Dr. Richard's equation
+            # --- CASE 2: use analytical solution ---
             else:
-                result = 0
                 import math
-                def cos(t):
-                    return math.cos(t)
-                def sin(t):
-                    return math.sin(t)
-                def sqrt(t):
-                    return math.sqrt(t)
+                import numpy as np
+                from scipy.optimize import fsolve
 
                 l = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)
-                #print("Length is " + str(l))
-                #theta = (math.pi)/3
                 theta = get_theta(x0, y0, x1, y1)
-                #print("Theta is " + str(theta))
-                # Recalculate A1–E1 based on current l, theta, G, p, q
-                A1=G*(l*cos(theta))**2
-                B1=-l*sin(theta)
-                C1=q-G*p**2
-                D1=-l*cos(theta)
-                E1=p
-                #print(A1, B1, C1, D1, E1)
-                # Define b(t), b'(t), cost'(t)
+
+                A1 = G * (l * math.cos(theta))**2
+                B1 = -l * math.sin(theta)
+                C1 = q - G * p**2
+                D1 = -l * math.cos(theta)
+                E1 = p
+
                 def b(t):
-                    return (A1*t**2+B1*t+C1)/(D1*t+E1)
+                    return (A1*t**2 + B1*t + C1) / (D1*t + E1)
+
                 def bprime(t):
-                    return ((D1*t+E1)*(2*A1*t+B1)-D1*(A1*t**2+B1*t+C1))/(D1*t+E1)**2
+                    return ((D1*t+E1)*(2*A1*t+B1) - D1*(A1*t**2+B1*t+C1)) / (D1*t+E1)**2
+
                 def costprime(t):
-                    return (bprime(t)/(2*G))*(sqrt(1+(2*G*p+b(t))**2)-sqrt(1+(2*G*t*l*cos(theta)+b(t))**2))+(1-alpha)*l-sqrt(1+(2*G*t*l*cos(theta)+b(t))**2)*l*cos(theta)
+                    return (
+                        (bprime(t)/(2*G)) *
+                        (math.sqrt(1+(2*G*p+b(t))**2) - math.sqrt(1+(2*G*t*l*math.cos(theta)+b(t))**2))
+                        + (1-alpha)*l
+                        - math.sqrt(1+(2*G*t*l*math.cos(theta)+b(t))**2) * l * math.cos(theta)
+                    )
 
-
-                import numpy as np
-                import matplotlib.pyplot as plt
-
-                #ts = np.linspace(0, 1, 100)
-                #vals = [costprime(t) for t in ts]
-                #plt.plot(ts, vals, label='costprime(t)')
-                #plt.axhline(0, color='gray', linestyle='--')
-                #plt.legend()
-                #plt.show()
-                def find_multiple_roots(func, x_range, num_guesses=100):
+                def find_multiple_roots(func, x_range, num_guesses=50):
                     roots = []
                     guesses = np.linspace(x_range[0], x_range[1], num_guesses)
                     for guess in guesses:
                         try:
                             root = fsolve(func, guess)[0]
-                            if not any(np.isclose(root, r) for r in roots):
+                            if 0 <= root <= 1 and not any(np.isclose(root, r) for r in roots):
                                 roots.append(root)
                         except:
                             pass
                     return sorted(roots)
-                import numpy as np
-                from scipy.optimize import fsolve
-                def f(x):
-                    return costprime(x)
-                # Find root(s) of costprime in [0, 1]
-                roots = find_multiple_roots(f, [0, 1], num_guesses=1)
-                #print("roots of costprime(x) =",roots)
-                valid_roots = [r for r in roots if 0 <= r <= 1]
-                #print(valid_roots)
 
-                # Define the full cost function if not already
                 def cost(t):
-                    if is_positive:
-                        end_segx = x0 + t*l*math.cos(theta)
-                        end_segy = y0 + t*l*math.sin(theta)
-                    else:
-                        end_segx = x0 - (t*l*math.cos(theta))
-                        end_segy = y0 + (t*l*math.sin(theta))
-                    return total_cost(alpha, G, root_distance + curr_dist, x0, y0, end_segx, end_segy, p, q)[0]
+                    dx = x1 - x0
+                    dy = y1 - y0
+                    end_x = x0 + t * dx
+                    end_y = y0 + t * dy
 
-                # reshift the points
-                x0, y0 = seg[0]
-                #print("Point 1: " + str(x0) + ", " + str(y0))
-                x1, y1 = seg[1]
-                is_positive = positive_slope(x0, y0, x1, y1)
-                #print("Point 2: " + str(x1) + ", " + str(y1))
-                p, q = tip
+                    return total_cost(
+                        alpha,
+                        G,
+                        seg_base_dist,
+                        x0, y0,
+                        x1, y1,
+                        p, q,
+                        t
+                    )[0]
 
-                # Get cost at valid root(s)
+                roots = find_multiple_roots(costprime, [0, 1])
+                valid_roots = [r for r in roots if 0 <= r <= 1]
+
                 if valid_roots:
-                    #print(valid_roots)
-                    min_root = min(valid_roots, key=lambda t: cost(t))
-                    best_t = min_root
-                    if is_positive:
-                        best_x = x0 + best_t*l*math.cos(theta)
-                        best_y = y0 + best_t*l*math.sin(theta)
-                    else:
-                        best_x = x0 - (best_t*l*math.cos(theta))
-                        best_y = y0 + (best_t*l*math.sin(theta))
-                    curve = curve_length(G, best_x, best_y, p, q)
-                    to_root = distance_from_base(root_distance, x0, y0, best_x, best_y)
-                    wiring = curve
-                    delay = (curve + to_root)
-                    result = (cost(min_root), wiring, delay, best_t, best_x, best_y, p, q)
-                    curr_dist += length_func(x0, y0, x1, y1)
+                    best_t = min(valid_roots, key=lambda t: cost(t))
                 else:
-                    # No root in [0,1], so check endpoints
-                    cost_0 = cost(0)
-                    cost_1 = cost(1)
-                    if cost_0 < cost_1:
-                        best_t = 0.0
-                        best_x = x0
-                        best_y = y0
-                    else:
-                        best_t = 1.0
-                        best_x = x1
-                        best_y = y1
-                    #print(result)
-                    curve = curve_length(G, best_x, best_y, p, q)
-                    to_root = distance_from_base(root_distance, x0, y0, best_x, best_y)
-                    wiring = curve
-                    delay = (curve + to_root)
-                    result = (min(cost_0, cost_1), wiring, delay, best_t, best_x, best_y, p, q)
-                    curr_dist += length_func(x0, y0, x1, y1)
+                    best_t = 0 if cost(0) < cost(1) else 1
+
+                dx = x1 - x0
+                dy = y1 - y0
+                best_x = x0 + best_t * dx
+                best_y = y0 + best_t * dy
+
+                curve = curve_length(G, best_x, best_y, p, q)
+
+                segment_length = length_func(x0, y0, x1, y1)
+                to_root = seg_base_dist + best_t * segment_length
+
+                wiring = curve
+                delay = curve + to_root
+
+                result = (
+                    (alpha * wiring) + ((1 - alpha) * delay),
+                    wiring,
+                    delay,
+                    best_t,
+                    best_x,
+                    best_y,
+                    p,
+                    q
+                )
 
                 results.append(result)
+
         if results:
             final.append(min(results))
         else:
             print(f"Warning: No valid results for lateral tip #{tip_number} at {tip}")
-            final.append(float('inf'))  # or some sentinel value
-        #final.append(min(results))
+            final.append(float('inf'))
+
         tip_number += 1
-    #pq_drawings = get_tip_drawings(lat_tips)
-    #for p_and_q in pq_drawings:
-        #point_drawing.add_trace(p_and_q)
-
-    #segment_drawings = get_line_segment_drawings(line_segments)
-    #for line in segment_drawings:
-        #point_drawing.add_trace(line)
-
-    #opt_lines = get_opt_to_pq_drawings(G, final)
-    #for opt in opt_lines:
-        #point_drawing.add_trace(opt)
-    #point_drawing.show()
 
     return final
 
@@ -699,8 +718,8 @@ def generate_smart_grid(df, smart_num, grid_size):
     skip = set(zip(df_opt['G'].astype(float), df_opt['alpha'].astype(float)))
 
     # --- Get top N per metric ---
-    best_abs = df_opt.nsmallest(smart_num, 'total absolute error')[['G', 'alpha']]
-    best_sq = df_opt.nsmallest(smart_num, 'total squared error')[['G', 'alpha']]
+    best_abs = df_opt.nsmallest(smart_num, 'total orthogonal distance')[['G', 'alpha']]
+    best_sq = df_opt.nsmallest(smart_num, 'total squared orthogonal distance')[['G', 'alpha']]
 
     # Combine and deduplicate refinement centers
     best = pd.concat([best_abs, best_sq]).drop_duplicates().reset_index(drop=True)
@@ -936,7 +955,7 @@ def main():
         fname = f"{path}/{arbor}"
 
         # skip files that don't exist (most likely no lateral roots so no reconstruction)
-        if not os.path.exists(fname):
+        if not rar.has_reconstruction(arbor):
             print(f"Skipping {arbor}: no reconstruction found")
             continue
 
