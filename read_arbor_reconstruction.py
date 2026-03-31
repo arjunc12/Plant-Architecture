@@ -73,6 +73,14 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         G.add_edge(closest_point, lateral_start)
         G[closest_point][lateral_start]['length'] = closest_dist
 
+def has_reconstruction(fname):
+    '''
+    Function to check if a reconstruction exists and can be read
+
+    fname -- the name of the file where the arbor reconstruction would be located if it exists
+    '''
+    return os.path.exists('%s/%s' % (RECONSTRUCTIONS_DIR, fname))
+
 def read_arbor_full(fname):
     '''
     Read the arbor reconstruction corresponding to a full arbor tracing. First, this
