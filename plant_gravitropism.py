@@ -667,7 +667,7 @@ def generate_grid(amin, amax, astep, Gmin, Gmax, Gstep):
     """
     for g in pylab.arange(Gmin, Gmax + Gstep, Gstep):
         for alpha in pylab.arange(amin, amax + astep, astep):
-            yield g, alpha
+            yield round(g, 2), round(alpha, 2)
 
 def generate_smart_grid(df, smart_num, grid_size):
     """
@@ -778,7 +778,7 @@ def initialize_file(fname, arbor):
         # Load existing results and extract evaluated parameters
         df = pd.read_csv(fname, skipinitialspace=True)
         df = df[df['arbor type'] == 'optimal']
-        return set(zip(df['G'], df['alpha']))
+        return set(zip(df['G'].round(6), df['alpha'].round(6)))
 
     # Create new file with header + observed baseline
     with open(fname, 'w') as f:
@@ -804,7 +804,7 @@ def initialize_file(fname, arbor):
 def append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
     with open(fname, 'a') as f:
         f.write(
-            '%s, %f, %f, %f, %f, %f, %f\n'
+            '%s, %0.6f, %0.6f, %f, %f, %f, %f\n'
             % ("optimal", g, alpha, wiring, delay, orthogonal, sq_orthogonal))
 
 # -------------------------
@@ -827,7 +827,7 @@ def process_arbor(arbor, fname, params, skip):
     """
     for g, alpha in params:
         # Skip previously evaluated combinations
-        if (g, alpha) in skip:
+        if (round(g, 6), round(alpha, 6)) in skip:
             continue
 
         print(f"Processing {arbor}: G={g}, alpha={alpha}")
