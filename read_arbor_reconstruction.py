@@ -6,6 +6,7 @@ import os
 import pandas as pd
 from sys import argv
 import optimal_midpoint
+from collections import defaultdict
 
 def check_root_points(root_points):
     '''
@@ -33,16 +34,23 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     segments = [(root_points[i], root_points[i+1]) for i in range(len(root_points) - 1)]
 
     # Phase 1: find best connection point for each lateral start
-    # Skip any lateral start that is already degree > 1 (shared with another lateral root)
+    # Skip any lateral start that is contained within another lateral root
     connections = []
     lateral_starts_set = set(lateral_starts)
 
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
 
+        '''
+        if a lateral root has multiple neighbors AND can reach another start, then
+        it's not actually a start.
+        Some starts might be the start of multiple lateral roots. Those roots will have
+        degree > 1 but will not have paths to any other starts
+        '''
         if G.degree(lateral_start) > 1 and any(
-            neighbor in lateral_starts_set
-            for neighbor in G.neighbors(lateral_start)
+            nx.has_path(G, lateral_start, other_start)
+            for other_start in lateral_starts_set
+            if other_start != lateral_start
         ):
             continue
 
@@ -53,6 +61,7 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         if is_connected:
             continue
 
+        # find which main root segment is closest
         best_dist = float("inf")
         best_point = None
         best_seg = None
@@ -69,7 +78,6 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         connections.append((lateral_start, best_seg, best_t, best_point))
 
     # Phase 2: group connection points by segment
-    from collections import defaultdict
     seg_connections = defaultdict(list)
     for lateral_start, best_seg, best_t, best_point in connections:
         seg_connections[best_seg].append((best_t, best_point, lateral_start))
@@ -77,7 +85,7 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     # Phase 3: for each segment, sort by t, split into subsegments, connect laterals
     for seg, seg_conns in seg_connections.items():
         p0, p1 = seg
-        assert nx.has_path(G, p0, p1), "check #1: no path between %s and %s" % (p0, p1)
+        assert G.has_edge(p0, p1), "No main root edge between %s and %s" % (p0, p1)
         seg_conns_sorted = sorted(seg_conns, key=lambda x: x[0])
 
         # Only remove the segment edge if there are interior split points
@@ -86,25 +94,29 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         if has_interior:
             G.remove_edge(p0, p1)
 
+        # we will go along this segment for each interior point that needs to become its own node
+        # track the last node that we connected a lateral root to
         prev_node = p0
         for t, proj_point, lateral_start in seg_conns_sorted:
+            # connect to the first part of the segment, no new node needed
             if t == 0 or proj_point == p0:
                 connect_point = p0
+            # connect to the second endpoint of the segment, no new node needed
             elif t == 1 or proj_point == p1:
                 connect_point = p1
             else:
+                # creating a new node out of a midpoint
                 connect_point = proj_point
+                # make the new node into its own point
                 if not G.has_node(connect_point):
                     G.add_node(connect_point)
                     G.nodes[connect_point]['label'] = 'main root'
+                # connect the new node to the previous node along the line segment
                 if not G.has_edge(prev_node, connect_point):
                     G.add_edge(prev_node, connect_point)
                     G[prev_node][connect_point]['length'] = euclidean(prev_node, connect_point)
+                # the connection point from this iteration becomes the most recent point
                 prev_node = connect_point
-
-            # Skip if lateral_start already got connected during segment splitting
-            if any(nx.has_path(G, root_point, lateral_start) for root_point in root_points):
-                continue
 
             G.add_edge(connect_point, lateral_start)
             G[connect_point][lateral_start]['length'] = euclidean(connect_point, lateral_start)
@@ -113,10 +125,10 @@ def connect_lateral_roots(G, root_points, lateral_starts):
             G.add_edge(prev_node, p1)
             G[prev_node][p1]['length'] = euclidean(prev_node, p1)
 
-        assert nx.has_path(G, p0, p1), "check #2: no path between %s and %s" % (p0, p1)
+        assert nx.has_path(G, p0, p1), "check #2: no path between main root segment %s and %s" % (p0, p1)
 
-    for u in G.nodes:
-        assert nx.has_path(G, u, G.graph['main root base']), f"no path to root from {u} to base"
+    for start in lateral_starts:
+        assert nx.has_path(G, start, G.graph['main root base']), f"no path to root from {start} to base"
 
 def has_reconstruction(fname):
     '''
