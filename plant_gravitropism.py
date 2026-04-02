@@ -693,8 +693,6 @@ def main():
     arbors = os.listdir(path) if args.smart else get_last_day_files()
 
     for arbor in arbors:
-        if arbor != "pimpi_IAA1_D9_set1_day9_20211210_RSA_M248M058LA1511_IAA_100mM_Salt072_058_5_C_iaa.csv":
-            continue
         fname = f"{path}/{arbor}"
 
         if not rar.has_reconstruction(arbor):
