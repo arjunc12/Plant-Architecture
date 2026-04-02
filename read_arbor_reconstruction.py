@@ -121,12 +121,15 @@ def connect_lateral_roots(G, root_points, lateral_starts):
             G.add_edge(connect_point, lateral_start)
             G[connect_point][lateral_start]['length'] = euclidean(connect_point, lateral_start)
 
+        # the most recently used connection point should be connected to the segment end to close the segment
         if has_interior and prev_node != p1:
             G.add_edge(prev_node, p1)
             G[prev_node][p1]['length'] = euclidean(prev_node, p1)
 
+        # make sure the original segment still exists
         assert nx.has_path(G, p0, p1), "check #2: no path between main root segment %s and %s" % (p0, p1)
 
+    # make sure every lateral root start can reach the base
     for start in lateral_starts:
         assert nx.has_path(G, start, G.graph['main root base']), f"no path to root from {start} to base"
 
