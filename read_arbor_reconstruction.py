@@ -17,13 +17,34 @@ def check_root_points(root_points):
         assert y1 >= y0
 
 def connect_lateral_roots(G, root_points, lateral_starts):
+    '''
+    Method for connecting the start of each lateral root to the closest point
+    on the main root, including points along segments (not just traced nodes).
+
+    For each lateral root start, we find the closest point on any main root segment.
+    If the closest point lies strictly between two traced nodes, we split that segment
+    by inserting a new node. If the closest point is a traced node, we connect directly.
+
+    G - the network consisting of disconnected main and lateral roots
+    root_points - the (x, y) coordinates for the points on the main root tracing
+    lateral_starts - the (x, y) coordinates for the points at the start of every lateral root
+    '''
+
     segments = [(root_points[i], root_points[i+1]) for i in range(len(root_points) - 1)]
 
     # Phase 1: find best connection point for each lateral start
-    connections = []  # (lateral_start, best_seg, best_t, best_point)
+    # Skip any lateral start that is already degree > 1 (shared with another lateral root)
+    connections = []
+    lateral_starts_set = set(lateral_starts)
 
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
+
+        if G.degree(lateral_start) > 1 and any(
+            neighbor in lateral_starts_set
+            for neighbor in G.neighbors(lateral_start)
+        ):
+            continue
 
         is_connected = any(
             nx.has_path(G, root_point, lateral_start)
@@ -56,11 +77,14 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     # Phase 3: for each segment, sort by t, split into subsegments, connect laterals
     for seg, seg_conns in seg_connections.items():
         p0, p1 = seg
+        assert nx.has_path(G, p0, p1), "check #1: no path between %s and %s" % (p0, p1)
         seg_conns_sorted = sorted(seg_conns, key=lambda x: x[0])
 
-        # Remove original segment edge
-        assert G.has_edge(p0, p1)
-        G.remove_edge(p0, p1)
+        # Only remove the segment edge if there are interior split points
+        has_interior = any(0 < t < 1 and proj != p0 and proj != p1
+                          for t, proj, _ in seg_conns_sorted)
+        if has_interior:
+            G.remove_edge(p0, p1)
 
         prev_node = p0
         for t, proj_point, lateral_start in seg_conns_sorted:
@@ -78,18 +102,21 @@ def connect_lateral_roots(G, root_points, lateral_starts):
                     G[prev_node][connect_point]['length'] = euclidean(prev_node, connect_point)
                 prev_node = connect_point
 
-            assert not G.has_edge(connect_point, lateral_start)
+            # Skip if lateral_start already got connected during segment splitting
+            if any(nx.has_path(G, root_point, lateral_start) for root_point in root_points):
+                continue
+
             G.add_edge(connect_point, lateral_start)
             G[connect_point][lateral_start]['length'] = euclidean(connect_point, lateral_start)
 
-        # Connect last split point to p1
-        if prev_node != p1:
+        if has_interior and prev_node != p1:
             G.add_edge(prev_node, p1)
             G[prev_node][p1]['length'] = euclidean(prev_node, p1)
 
-    # Phase 4: handle segments with no splits — they still need their edge (already present)
-    # and lateral starts that connected to existing nodes (t=0 or t=1) need their edges added.
-    # These are already handled above since we only remove edges for segments in seg_connections.
+        assert nx.has_path(G, p0, p1), "check #2: no path between %s and %s" % (p0, p1)
+
+    for u in G.nodes:
+        assert nx.has_path(G, u, G.graph['main root base']), f"no path to root from {u} to base"
 
 def has_reconstruction(fname):
     '''
@@ -158,10 +185,11 @@ def read_arbor_full(fname):
     # connect the first point in each lateral root to the closest point along the main root
     connect_lateral_roots(G, root_points, lateral_starts)
 
+    assert nx.is_connected(G), "Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "Graph has a cycle after connect_lateral_roots"
+
     # re-label the base of the main root and tips of the lateral roots
     relabel_lateral_root_tips(G)
-
-    assert nx.is_tree(G)
 
     return G
 
