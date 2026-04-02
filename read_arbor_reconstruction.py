@@ -5,6 +5,7 @@ from constants import RECONSTRUCTIONS_DIR, DRAWINGS_DIR
 import os
 import pandas as pd
 from sys import argv
+import optimal_midpoint
 
 def check_root_points(root_points):
     '''
@@ -16,62 +17,79 @@ def check_root_points(root_points):
         assert y1 >= y0
 
 def connect_lateral_roots(G, root_points, lateral_starts):
-    '''
-    Method for connecting the start of each lateral root to the closest main root point.
+    segments = [(root_points[i], root_points[i+1]) for i in range(len(root_points) - 1)]
 
+    # Phase 1: find best connection point for each lateral start
+    connections = []  # (lateral_start, best_seg, best_t, best_point)
 
-    G - the network consisting of disconnected main and lateral roots
-
-    root_points - the (x, y) coordinates for the points on the main root tracing
-
-    lateral_starts - the (x, y) coordinates for the points at the start of every lateral root
-    '''
-
-    # loop through each lateral root starting point to find the closest root point
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
 
-        closest_dist = float("inf")
-        closest_point = None
-        y_lateral = lateral_start[1]
-
-        # variable to track whether lateral_start is already connected to the main root
-        is_connected = False
-
-        '''
-        loop through the main root points to find the main root point closest to the current
-        lateral root
-        '''
-        for root_point in root_points:
-            '''
-            If lateral_start already has a path to root_point then it doesn't need to be
-            connected to the main root
-            '''
-            if nx.has_path(G, root_point, lateral_start):
-                is_connected = True
-                break
-            '''
-            Otherwise Check if root_point is closer to lateral_start than the the previously
-            considered  root points
-            '''
-            dist = euclidean(lateral_start, root_point)
-            if dist < closest_dist:
-                closest_dist = dist
-                closest_point = root_point
-
+        is_connected = any(
+            nx.has_path(G, root_point, lateral_start)
+            for root_point in root_points
+        )
         if is_connected:
-            # lateral_start already connected to main root; we don't want to add more edges
             continue
 
-        # we should have found a closest root point, if not something's wrong
-        assert closest_point != None
-        assert G.has_node(closest_point)
-        assert G.nodes[closest_point]['label'] in ['main root', 'main root base']
-        assert not G.has_edge(closest_point, lateral_start)
+        best_dist = float("inf")
+        best_point = None
+        best_seg = None
+        best_t = None
 
-        # connect lateral_start to the closest root point
-        G.add_edge(closest_point, lateral_start)
-        G[closest_point][lateral_start]['length'] = closest_dist
+        for p0, p1 in segments:
+            dist, proj_point, t = optimal_midpoint.optimal_midpoint_alpha1(p0, p1, lateral_start)
+            if dist < best_dist:
+                best_dist = dist
+                best_point = proj_point
+                best_seg = (p0, p1)
+                best_t = t
+
+        connections.append((lateral_start, best_seg, best_t, best_point))
+
+    # Phase 2: group connection points by segment
+    from collections import defaultdict
+    seg_connections = defaultdict(list)
+    for lateral_start, best_seg, best_t, best_point in connections:
+        seg_connections[best_seg].append((best_t, best_point, lateral_start))
+
+    # Phase 3: for each segment, sort by t, split into subsegments, connect laterals
+    for seg, seg_conns in seg_connections.items():
+        p0, p1 = seg
+        seg_conns_sorted = sorted(seg_conns, key=lambda x: x[0])
+
+        # Remove original segment edge
+        assert G.has_edge(p0, p1)
+        G.remove_edge(p0, p1)
+
+        prev_node = p0
+        for t, proj_point, lateral_start in seg_conns_sorted:
+            if t == 0 or proj_point == p0:
+                connect_point = p0
+            elif t == 1 or proj_point == p1:
+                connect_point = p1
+            else:
+                connect_point = proj_point
+                if not G.has_node(connect_point):
+                    G.add_node(connect_point)
+                    G.nodes[connect_point]['label'] = 'main root'
+                if not G.has_edge(prev_node, connect_point):
+                    G.add_edge(prev_node, connect_point)
+                    G[prev_node][connect_point]['length'] = euclidean(prev_node, connect_point)
+                prev_node = connect_point
+
+            assert not G.has_edge(connect_point, lateral_start)
+            G.add_edge(connect_point, lateral_start)
+            G[connect_point][lateral_start]['length'] = euclidean(connect_point, lateral_start)
+
+        # Connect last split point to p1
+        if prev_node != p1:
+            G.add_edge(prev_node, p1)
+            G[prev_node][p1]['length'] = euclidean(prev_node, p1)
+
+    # Phase 4: handle segments with no splits — they still need their edge (already present)
+    # and lateral starts that connected to existing nodes (t=0 or t=1) need their edges added.
+    # These are already handled above since we only remove edges for segments in seg_connections.
 
 def has_reconstruction(fname):
     '''
