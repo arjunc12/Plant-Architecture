@@ -257,10 +257,7 @@ def get_main_root_segments(arbor):
     BFS from main root base along 'main root' labeled nodes, returning
     an ordered list of segment tuples ((x0, y0), (x1, y1)).
     """
-    base = next(
-        node for node in arbor.nodes()
-        if arbor.nodes[node]['label'] == 'main root base'
-    )
+    base = arbor.graph['main root base']
 
     segments = []
     visited = {base}
@@ -284,10 +281,7 @@ def compute_main_root_base_distances(arbor):
     Returns a dict mapping each main root node to its distance from the main root base,
     using edge 'length' attributes and the ordering from get_main_root_segments.
     """
-    base = next(
-        node for node in arbor.nodes()
-        if arbor.nodes[node]['label'] == 'main root base'
-    )
+    base = arbor.graph['main root base']
 
     base_dist = {base: 0}
     for seg_start, seg_end in get_main_root_segments(arbor):
@@ -303,6 +297,54 @@ def main_root_length(arbor):
         for u, v in get_main_root_segments(arbor)
     )
 
+
+def get_insertion_segment(arbor, lateral_tip, segments):
+    """
+    For a given lateral root tip, walk up the graph until hitting a main root node,
+    then find which segment that insertion point belongs to.
+    Returns all segments up to and including the insertion segment.
+
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        Observed arbor graph.
+    lateral_tip : tuple
+        (x, y) of the lateral root tip.
+    segments : list
+        Ordered list of main root segments from get_main_root_segments.
+
+    Returns
+    -------
+    list of segments up to and including the insertion segment
+    """
+    # BFS up from tip until we hit a main root node
+    visited = set()
+    queue = [lateral_tip]
+    insertion_point = None
+
+    while queue:
+        node = queue.pop(0)
+        if node in visited:
+            continue
+        visited.add(node)
+        label = arbor.nodes[node]['label']
+        if label in ('main root', 'main root base'):
+            insertion_point = node
+            break
+        for neighbor in arbor.neighbors(node):
+            if neighbor not in visited:
+                queue.append(neighbor)
+
+    assert insertion_point is not None, f"No main root node found from tip {lateral_tip}"
+
+    # Find the segment that contains the insertion point and return all up to it
+    valid_segments = []
+    for seg in segments:
+        valid_segments.append(seg)
+        if insertion_point in seg:
+            break
+
+    return valid_segments
 
 def get_closest_and_valid_segments(lat_tips, segments):
     """
@@ -375,6 +417,8 @@ def arbor_best_cost(fname, G, alpha):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
+    Only considers main root segments up to and including the one the
+    lateral root actually connects to.
 
     Returns
     -------
@@ -391,7 +435,8 @@ def arbor_best_cost(fname, G, alpha):
 
     final = []
     for tip in lat_tips:
-        result = optimize_tip(tip, segments, base_dist, alpha, G)
+        valid_segments = get_insertion_segment(arbor, tip, segments)
+        result = optimize_tip(tip, valid_segments, base_dist, alpha, G)
         if result is not None:
             final.append(result)
         else:
