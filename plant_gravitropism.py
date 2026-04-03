@@ -804,9 +804,9 @@ def main():
         choices=['brent', 'brute_force', 'analytical'],
         help='Optimization method for finding best branch point (default: brent)'
     )
-    OPTIMIZATION_METHOD = args.optimization_method
 
     args = parser.parse_args()
+    OPTIMIZATION_METHOD = args.optimization_method
 
     path = f"{RESULTS_DIR}/gravitropism_pareto_fronts"
     os.makedirs(path, exist_ok=True)
