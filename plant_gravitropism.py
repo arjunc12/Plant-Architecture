@@ -15,9 +15,11 @@ import pandas as pd
 import warnings
 import optimal_midpoint
 
-# Use brute force optimization for all cases (more reliable than analytical fsolve approach)
-# Set to False to re-enable the analytical costprime/fsolve method
-USE_BRUTE_FORCE = True
+# OPTIMIZATION_METHOD options:
+#   'brute_force' - reliable, 101 evaluations per segment
+#   'brent'       - faster (~15 evaluations), assumes unimodal cost function
+#   'analytical'  - fsolve on costprime derivative, kept for reference but not recommended
+OPTIMIZATION_METHOD = 'brent'
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -204,6 +206,49 @@ def find_root_in_unit_interval(func, num_guesses=1):
             pass
     return sorted(roots)
 
+def find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
+    """
+    Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
+    using Brent's method to directly minimize the cost function.
+
+    For G=0, falls back to exact analytical solution from optimal_midpoint.py.
+    For G!=0, uses minimize_scalar with method='bounded' on [0, 1].
+
+    Returns
+    -------
+    tuple : (cost, wiring, delay, best_t, best_x, best_y, p, q)
+    """
+    seg_length = euclidean((x0, y0), (x1, y1))
+
+    # G=0 case: use exact analytical solution from optimal_midpoint.py
+    if G == 0:
+        if alpha == 1:
+            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_alpha1(
+                (x0, y0), (x1, y1), (p, q)
+            )
+        else:
+            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_exact(
+                (x0, y0), (x1, y1), (p, q), alpha, seg_base_dist
+            )
+        wiring = euclidean((best_x, best_y), (p, q))
+        to_root = seg_base_dist + best_t * seg_length
+        delay = wiring + to_root
+        return cost_val, wiring, delay, best_t, best_x, best_y, p, q
+
+    # G != 0: minimize cost directly using Brent's method
+    def cost_at_t(t):
+        branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
+        c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q)
+        return c
+
+    result = minimize_scalar(cost_at_t, bounds=(0, 1), method='bounded')
+    best_t = result.x
+    best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
+    best_cost, best_wiring, best_delay = compute_cost(
+        alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
+    )
+
+    return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
 
 def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
     """
@@ -431,8 +476,10 @@ def optimize_tip(tip, segments, base_dist, alpha, G):
         x1, y1 = seg[1]
         seg_base_dist = base_dist[(x0, y0)]
 
-        if is_between(x0, p, x1) or USE_BRUTE_FORCE:
+        if is_between(x0, p, x1) or OPTIMIZATION_METHOD == 'brute_force':
             result = find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
+        elif OPTIMIZATION_METHOD == 'brent':
+            result = find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
         else:
             result = find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
 
