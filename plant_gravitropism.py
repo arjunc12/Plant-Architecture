@@ -141,6 +141,54 @@ def find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
 
     return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
 
+# -------------------------
+# Enhanced brute force using Brent's method
+# -------------------------
+
+def find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
+    """
+    Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
+    using Brent's method to directly minimize the cost function.
+
+    For G=0, falls back to exact analytical solution from optimal_midpoint.py.
+    For G!=0, uses minimize_scalar with method='bounded' on [0, 1].
+
+    Returns
+    -------
+    tuple : (cost, wiring, delay, best_t, best_x, best_y, p, q)
+    """
+    seg_length = euclidean((x0, y0), (x1, y1))
+
+    # G=0 case: use exact analytical solution from optimal_midpoint.py
+    if G == 0:
+        if alpha == 1:
+            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_alpha1(
+                (x0, y0), (x1, y1), (p, q)
+            )
+        else:
+            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_exact(
+                (x0, y0), (x1, y1), (p, q), alpha, seg_base_dist
+            )
+        wiring = euclidean((best_x, best_y), (p, q))
+        to_root = seg_base_dist + best_t * seg_length
+        delay = wiring + to_root
+        return cost_val, wiring, delay, best_t, best_x, best_y, p, q
+
+    # G != 0: minimize cost directly using Brent's method
+    def cost_at_t(t):
+        branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
+        c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q)
+        return c
+
+    result = minimize_scalar(cost_at_t, bounds=(0, 1), method='bounded')
+    best_t = result.x
+    best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
+    best_cost, best_wiring, best_delay = compute_cost(
+        alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
+    )
+
+    return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
+
 
 # -------------------------
 # Optimization: analytical (used when tip x does not fall between segment endpoints)
@@ -206,50 +254,6 @@ def find_root_in_unit_interval(func, num_guesses=1):
             pass
     return sorted(roots)
 
-def find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
-    """
-    Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
-    using Brent's method to directly minimize the cost function.
-
-    For G=0, falls back to exact analytical solution from optimal_midpoint.py.
-    For G!=0, uses minimize_scalar with method='bounded' on [0, 1].
-
-    Returns
-    -------
-    tuple : (cost, wiring, delay, best_t, best_x, best_y, p, q)
-    """
-    seg_length = euclidean((x0, y0), (x1, y1))
-
-    # G=0 case: use exact analytical solution from optimal_midpoint.py
-    if G == 0:
-        if alpha == 1:
-            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_alpha1(
-                (x0, y0), (x1, y1), (p, q)
-            )
-        else:
-            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_exact(
-                (x0, y0), (x1, y1), (p, q), alpha, seg_base_dist
-            )
-        wiring = euclidean((best_x, best_y), (p, q))
-        to_root = seg_base_dist + best_t * seg_length
-        delay = wiring + to_root
-        return cost_val, wiring, delay, best_t, best_x, best_y, p, q
-
-    # G != 0: minimize cost directly using Brent's method
-    def cost_at_t(t):
-        branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
-        c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q)
-        return c
-
-    result = minimize_scalar(cost_at_t, bounds=(0, 1), method='bounded')
-    best_t = result.x
-    best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
-    best_cost, best_wiring, best_delay = compute_cost(
-        alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
-    )
-
-    return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
-
 def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
     """
     Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
@@ -280,21 +284,7 @@ def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
         to_root = seg_base_dist + best_t * seg_length
         delay = wiring + to_root
         return cost_val, wiring, delay, best_t, best_x, best_y, p, q
-
-    # alpha=1 case: minimize curve length directly
-#     if alpha == 1:
-#         def wiring_at_t(t):
-#             branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
-#             return curve_length(G, branch_x, branch_y, p, q)
-#
-#         result = minimize_scalar(wiring_at_t, bounds=(0, 1), method='bounded')
-#         best_t = result.x
-#         best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
-#         best_cost, best_wiring, best_delay = compute_cost(
-#             alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
-#         )
-#         return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
-    # G != 0, alpha != 1: use analytical costprime with fsolve
+    # G != 0: use analytical costprime with fsolve
     else:
         # theta = math.atan2(abs(y1 - y0), abs(x1 - x0)) if (x1 != x0 and y1 != y0) else 0
         theta = math.atan2(y1 - y0, x1 - x0)
@@ -806,6 +796,15 @@ def main():
     parser.add_argument('--smart', action='store_true')
     parser.add_argument('--smartNumPoints', type=int, default=1)
     parser.add_argument('--smartGridSize', type=int, default=3)
+
+    parser.add_argument(
+        '--optimization_method',
+        type=str,
+        default='brent',
+        choices=['brent', 'brute_force', 'analytical'],
+        help='Optimization method for finding best branch point (default: brent)'
+    )
+    OPTIMIZATION_METHOD = args.optimization_method
 
     args = parser.parse_args()
 
