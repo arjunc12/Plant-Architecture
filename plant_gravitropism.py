@@ -282,21 +282,22 @@ def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
         return cost_val, wiring, delay, best_t, best_x, best_y, p, q
 
     # alpha=1 case: minimize curve length directly
-    if alpha == 1:
-        def wiring_at_t(t):
-            branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
-            return curve_length(G, branch_x, branch_y, p, q)
-
-        result = minimize_scalar(wiring_at_t, bounds=(0, 1), method='bounded')
-        best_t = result.x
-        best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
-        best_cost, best_wiring, best_delay = compute_cost(
-            alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
-        )
-        return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
+#     if alpha == 1:
+#         def wiring_at_t(t):
+#             branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
+#             return curve_length(G, branch_x, branch_y, p, q)
+#
+#         result = minimize_scalar(wiring_at_t, bounds=(0, 1), method='bounded')
+#         best_t = result.x
+#         best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
+#         best_cost, best_wiring, best_delay = compute_cost(
+#             alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
+#         )
+#         return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
     # G != 0, alpha != 1: use analytical costprime with fsolve
     else:
-        theta = math.atan2(abs(y1 - y0), abs(x1 - x0)) if (x1 != x0 and y1 != y0) else 0
+        # theta = math.atan2(abs(y1 - y0), abs(x1 - x0)) if (x1 != x0 and y1 != y0) else 0
+        theta = math.atan2(y1 - y0, x1 - x0)
         p_local = p - x0
         q_local = q - y0
 
