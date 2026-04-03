@@ -7,13 +7,17 @@ import read_arbor_reconstruction as rar
 import networkx as nx
 import pareto_functions as pf
 from constants import *
-from scipy.optimize import fsolve
+from scipy.optimize import minimize_scalar, fsolve
 from scipy.spatial.distance import euclidean
 import os
 import argparse
 import pandas as pd
 import warnings
 import optimal_midpoint
+
+# Use brute force optimization for all cases (more reliable than analytical fsolve approach)
+# Set to False to re-enable the analytical costprime/fsolve method
+USE_BRUTE_FORCE = True
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -202,6 +206,18 @@ def find_root_in_unit_interval(func, num_guesses=1):
 
 
 def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
+    """
+    Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
+    using the analytical derivative of the cost function.
+
+    For G=0, uses exact analytical solution from optimal_midpoint.py.
+    For alpha=1, minimizes curve length directly via scipy minimize_scalar.
+    Otherwise, uses analytical costprime approach with fsolve.
+
+    Returns
+    -------
+    tuple : (cost, wiring, delay, best_t, best_x, best_y, p, q)
+    """
 
     seg_length = euclidean((x0, y0), (x1, y1))
 
@@ -215,38 +231,51 @@ def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
             cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_exact(
                 (x0, y0), (x1, y1), (p, q), alpha, seg_base_dist
             )
-        # recompute wiring and delay explicitly for consistency
         wiring = euclidean((best_x, best_y), (p, q))
         to_root = seg_base_dist + best_t * seg_length
         delay = wiring + to_root
         return cost_val, wiring, delay, best_t, best_x, best_y, p, q
 
-    # G != 0: use analytical costprime approach
-    theta = math.atan2(abs(y1 - y0), abs(x1 - x0)) if (x1 != x0 and y1 != y0) else 0
-    p_local = p - x0
-    q_local = q - y0
+    # alpha=1 case: minimize curve length directly
+    if alpha == 1:
+        def wiring_at_t(t):
+            branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
+            return curve_length(G, branch_x, branch_y, p, q)
 
-    costprime = make_costprime(G, alpha, seg_length, theta, p_local, q_local)
-
-    def cost_at_t(t):
-        branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
-        c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q)
-        return c
-
-    roots = find_root_in_unit_interval(costprime)
-    valid_roots = [r for r in roots if 0 <= r <= 1]
-
-    if valid_roots:
-        best_t = min(valid_roots, key=cost_at_t)
+        result = minimize_scalar(wiring_at_t, bounds=(0, 1), method='bounded')
+        best_t = result.x
+        best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
+        best_cost, best_wiring, best_delay = compute_cost(
+            alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
+        )
+        return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
+    # G != 0, alpha != 1: use analytical costprime with fsolve
     else:
-        best_t = 0.0 if cost_at_t(0) <= cost_at_t(1) else 1.0
+        theta = math.atan2(abs(y1 - y0), abs(x1 - x0)) if (x1 != x0 and y1 != y0) else 0
+        p_local = p - x0
+        q_local = q - y0
 
-    best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
-    best_cost, best_wiring, best_delay = compute_cost(
-        alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
-    )
+        costprime = make_costprime(G, alpha, seg_length, theta, p_local, q_local)
 
-    return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
+        def cost_at_t(t):
+            branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
+            c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q)
+            return c
+
+        roots = find_root_in_unit_interval(costprime)
+        valid_roots = [r for r in roots if 0 <= r <= 1]
+
+        if valid_roots:
+            best_t = min(valid_roots, key=cost_at_t)
+        else:
+            best_t = 0.0 if cost_at_t(0) <= cost_at_t(1) else 1.0
+
+        best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
+        best_cost, best_wiring, best_delay = compute_cost(
+            alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
+        )
+
+        return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
 
 # -------------------------
 # Main root utilities
@@ -402,7 +431,7 @@ def optimize_tip(tip, segments, base_dist, alpha, G):
         x1, y1 = seg[1]
         seg_base_dist = base_dist[(x0, y0)]
 
-        if is_between(x0, p, x1):
+        if is_between(x0, p, x1) or USE_BRUTE_FORCE:
             result = find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
         else:
             result = find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
