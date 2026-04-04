@@ -44,7 +44,7 @@ def calc_coeff(G, x, y, p, q):
     return b, c
 
 
-def curve_length(G, x0, y0, p, q):
+def curve_length_approx(G, x0, y0, p, q):
     """
     Arc length of the parabola G*x^2 + b*x + c between x0 and p,
     where the parabola passes through (x0, y0) and (p, q).
@@ -54,6 +54,32 @@ def curve_length(G, x0, y0, p, q):
         return pylab.sqrt(1 + (2 * G * x + b)**2)
     arc, _ = integrate.quad(differential, min(x0, p), max(x0, p))
     return arc
+
+def curve_length(G, x0, y0, p, q):
+    """
+    Arc length of the parabola G*x^2 + b*x + c between (x0, y0) and (p, q).
+    Uses closed-form solution when G != 0, Euclidean distance when G == 0.
+    """
+    if G == 0:
+        # Straight line distance
+        return euclidean((x0, y0), (p, q))
+
+    # Shift to local frame: branch point becomes origin
+    p_local = p - x0
+    q_local = q - y0
+
+    k = (q_local - G * p_local**2) / p_local
+
+    theta_0 = math.atan(k)
+    theta_p = math.atan(2 * G * p_local + k)
+
+    def sec(theta):
+        return 1.0 / math.cos(theta)
+
+    def F(theta):
+        return sec(theta) * math.tan(theta) + math.log(abs(sec(theta) + math.tan(theta)))
+
+    return abs((1.0 / (4 * G)) * (F(theta_p) - F(theta_0)))
 
 
 def orthogonal_distance_to_curve(G, b, c, obs_x, obs_y, x_start, x_end, num_samples=1000):
