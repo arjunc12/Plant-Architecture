@@ -44,7 +44,7 @@ def calc_coeff(G, x, y, p, q):
     return b, c
 
 
-def curve_length(G, x0, y0, p, q):
+def curve_length_approx(G, x0, y0, p, q):
     """
     Arc length of the parabola G*x^2 + b*x + c between x0 and p,
     where the parabola passes through (x0, y0) and (p, q).
@@ -55,20 +55,42 @@ def curve_length(G, x0, y0, p, q):
     arc, _ = integrate.quad(differential, min(x0, p), max(x0, p))
     return arc
 
+def curve_length(G, x0, y0, p, q):
+    """
+    Arc length of the parabola G*x^2 + b*x + c between (x0, y0) and (p, q).
+    Uses closed-form solution when G != 0, Euclidean distance when G == 0.
+    """
+    if G == 0:
+        # Straight line distance
+        return euclidean((x0, y0), (p, q))
+
+    # Shift to local frame: branch point becomes origin
+    p_local = p - x0
+    q_local = q - y0
+
+    k = (q_local - G * p_local**2) / p_local
+
+    theta_0 = math.atan(k)
+    theta_p = math.atan(2 * G * p_local + k)
+
+    def sec(theta):
+        return 1.0 / math.cos(theta)
+
+    def F(theta):
+        return sec(theta) * math.tan(theta) + math.log(abs(sec(theta) + math.tan(theta)))
+
+    return abs((1.0 / (4 * G)) * (F(theta_p) - F(theta_0)))
+
 
 def orthogonal_distance_to_curve(G, b, c, obs_x, obs_y, x_start, x_end, num_samples=1000):
     """
     Approximate orthogonal (perpendicular) distance from observed point
     (obs_x, obs_y) to the parabola G*x^2 + b*x + c, sampled over [x_start, x_end].
     """
-    xs = pylab.linspace(x_start, x_end, num_samples)
-    min_dist = math.inf
-    for x in xs:
-        y = G * x**2 + b * x + c
-        dist = euclidean((obs_x, obs_y), (x, y))
-        if dist < min_dist:
-            min_dist = dist
-    return min_dist
+    xs = np.linspace(x_start, x_end, num_samples)
+    ys = G * xs**2 + b * xs + c
+    dists = np.sqrt((obs_x - xs)**2 + (obs_y - ys)**2)
+    return dists.min()
 
 
 # -------------------------
@@ -480,18 +502,24 @@ def optimize_tip(tip, segments, base_dist, alpha, G):
     return best
 
 
-def arbor_best_cost(fname, G, alpha):
+def arbor_best_cost(arbor, G, alpha):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
-    Only considers main root segments up to and including the one the
-    lateral root actually connects to.
+
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        Already-loaded observed arbor graph.
+    G : float
+        Gravity parameter.
+    alpha : float
+        Weighting parameter.
 
     Returns
     -------
     list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y), ...]
     """
-    arbor = rar.read_arbor_full(fname)
     segments = get_main_root_segments(arbor)
     base_dist = compute_main_root_base_distances(arbor)
 
@@ -587,7 +615,7 @@ def calculate_orthogonal_errors(gravity, arbor, main_root, lateral_tip):
 # Core evaluation
 # -------------------------
 
-def evaluate_parameters(arbor, G, alpha):
+def evaluate_parameters(arbor_fname, G, alpha):
     """
     Evaluate a single (G, alpha) combination for a given arbor.
 
@@ -595,8 +623,9 @@ def evaluate_parameters(arbor, G, alpha):
     -------
     tuple : (wiring, delay, total_orthogonal, total_sq_orthogonal)
     """
-    G_graph = rar.read_arbor_full(arbor)
-    results = arbor_best_cost(arbor, G, alpha)
+    # Load arbor once and reuse
+    G_graph = rar.read_arbor_full(arbor_fname)
+    results = arbor_best_cost(G_graph, G, alpha)
 
     wiring = 0
     delay = 0
