@@ -703,13 +703,14 @@ def compute_step(distance, min_step=0.005, max_step=0.1, d_min=0.01, d_max=0.5):
     return min_step + norm * (max_step - min_step)
 
 
-def generate_smart_grid(df, smart_num, grid_size, G_min, G_max, alpha_min=0, alpha_max=1):
+def generate_smart_grid(df, smart_num, grid_size):
     """
     Generate refined parameter candidates around top-performing points.
 
     Handles:
     - Ties at any rank boundary
-    - Boundary extension when best point is at edge of parameter space
+    - Boundary extension when best point is at edge of G search space
+    - Alpha strictly constrained to [0, 1] (convex combination requirement)
     - Adaptive step size based on neighborhood density
 
     Parameters
@@ -719,10 +720,6 @@ def generate_smart_grid(df, smart_num, grid_size, G_min, G_max, alpha_min=0, alp
         Number of top points per metric to refine around (with ties).
     grid_size : int
         Number of samples per dimension in local grid.
-    G_min, G_max : float
-        Bounds of the original G search space, used for boundary extension.
-    alpha_min, alpha_max : float
-        Bounds of alpha (default 0 to 1).
 
     Returns
     -------
@@ -731,6 +728,10 @@ def generate_smart_grid(df, smart_num, grid_size, G_min, G_max, alpha_min=0, alp
     df_opt = df[df['arbor type'] == 'optimal']
     skip = set(zip(df_opt['G'].round(6).astype(float),
                    df_opt['alpha'].round(6).astype(float)))
+
+    # Infer G boundaries from what was actually evaluated
+    G_min = df_opt['G'].min()
+    G_max = df_opt['G'].max()
 
     # Get top N with ties for each metric
     best_orth = get_top_n_with_ties(df_opt, 'total orthogonal distance', smart_num)
@@ -751,29 +752,29 @@ def generate_smart_grid(df, smart_num, grid_size, G_min, G_max, alpha_min=0, alp
         dist = distance_to_nearest(Gc, ac)
         step = compute_step(dist)
 
-        # Detect if best point is at boundary and extend in that direction
+        # Detect boundary conditions
         at_G_min = abs(Gc - G_min) < 1e-6
         at_G_max = abs(Gc - G_max) < 1e-6
-        at_a_min = abs(ac - alpha_min) < 1e-6
-        at_a_max = abs(ac - alpha_max) < 1e-6
+        at_a_min = abs(ac - 0.0) < 1e-6
+        at_a_max = abs(ac - 1.0) < 1e-6
 
-        if at_G_min:
-            G_lo, G_hi = Gc - step, Gc + step  # extend below G_min
-        elif at_G_max:
-            G_lo, G_hi = Gc - step, Gc + step  # extend above G_max
-        else:
-            G_lo, G_hi = Gc - step, Gc + step
+        # G can extend beyond original search space at boundaries
+        G_lo = Gc - step  # always extend down
+        G_hi = Gc + step  # always extend up
+        # (no clamping — boundary extension is the whole point)
 
-        if at_a_min:
-            a_lo, a_hi = max(alpha_min - step, -1), ac + step
-        elif at_a_max:
-            a_lo, a_hi = ac - step, min(alpha_max + step, 2)
-        else:
-            a_lo, a_hi = ac - step, ac + step
+        # Alpha strictly constrained to [0, 1]
+        a_lo = max(0.0, ac - step)
+        a_hi = min(1.0, ac + step)
 
-        print(f"Refining around ({Gc}, {ac}) | dist={dist:.4f}, step={step:.4f}"
-              f"{' [G boundary]' if at_G_min or at_G_max else ''}"
-              f"{' [alpha boundary]' if at_a_min or at_a_max else ''}")
+        boundary_notes = []
+        if at_G_min: boundary_notes.append('G_min boundary — extending below')
+        if at_G_max: boundary_notes.append('G_max boundary — extending above')
+        if at_a_min: boundary_notes.append('alpha=0 boundary — clamped')
+        if at_a_max: boundary_notes.append('alpha=1 boundary — clamped')
+        note = f" [{', '.join(boundary_notes)}]" if boundary_notes else ""
+
+        print(f"Refining around ({Gc}, {ac}) | dist={dist:.4f}, step={step:.4f}{note}")
 
         G_vals = np.linspace(G_lo, G_hi, grid_size)
         A_vals = np.linspace(a_lo, a_hi, grid_size)
@@ -781,8 +782,6 @@ def generate_smart_grid(df, smart_num, grid_size, G_min, G_max, alpha_min=0, alp
         return {
             (round(g, 6), round(a, 6))
             for g in G_vals for a in A_vals
-            if alpha_min <= a <= alpha_max  # alpha still constrained to [0,1]
-            # G intentionally NOT clamped to allow boundary extension
         }
 
     params = set()
