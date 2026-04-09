@@ -690,27 +690,51 @@ def generate_grid(amin, amax, astep, Gmin, Gmax, Gstep):
             yield round(g, 2), round(alpha, 2)
 
 
-def generate_smart_grid(df, smart_num, grid_size):
+def get_top_n_with_ties(df, col, n):
+    """Return all rows tied within the top n values of col."""
+    threshold = df[col].nsmallest(n).max()
+    return df[df[col] <= threshold * (1 + 1e-9)][['G', 'alpha']]
+
+
+def compute_step(distance, min_step=0.005, max_step=0.1, d_min=0.01, d_max=0.5):
+    """Adaptive step size based on distance to nearest evaluated neighbor."""
+    distance = max(min(distance, d_max), d_min)
+    norm = (distance - d_min) / (d_max - d_min)
+    return min_step + norm * (max_step - min_step)
+
+
+def generate_smart_grid(df, smart_num, grid_size, G_min, G_max, alpha_min=0, alpha_max=1):
     """
     Generate refined parameter candidates around top-performing points.
+
+    Handles:
+    - Ties at any rank boundary
+    - Boundary extension when best point is at edge of parameter space
+    - Adaptive step size based on neighborhood density
 
     Parameters
     ----------
     df : pd.DataFrame
     smart_num : int
-        Number of top points per metric to refine around.
+        Number of top points per metric to refine around (with ties).
     grid_size : int
         Number of samples per dimension in local grid.
+    G_min, G_max : float
+        Bounds of the original G search space, used for boundary extension.
+    alpha_min, alpha_max : float
+        Bounds of alpha (default 0 to 1).
 
     Returns
     -------
     tuple : (set of new (G, alpha) pairs, set of already-evaluated pairs to skip)
     """
     df_opt = df[df['arbor type'] == 'optimal']
-    skip = set(zip(df_opt['G'].astype(float), df_opt['alpha'].astype(float)))
+    skip = set(zip(df_opt['G'].round(6).astype(float),
+                   df_opt['alpha'].round(6).astype(float)))
 
-    best_orth = df_opt.nsmallest(smart_num, 'total orthogonal distance')[['G', 'alpha']]
-    best_sq = df_opt.nsmallest(smart_num, 'total squared orthogonal distance')[['G', 'alpha']]
+    # Get top N with ties for each metric
+    best_orth = get_top_n_with_ties(df_opt, 'total orthogonal distance', smart_num)
+    best_sq = get_top_n_with_ties(df_opt, 'total squared orthogonal distance', smart_num)
     best = pd.concat([best_orth, best_sq]).drop_duplicates().reset_index(drop=True)
 
     def distance_to_nearest(Gc, ac):
@@ -722,29 +746,51 @@ def generate_smart_grid(df, smart_num, grid_size):
         ]
         return min(distances) if distances else 1.0
 
-    def compute_step(distance, min_step=0.005, max_step=0.1, d_min=0.01, d_max=0.5):
-        distance = max(min(distance, d_max), d_min)
-        norm = (distance - d_min) / (d_max - d_min)
-        return min_step + norm * (max_step - min_step)
-
     def local_grid(Gc, ac):
+        Gc, ac = float(Gc), float(ac)
         dist = distance_to_nearest(Gc, ac)
         step = compute_step(dist)
-        print(f"Refining around ({Gc}, {ac}) | distance={dist:.4f}, step={step:.4f}")
-        G_vals = np.linspace(float(Gc) - step, float(Gc) + step, grid_size)
-        A_vals = np.linspace(float(ac) - step, float(ac) + step, grid_size)
+
+        # Detect if best point is at boundary and extend in that direction
+        at_G_min = abs(Gc - G_min) < 1e-6
+        at_G_max = abs(Gc - G_max) < 1e-6
+        at_a_min = abs(ac - alpha_min) < 1e-6
+        at_a_max = abs(ac - alpha_max) < 1e-6
+
+        if at_G_min:
+            G_lo, G_hi = Gc - step, Gc + step  # extend below G_min
+        elif at_G_max:
+            G_lo, G_hi = Gc - step, Gc + step  # extend above G_max
+        else:
+            G_lo, G_hi = Gc - step, Gc + step
+
+        if at_a_min:
+            a_lo, a_hi = max(alpha_min - step, -1), ac + step
+        elif at_a_max:
+            a_lo, a_hi = ac - step, min(alpha_max + step, 2)
+        else:
+            a_lo, a_hi = ac - step, ac + step
+
+        print(f"Refining around ({Gc}, {ac}) | dist={dist:.4f}, step={step:.4f}"
+              f"{' [G boundary]' if at_G_min or at_G_max else ''}"
+              f"{' [alpha boundary]' if at_a_min or at_a_max else ''}")
+
+        G_vals = np.linspace(G_lo, G_hi, grid_size)
+        A_vals = np.linspace(a_lo, a_hi, grid_size)
+
         return {
             (round(g, 6), round(a, 6))
             for g in G_vals for a in A_vals
-            if 0 <= a <= 1
+            if alpha_min <= a <= alpha_max  # alpha still constrained to [0,1]
+            # G intentionally NOT clamped to allow boundary extension
         }
 
     params = set()
     for _, row in best.iterrows():
-        params.update(p for p in local_grid(row['G'], row['alpha']) if p not in skip)
+        params.update(p for p in local_grid(row['G'], row['alpha'])
+                      if p not in skip)
 
     return params, skip
-
 
 # -------------------------
 # File I/O
