@@ -572,41 +572,69 @@ def collect_lateral_root_points(arbor, lateral_tip):
     return lateral_points
 
 
-def calculate_orthogonal_errors(gravity, arbor, main_root, lateral_tip):
+def collect_lateral_root_segments(arbor, lateral_tip):
+    """
+    Return list of (x0, y0, x1, y1) segments along the lateral root path
+    from tip back to the main root insertion point.
+    """
+    segments = []
+    path = collect_lateral_root_points(arbor, lateral_tip)  # existing BFS
+    for i in range(len(path) - 1):
+        x0, y0 = path[i]
+        x1, y1 = path[i + 1]
+        segments.append((x0, y0, x1, y1))
+    return segments
+
+
+def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip,
+                                 n_subsample=100):
     """
     Compute total orthogonal distance and total squared orthogonal distance
-    between observed lateral root points and the optimized parabola.
+    between the fitted parabola and the lateral root path.
 
-    Parameters
-    ----------
-    gravity : float
-        G parameter used for the optimized curve.
-    arbor : networkx.Graph
-        Observed arbor graph.
-    main_root : tuple
-        (x, y) of the branch point on the main root.
-    lateral_tip : tuple
-        (x, y) of the lateral root tip.
-
-    Returns
-    -------
-    tuple : (total_orthogonal, total_sq_orthogonal)
+    Sub-discretizes each lateral root segment into n_subsample points
+    so that lightly-traced lateral roots are treated consistently with
+    densely-traced ones.
     """
-    best_x, best_y = main_root
+    px, py = main_root_pt
     tip_x, tip_y = lateral_tip
 
-    b, c = calc_coeff(gravity, best_x, best_y, tip_x, tip_y)
-    x_start = min(best_x, tip_x)
-    x_end = max(best_x, tip_x)
+    b, c = calc_coeff(gravity, px, py, tip_x, tip_y)
+    x_start, x_end = min(px, tip_x), max(px, tip_x)
 
-    lateral_points = collect_lateral_root_points(arbor, lateral_tip)
+    segments = collect_lateral_root_segments(arbor, lateral_tip)
 
-    total_orthogonal = 0
-    total_sq_orthogonal = 0
-    for (obs_x, obs_y) in lateral_points:
-        dist = orthogonal_distance_to_curve(gravity, b, c, obs_x, obs_y, x_start, x_end)
-        total_orthogonal += dist
-        total_sq_orthogonal += dist**2
+    if not segments:
+        return 0.0, 0.0
+
+    # Sub-discretize all segments into sample points — vectorized
+    all_xs = []
+    all_ys = []
+    for x0, y0, x1, y1 in segments:
+        ts = np.linspace(0, 1, n_subsample, endpoint=False)
+        all_xs.append(x0 + ts * (x1 - x0))
+        all_ys.append(y0 + ts * (y1 - y0))
+
+    # Include the final endpoint of the last segment
+    all_xs.append(np.array([segments[-1][2]]))
+    all_ys.append(np.array([segments[-1][3]]))
+
+    obs_x = np.concatenate(all_xs)
+    obs_y = np.concatenate(all_ys)
+
+    # Vectorized orthogonal distance to parabola
+    # Find closest point on parabola G*x^2 + b*x + c to each (obs_x, obs_y)
+    xs = np.linspace(x_start, x_end, 1000)
+    ys = gravity * xs**2 + b * xs + c
+
+    # For each observed point, find minimum distance to any point on the curve
+    # Shape: (n_observed, 1) - (1, n_curve) = (n_observed, n_curve)
+    dx = obs_x[:, np.newaxis] - xs[np.newaxis, :]
+    dy = obs_y[:, np.newaxis] - ys[np.newaxis, :]
+    dists = np.sqrt(dx**2 + dy**2).min(axis=1)
+
+    total_orthogonal = dists.sum()
+    total_sq_orthogonal = (dists**2).sum()
 
     return total_orthogonal, total_sq_orthogonal
 
