@@ -15,6 +15,11 @@ import pandas as pd
 import warnings
 import optimal_midpoint
 
+# multiprocessing imports
+from multiprocessing import Pool
+import functools
+import argparse
+
 # OPTIMIZATION_METHOD options:
 #   'brute_force' - reliable, 101 evaluations per segment
 #   'brent'       - faster (~15 evaluations), assumes unimodal cost function
@@ -24,6 +29,29 @@ OPTIMIZATION_METHOD = 'brent'
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+
+# -------------------------
+# Worker function — must be at module level for multiprocessing to pickle it
+# -------------------------
+def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size,
+                          amin, amax, astep, Gmin, Gmax, Gstep):
+    """Process a single arbor — called by each worker process."""
+    fname = '%s/%s' % (path, arbor_fname)
+
+    if not rar.has_reconstruction(arbor_fname):
+        print(f"Skipping {arbor_fname}: no reconstruction found")
+        return
+
+    skip = initialize_file(fname, arbor_fname)
+
+    if smart:
+        df = pd.read_csv(fname, skipinitialspace=True)
+        params, smart_skip = generate_smart_grid(df, smart_num, smart_grid_size)
+        skip |= smart_skip
+    else:
+        params = generate_grid(amin, amax, astep, Gmin, Gmax, Gstep)
+
+    process_arbor(arbor_fname, fname, params, skip)
 
 # -------------------------
 # Geometry utilities
@@ -899,6 +927,9 @@ def main():
     parser.add_argument('--smartNumPoints', type=int, default=1)
     parser.add_argument('--smartGridSize', type=int, default=3)
 
+    parser.add_argument('--num_workers',      type=int,   default=4,
+                        help='Number of parallel worker processes')
+
     parser.add_argument(
         '--optimization_method',
         type=str,
@@ -908,6 +939,8 @@ def main():
     )
 
     args = parser.parse_args()
+
+    global OPTIMIZATION_METHOD
     OPTIMIZATION_METHOD = args.optimization_method
 
     path = f"{RESULTS_DIR}/gravitropism_pareto_fronts"
@@ -915,26 +948,28 @@ def main():
 
     arbors = os.listdir(path) if args.smart else get_last_day_files()
 
-    for arbor in arbors:
-        fname = f"{path}/{arbor}"
+    # Bind all fixed arguments — only arbor_fname varies per worker call
+    worker = functools.partial(
+        process_arbor_worker,
+        path=path,
+        smart=args.smart,
+        smart_num=args.smartNumPoints,
+        smart_grid_size=args.smartGridSize,
+        amin=args.amin,
+        amax=args.amax,
+        astep=args.astep,
+        Gmin=args.Gmin,
+        Gmax=args.Gmax,
+        Gstep=args.Gstep,
+    )
 
-        if not rar.has_reconstruction(arbor):
-            print(f"Skipping {arbor}: no reconstruction found")
-            continue
+    print(f"Processing {len(arbors)} arbors with {args.num_workers} workers "
+          f"using {args.optimization_method}...")
 
-        skip = initialize_file(fname, arbor)
+    with Pool(processes=args.num_workers) as pool:
+        pool.map(worker, arbors)
 
-        if args.smart:
-            df = pd.read_csv(fname, skipinitialspace=True)
-            params, smart_skip = generate_smart_grid(df, args.smartNumPoints, args.smartGridSize)
-            skip |= smart_skip
-        else:
-            params = generate_grid(
-                args.amin, args.amax, args.astep,
-                args.Gmin, args.Gmax, args.Gstep
-            )
-
-        process_arbor(arbor, fname, params, skip)
+    print("Done.")
 
 
 if __name__ == '__main__':
