@@ -578,7 +578,7 @@ def collect_lateral_root_segments(arbor, lateral_tip):
     from tip back to the main root insertion point.
     """
     segments = []
-    path = get_path_to_main_root(arbor, lateral_tip)  # existing BFS
+    path = collect_lateral_root_points(arbor, lateral_tip)  # existing BFS
     for i in range(len(path) - 1):
         x0, y0 = path[i]
         x1, y1 = path[i + 1]
