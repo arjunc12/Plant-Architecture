@@ -8,7 +8,7 @@ import os
 # -------------------------
 # Output file paths — one per phenotype
 # -------------------------
-BEST_OF_BEST_DIR = RESULTS_DIR
+BEST_OF_BEST_DIR = '%s/gravitropism_results' % RESULTS_DIR
 
 OUTPUT_FILES = {
     'orthogonal':       '%s/best_orthogonal.csv'        % BEST_OF_BEST_DIR,
