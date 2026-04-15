@@ -741,9 +741,14 @@ def gravitropism_conduction_delay(arbor):
 
 def generate_grid(amin, amax, astep, Gmin, Gmax, Gstep):
     """Yield (G, alpha) pairs over the full parameter grid."""
-    for g in pylab.arange(Gmin, Gmax + Gstep, Gstep):
-        for alpha in pylab.arange(amin, amax + astep, astep):
-            yield round(g, 2), round(alpha, 2)
+    # Use round() with enough precision to avoid float issues
+    # but enough to match how values are stored in the CSV (6 decimal places)
+    G_vals = [round(g, 6) for g in pylab.arange(Gmin, Gmax + Gstep/2, Gstep)]
+    a_vals = [round(a, 6) for a in pylab.arange(amin, amax + astep/2, astep)]
+
+    for g in G_vals:
+        for a in a_vals:
+            yield g, a
 
 
 def get_top_n_with_ties(df, col, n):
