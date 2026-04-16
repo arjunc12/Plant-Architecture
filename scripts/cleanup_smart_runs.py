@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
+
+import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pylab
 from constants import RESULTS_DIR
 
@@ -43,6 +47,7 @@ for fname in sorted(os.listdir(path)):
     fpath = f'{path}/{fname}'
     if os.path.getsize(fpath) == 0:
         continue
+    print(fpath)
 
     df = pd.read_csv(fpath, skipinitialspace=True)
     df_obs = df[df['arbor type'] == 'observed']
