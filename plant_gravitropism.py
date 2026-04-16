@@ -33,7 +33,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 # -------------------------
 # Worker function — must be at module level for multiprocessing to pickle it
 # -------------------------
-def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size,
+def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, smart_grid_mesh,
                           amin, amax, astep, Gmin, Gmax, Gstep):
     """Process a single arbor — called by each worker process."""
     fname = '%s/%s' % (path, arbor_fname)
@@ -46,7 +46,7 @@ def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size,
 
     if smart:
         df = pd.read_csv(fname, skipinitialspace=True)
-        params, smart_skip = generate_smart_grid(df, smart_num, smart_grid_size)
+        params, smart_skip = generate_smart_grid(df, smart_num, smart_grid_size, smart_grid_mesh)
         skip |= smart_skip
     else:
         params = generate_grid(amin, amax, astep, Gmin, Gmax, Gstep)
@@ -757,14 +757,43 @@ def get_top_n_with_ties(df, col, n):
     return df[df[col] <= threshold * (1 + 1e-9)][['G', 'alpha']]
 
 
-def compute_step(distance, min_step=0.005, max_step=0.1, d_min=0.01, d_max=0.5):
-    """Adaptive step size based on distance to nearest evaluated neighbor."""
-    distance = max(min(distance, d_max), d_min)
-    norm = (distance - d_min) / (d_max - d_min)
-    return min_step + norm * (max_step - min_step)
+def local_grid(Gc, ac, df_opt, grid_size, grid_mesh):
+    Gc, ac = float(Gc), float(ac)
+
+    # Find neighboring G values in the evaluated grid
+    G_vals_evaluated = sorted(df_opt['G'].unique())
+    G_idx = G_vals_evaluated.index(min(G_vals_evaluated, key=lambda x: abs(x - Gc)))
+
+    # Expand by grid_size neighbors on each side
+    G_left_idx  = max(0, G_idx - grid_size)
+    G_right_idx = min(len(G_vals_evaluated) - 1, G_idx + grid_size)
+    G_left  = G_vals_evaluated[G_left_idx]
+    G_right = G_vals_evaluated[G_right_idx]
+
+    # Find neighboring alpha values in the evaluated grid
+    a_vals_evaluated = sorted(df_opt['alpha'].unique())
+    a_idx = a_vals_evaluated.index(min(a_vals_evaluated, key=lambda x: abs(x - ac)))
+
+    a_left_idx  = max(0, a_idx - grid_size)
+    a_right_idx = min(len(a_vals_evaluated) - 1, a_idx + grid_size)
+    a_left  = a_vals_evaluated[a_left_idx]
+    a_right = a_vals_evaluated[a_right_idx]
+
+    print(f"Refining around ({Gc:.4f}, {ac:.4f}) | "
+          f"G: [{G_left:.4f}, {G_right:.4f}] | "
+          f"alpha: [{a_left:.4f}, {a_right:.4f}]")
+
+    # Mesh at 1/grid_mesh resolution within the box
+    G_grid = np.linspace(G_left, G_right, grid_mesh)
+    a_grid = np.linspace(a_left, a_right, grid_mesh)
+
+    return {
+        (round(g, 6), round(a, 6))
+        for g in G_grid for a in a_grid
+    }
 
 
-def generate_smart_grid(df, smart_num, grid_size):
+def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
     """
     Generate refined parameter candidates around top-performing points.
 
@@ -780,7 +809,9 @@ def generate_smart_grid(df, smart_num, grid_size):
     smart_num : int
         Number of top points per metric to refine around (with ties).
     grid_size : int
-        Number of samples per dimension in local grid.
+        Number of neighbors per dimension in local grid.
+    grid_size : int
+        How finely to discretize the local search space
 
     Returns
     -------
@@ -790,65 +821,15 @@ def generate_smart_grid(df, smart_num, grid_size):
     skip = set(zip(df_opt['G'].round(6).astype(float),
                    df_opt['alpha'].round(6).astype(float)))
 
-    # Infer G boundaries from what was actually evaluated
-    G_min = df_opt['G'].min()
-    G_max = df_opt['G'].max()
 
-    # Get top N with ties for each metric
     best_orth = get_top_n_with_ties(df_opt, 'total orthogonal distance', smart_num)
-    best_sq = get_top_n_with_ties(df_opt, 'total squared orthogonal distance', smart_num)
+    best_sq   = get_top_n_with_ties(df_opt, 'total squared orthogonal distance', smart_num)
     best = pd.concat([best_orth, best_sq]).drop_duplicates().reset_index(drop=True)
-
-    def distance_to_nearest(Gc, ac):
-        distances = [
-            euclidean((float(Gc), float(ac)), (float(g), float(a)))
-            for g, a in skip
-            if not (round(float(g), 6) == round(float(Gc), 6) and
-                    round(float(a), 6) == round(float(ac), 6))
-        ]
-        return min(distances) if distances else 1.0
-
-    def local_grid(Gc, ac):
-        Gc, ac = float(Gc), float(ac)
-        dist = distance_to_nearest(Gc, ac)
-        step = compute_step(dist)
-
-        # Detect boundary conditions
-        at_G_min = abs(Gc - G_min) < 1e-6
-        at_G_max = abs(Gc - G_max) < 1e-6
-        at_a_min = abs(ac - 0.0) < 1e-6
-        at_a_max = abs(ac - 1.0) < 1e-6
-
-        # G can extend beyond original search space at boundaries
-        G_lo = Gc - step  # always extend down
-        G_hi = Gc + step  # always extend up
-        # (no clamping — boundary extension is the whole point)
-
-        # Alpha strictly constrained to [0, 1]
-        a_lo = max(0.0, ac - step)
-        a_hi = min(1.0, ac + step)
-
-        boundary_notes = []
-        if at_G_min: boundary_notes.append('G_min boundary — extending below')
-        if at_G_max: boundary_notes.append('G_max boundary — extending above')
-        if at_a_min: boundary_notes.append('alpha=0 boundary — clamped')
-        if at_a_max: boundary_notes.append('alpha=1 boundary — clamped')
-        note = f" [{', '.join(boundary_notes)}]" if boundary_notes else ""
-
-        print(f"Refining around ({Gc}, {ac}) | dist={dist:.4f}, step={step:.4f}{note}")
-
-        G_vals = np.linspace(G_lo, G_hi, grid_size)
-        A_vals = np.linspace(a_lo, a_hi, grid_size)
-
-        return {
-            (round(g, 6), round(a, 6))
-            for g in G_vals for a in A_vals
-        }
 
     params = set()
     for _, row in best.iterrows():
-        params.update(p for p in local_grid(row['G'], row['alpha'])
-                      if p not in skip)
+        new_pts = local_grid(row['G'], row['alpha'], df_opt, grid_size, grid_mesh)
+        params.update(p for p in new_pts if p not in skip)
 
     return params, skip
 
@@ -930,7 +911,8 @@ def main():
 
     parser.add_argument('--smart', action='store_true')
     parser.add_argument('--smartNumPoints', type=int, default=1)
-    parser.add_argument('--smartGridSize', type=int, default=3)
+    parser.add_argument('--smartGridSize', type=int, default=1)
+    parser.add_argument('--smartGridMesh', type=int, default=10)
 
     parser.add_argument('--num_workers',      type=int,   default=1,
                         help='Number of parallel worker processes')
@@ -960,6 +942,7 @@ def main():
         smart=args.smart,
         smart_num=args.smartNumPoints,
         smart_grid_size=args.smartGridSize,
+        smart_grid_mesh=args.smartGridMesh,
         amin=args.amin,
         amax=args.amax,
         astep=args.astep,
