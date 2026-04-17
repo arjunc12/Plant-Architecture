@@ -763,8 +763,6 @@ def local_grid(Gc, ac, df_opt, grid_size, grid_mesh):
     # Find neighboring G values in the evaluated grid
     G_vals_evaluated = sorted(df_opt['G'].unique())
     G_idx = G_vals_evaluated.index(min(G_vals_evaluated, key=lambda x: abs(x - Gc)))
-
-    # Expand by grid_size neighbors on each side
     G_left_idx  = max(0, G_idx - grid_size)
     G_right_idx = min(len(G_vals_evaluated) - 1, G_idx + grid_size)
     G_left  = G_vals_evaluated[G_left_idx]
@@ -773,7 +771,6 @@ def local_grid(Gc, ac, df_opt, grid_size, grid_mesh):
     # Find neighboring alpha values in the evaluated grid
     a_vals_evaluated = sorted(df_opt['alpha'].unique())
     a_idx = a_vals_evaluated.index(min(a_vals_evaluated, key=lambda x: abs(x - ac)))
-
     a_left_idx  = max(0, a_idx - grid_size)
     a_right_idx = min(len(a_vals_evaluated) - 1, a_idx + grid_size)
     a_left  = a_vals_evaluated[a_left_idx]
@@ -783,14 +780,32 @@ def local_grid(Gc, ac, df_opt, grid_size, grid_mesh):
           f"G: [{G_left:.4f}, {G_right:.4f}] | "
           f"alpha: [{a_left:.4f}, {a_right:.4f}]")
 
-    # Mesh at 1/grid_mesh resolution within the box
+    # Local neighborhood mesh
     G_grid = np.linspace(G_left, G_right, grid_mesh)
     a_grid = np.linspace(a_left, a_right, grid_mesh)
-
-    return {
+    neighborhood = {
         (round(g, 6), round(a, 6))
         for g in G_grid for a in a_grid
     }
+
+    # Axial sweeps within the neighborhood box but at finer resolution
+    axial_mesh = grid_mesh * 10  # 10x finer than the neighborhood mesh
+
+    alpha_sweep = {
+        (round(Gc, 6), round(a, 6))
+        for a in np.linspace(a_left, a_right, axial_mesh)
+    }
+
+    G_sweep = {
+        (round(g, 6), round(ac, 6))
+        for g in np.linspace(G_left, G_right, axial_mesh)
+    }
+
+    print(f"  Axial sweeps (mesh={axial_mesh}): "
+          f"G={Gc:.4f} x alpha:[{a_left:.4f}, {a_right:.4f}] | "
+          f"G:[{G_left:.4f}, {G_right:.4f}] x alpha={ac:.4f}")
+
+    return neighborhood | alpha_sweep | G_sweep
 
 
 def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
