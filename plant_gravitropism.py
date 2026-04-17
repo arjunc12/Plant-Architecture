@@ -36,6 +36,8 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, smart_grid_mesh,
                           amin, amax, astep, Gmin, Gmax, Gstep, verbose=False):
     """Process a single arbor — called by each worker process."""
+    print(f"[START] {arbor_fname}", flush=True)
+
     fname = '%s/%s' % (path, arbor_fname)
 
     if not rar.has_reconstruction(arbor_fname):
@@ -52,6 +54,8 @@ def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, s
         params = generate_grid(amin, amax, astep, Gmin, Gmax, Gstep)
 
     process_arbor(arbor_fname, fname, params, skip, verbose=verbose)
+
+    print(f"[DONE] {arbor_fname}", flush=True)
 
 # -------------------------
 # Geometry utilities
