@@ -34,7 +34,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 # Worker function — must be at module level for multiprocessing to pickle it
 # -------------------------
 def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, smart_grid_mesh,
-                          amin, amax, astep, Gmin, Gmax, Gstep):
+                          amin, amax, astep, Gmin, Gmax, Gstep, verbose=False):
     """Process a single arbor — called by each worker process."""
     fname = '%s/%s' % (path, arbor_fname)
 
@@ -51,7 +51,7 @@ def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, s
     else:
         params = generate_grid(amin, amax, astep, Gmin, Gmax, Gstep)
 
-    process_arbor(arbor_fname, fname, params, skip)
+    process_arbor(arbor_fname, fname, params, skip, verbose=verbose)
 
 # -------------------------
 # Geometry utilities
@@ -890,12 +890,15 @@ def append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
 # Processing
 # -------------------------
 
-def process_arbor(arbor, fname, params, skip):
+def process_arbor(arbor, fname, params, skip, verbose=False):
     """Evaluate all parameter combinations for a given arbor and save results."""
     for g, alpha in params:
         if (round(g, 6), round(alpha, 6)) in skip:
             continue
-        print(f"Processing {arbor}: G={g}, alpha={alpha}")
+
+        # Only print G/alpha progress if verbose
+        if verbose:
+            print(f"Processing {arbor}: G={g}, alpha={alpha}")
         wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha)
         append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
 
@@ -940,6 +943,8 @@ def main():
         help='Optimization method for finding best branch point (default: brent)'
     )
 
+    parser.add_argument('--verbose', action='store_true', default=False)
+
     args = parser.parse_args()
 
     global OPTIMIZATION_METHOD
@@ -948,7 +953,8 @@ def main():
     path = f"{RESULTS_DIR}/gravitropism_pareto_fronts"
     os.makedirs(path, exist_ok=True)
 
-    arbors = os.listdir(path) if args.smart else get_last_day_files()
+    arbors = sorted(os.listdir(path)) if args.smart else sorted(get_last_day_files())
+    total = len(arbors)
 
     # Bind all fixed arguments — only arbor_fname varies per worker call
     worker = functools.partial(
@@ -964,13 +970,16 @@ def main():
         Gmin=args.Gmin,
         Gmax=args.Gmax,
         Gstep=args.Gstep,
+        verbose=args.verbose,
     )
 
-    print(f"Processing {len(arbors)} arbors with {args.num_workers} workers "
+    print(f"Processing {total} arbors with {args.num_workers} workers "
           f"using {args.optimization_method}...")
 
     with Pool(processes=args.num_workers) as pool:
-        pool.map(worker, arbors)
+        for i, _ in enumerate(pool.imap_unordered(worker, arbors), 1):
+            print(f"Completed {i}/{total} arbors ({100*i//total}%)",
+                  flush=True)
 
     print("Done.")
 
