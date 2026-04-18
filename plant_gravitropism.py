@@ -836,7 +836,7 @@ def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
     -------
     tuple : (set of new (G, alpha) pairs, set of already-evaluated pairs to skip)
     """
-    df_opt = df[df['arbor type'] == 'optimal']
+    df_opt = df[df['arbor type'] == 'optimal'].copy()
     skip = set(zip(df_opt['G'].round(6).astype(float),
                    df_opt['alpha'].round(6).astype(float)))
 
