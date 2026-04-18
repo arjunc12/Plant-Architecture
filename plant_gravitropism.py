@@ -841,9 +841,39 @@ def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
                    df_opt['alpha'].round(6).astype(float)))
 
 
+    # Get top N with ties for orthogonal metrics
     best_orth = get_top_n_with_ties(df_opt, 'total orthogonal distance', smart_num)
     best_sq   = get_top_n_with_ties(df_opt, 'total squared orthogonal distance', smart_num)
     best = pd.concat([best_orth, best_sq]).drop_duplicates().reset_index(drop=True)
+
+    # Get observed wiring/delay for pareto metrics
+    df_obs = df[df['arbor type'] == 'observed']
+    obs_wiring = df_obs['wiring cost'].iloc[0] if not df_obs.empty else None
+    obs_delay  = df_obs['conduction delay'].iloc[0] if not df_obs.empty else None
+
+    # Add pareto metrics if observed data available
+    if obs_wiring is not None and obs_delay is not None:
+        df_opt['pareto_dist'] = df_opt.apply(
+            lambda r: euclidean(
+                (obs_wiring, obs_delay),
+                (r['wiring cost'], r['conduction delay'])
+            ), axis=1
+        )
+        df_opt['pareto_scale'] = df_opt.apply(
+            lambda r: pf.point_dist_scale(
+                (r['wiring cost'], r['conduction delay']),
+                (obs_wiring, obs_delay)
+            ), axis=1
+        )
+
+        best_pd = get_top_n_with_ties(df_opt, 'pareto_dist', smart_num)
+
+        # For pareto scale, closest to 1 rather than smallest
+        df_opt['pareto_scale_dist_from_1'] = (df_opt['pareto_scale'] - 1.0).abs()
+        best_ps = get_top_n_with_ties(df_opt, 'pareto_scale_dist_from_1', smart_num)
+
+        best = pd.concat([best, best_pd[['G', 'alpha']],
+                         best_ps[['G', 'alpha']]]).drop_duplicates().reset_index(drop=True)
 
     # Deduplicate tied alpha values at the same G — keep lowest alpha per G
     # Ties in alpha are constraint-induced and won't be broken by finer search
