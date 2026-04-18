@@ -793,7 +793,7 @@ def local_grid(Gc, ac, df_opt, grid_size, grid_mesh):
     }
 
     # Axial sweeps within the neighborhood box but at finer resolution
-    axial_mesh = grid_mesh * 10  # 10x finer than the neighborhood mesh
+    axial_mesh = grid_mesh
 
     alpha_sweep = {
         (round(Gc, 6), round(a, 6))
@@ -844,6 +844,15 @@ def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
     best_orth = get_top_n_with_ties(df_opt, 'total orthogonal distance', smart_num)
     best_sq   = get_top_n_with_ties(df_opt, 'total squared orthogonal distance', smart_num)
     best = pd.concat([best_orth, best_sq]).drop_duplicates().reset_index(drop=True)
+
+    # Deduplicate tied alpha values at the same G — keep lowest alpha per G
+    # Ties in alpha are constraint-induced and won't be broken by finer search
+    # Ties in G are worth keeping — finer G search may break them
+    # Keep lowest alpha per G — sort so keep='first' gives lowest alpha
+    best = (best
+        .sort_values(['G', 'alpha'])
+        .drop_duplicates(subset=['G'], keep='first')
+        .reset_index(drop=True))
 
     params = set()
     for _, row in best.iterrows():
