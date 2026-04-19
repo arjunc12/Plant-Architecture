@@ -760,6 +760,24 @@ def get_top_n_with_ties(df, col, n):
     threshold = df[col].nsmallest(n).max()
     return df[df[col] <= threshold * (1 + 1e-9)][['G', 'alpha']]
 
+def get_top_n_with_tiebreak(df, col, n, tiebreak_cols=None):
+    """
+    Return all rows tied within the top n values of col.
+    If tiebreak_cols provided, break ties using those columns in order.
+    """
+    threshold = df[col].nsmallest(n).max()
+    best = df[df[col] <= threshold * (1 + 1e-9)].copy()
+
+    if tiebreak_cols and len(best) > 1:
+        # Break ties sequentially through tiebreak columns
+        for tb_col in tiebreak_cols:
+            if len(best) <= 1:
+                break
+            tb_min = best[tb_col].min()
+            best = best[best[tb_col] <= tb_min * (1 + 1e-9)]
+
+    return best[['G', 'alpha']]
+
 
 def local_grid(Gc, ac, df_opt, grid_size, grid_mesh):
     Gc, ac = float(Gc), float(ac)
@@ -866,11 +884,20 @@ def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
             ), axis=1
         )
 
-        best_pd = get_top_n_with_ties(df_opt, 'pareto_dist', smart_num)
+        # For pareto distance — tiebreak by squared orthogonal then orthogonal
+        best_pd = get_top_n_with_tiebreak(
+            df_opt, 'pareto_dist', smart_num,
+            tiebreak_cols=['total squared orthogonal distance',
+                           'total orthogonal distance']
+        )
 
-        # For pareto scale, closest to 1 rather than smallest
+        # For pareto scale — tiebreak by squared orthogonal then orthogonal
         df_opt['pareto_scale_dist_from_1'] = (df_opt['pareto_scale'] - 1.0).abs()
-        best_ps = get_top_n_with_ties(df_opt, 'pareto_scale_dist_from_1', smart_num)
+        best_ps = get_top_n_with_tiebreak(
+            df_opt, 'pareto_scale_dist_from_1', smart_num,
+            tiebreak_cols=['total squared orthogonal distance',
+                           'total orthogonal distance']
+        )
 
         best = pd.concat([best, best_pd[['G', 'alpha']],
                          best_ps[['G', 'alpha']]]).drop_duplicates().reset_index(drop=True)
