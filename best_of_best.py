@@ -107,6 +107,8 @@ def process_pareto_front(pareto_front_path):
         # Tiebreak by orthogonal distance
         best = best_rows(df_opt_pareto, 'pareto_dist')
         if len(best) > 1:
+            best = best_rows(best, 'total squared orthogonal distance')
+        if len(best) > 1:
             best = best_rows(best, 'total orthogonal distance')
         results['pareto_dist'] = [
             {
@@ -121,6 +123,8 @@ def process_pareto_front(pareto_front_path):
         # Phenotype 4: best (G, alpha) by scaled pareto distance (all G)
         # Closest to 1, tiebreak by orthogonal distance
         best = best_rows_closest_to_one(df_opt_pareto, 'pareto_scale')
+        if len(best) > 1:
+            best = best_rows(best, 'total squared orthogonal distance')
         if len(best) > 1:
             best = best_rows(best, 'total orthogonal distance')
         results['pareto_scale'] = [
