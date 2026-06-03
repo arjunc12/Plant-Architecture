@@ -16,20 +16,18 @@ for arbor in last_day_files[0:5]:
     arbor_evaluated_parameters = []
 
     for a in alphas:
-        arbor_values = pg.evaluate_parameters(arbor, 0, a)
-        arbor_values.insert(0, "observed")
-        arbor_values.insert(1, a)
+        output = pg.evaluate_parameters(arbor, 0, a)
+
+        arbor_values = ("observed", a) + output
         arbor_evaluated_parameters.append(arbor_values)
     
     filepath = r"C:\Users\alyan\Downloads\Research\Summer 2026\Plant-Architecture\heterogeneity_" + "\\" + arbor
     with open(filepath, "w", newline="") as file:
         writer = csv.writer(file)
-        writer.writerows([arbor_evaluated_parameters])
+        writer.writerows(arbor_evaluated_parameters)
 
 
 
 
+# second draft
 
-
-
-# 
