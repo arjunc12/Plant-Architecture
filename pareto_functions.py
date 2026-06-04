@@ -32,7 +32,7 @@ def conduction_delay(G):
     curr = None
     visited = set()
 
-    root = G.graph['main root']
+    root = G.graph.get('main root base', G.graph.get('main root')) # root = G.graph['main root']
 
     queue.append(root)
     droot[root] = 0
