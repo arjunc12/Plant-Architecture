@@ -34,7 +34,7 @@ last_day_files = pg.get_last_day_files()
 # Version 2
 alphas = np.round(np.arange(0, 1.01, 0.01), 2)
 
-for arbor in last_day_files[0:5]:
+for arbor in last_day_files:
     arbor_evaluated_parameters = []
 
     filepath = r"C:\Users\alyan\Downloads\Research\Summer 2026\Plant-Architecture\heterogeneity-analysis" + "\\" + arbor
