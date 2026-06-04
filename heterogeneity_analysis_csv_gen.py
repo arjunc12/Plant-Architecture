@@ -2,6 +2,7 @@ import csv
 import math
 import networkx as nx
 import numpy as np
+from pathlib import Path
 import pareto_functions as pf
 import plotly.graph_objs as go
 import pylab
@@ -15,13 +16,15 @@ last_day_files = pg.get_last_day_files()
 
 alphas = np.round(np.arange(0, 1.01, 0.01), 2)
 count = 0
+output_dir = Path("data") / "results" / "heterogeneous_pareto_fronts"
+output_dir.mkdir(parents=True, exist_ok=True)
 
 for arbor in last_day_files:
     if rar.has_reconstruction(arbor):
         count += 1
         arbor_evaluated_parameters = []
 
-        filepath = r"heterogeneity-analysis" + "\\" + arbor
+        filepath = output_dir / arbor
         with open(filepath, "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(["Model", "Alpha", "Wiring Cost", "Conduction Delay", "Total Orthogonal Distance", "Total Squared Orthogonal Distance"])
