@@ -129,7 +129,7 @@ def orthogonal_distance_to_curve(G, b, c, obs_x, obs_y, x_start, x_end, num_samp
 # Cost computation
 # -------------------------
 
-def compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, tip_x, tip_y):
+def compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, tip_x, tip_y, cost_spec = pf.HOMOGENEOUS):
     """
     Compute total cost, wiring, and delay for a given branch point.
 

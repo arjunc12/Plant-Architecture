@@ -6,10 +6,27 @@ import numpy as np
 from read_arbor_reconstruction import read_arbor_full
 from constants import *
 from optimal_midpoint import optimal_midpoint, optimal_midpoint_approx, optimal_midpoint_alpha1
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import seaborn as sns
 import os
 import pandas as pd
+
+CostSpec = namedtuple('CostSpec', ['wiring_transform', 'delay_transform'])
+
+HOMOGENEOUS = CostSpec(
+    wiring_transform = lambda curve, to_root: curve,
+    delay_transform = lambda curve, to_root: curve + to_root
+)
+
+HETEROGENEOUS = CostSpec(
+    wiring_transform = lambda curve, to_root: curve ** 2, 
+    delay_transform = lambda curve, to_root: math.log(curve) + math.log(to_root)
+)
+
+COST_SPECS = {
+    'homogeneous': HOMOGENEOUS,
+    'heterogeneous': HETEROGENEOUS,
+}
 
 def wiring_cost(G):
     # wiring cost is simply the sum of all edge lengths
