@@ -1015,12 +1015,19 @@ def main():
 
     parser.add_argument('--verbose', action='store_true', default=False)
 
+    parser.add_argument(
+        '--output_dir',
+        type=str,
+        default="gravitropism_pareto_fronts",
+        help='Directory where generated CSV files will be written'
+    )
+
     args = parser.parse_args()
 
     global OPTIMIZATION_METHOD
     OPTIMIZATION_METHOD = args.optimization_method
 
-    path = f"{RESULTS_DIR}/gravitropism_pareto_fronts"
+    path = f"{RESULTS_DIR}/{args.output_dir}"
     os.makedirs(path, exist_ok=True)
 
     arbors = sorted(os.listdir(path)) if args.smart else sorted(get_last_day_files())
