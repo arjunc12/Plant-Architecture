@@ -213,23 +213,8 @@ def find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spe
     """
     seg_length = euclidean((x0, y0), (x1, y1))
 
-    # G=0 case: use exact analytical solution from optimal_midpoint.py
-    if G == 0:
-        if alpha == 1:
-            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_alpha1(
-                (x0, y0), (x1, y1), (p, q)
-            )
-        else:
-            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_exact(
-                (x0, y0), (x1, y1), (p, q), alpha, seg_base_dist
-            )
-        wiring = euclidean((best_x, best_y), (p, q))
-        to_root = seg_base_dist + best_t * seg_length
-        delay = wiring + to_root
-        return cost_val, wiring, delay, best_t, best_x, best_y, p, q
-
     # G != 0: minimize cost directly using Brent's method
-    def cost_at_t(t, cost_spec):
+    def cost_at_t(t):
         branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
         c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q, cost_spec=cost_spec)
         return c
