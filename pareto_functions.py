@@ -1,4 +1,4 @@
-from math import sqrt
+from math import sqrt, log
 from utils import *
 import networkx as nx
 from scipy.spatial.distance import euclidean
@@ -13,14 +13,20 @@ import pandas as pd
 
 CostSpec = namedtuple('CostSpec', ['wiring_transform', 'delay_transform'])
 
+def _homogeneous_wiring(curve, to_root): return curve
+def _homogeneous_delay(curve, to_root): return curve + to_root
+
+def _heterogeneous_wiring(curve, to_root): return curve ** 2
+def _heterogeneous_delay(curve, to_root): return log(1 + curve) + log(1 + to_root)
+
 HOMOGENEOUS = CostSpec(
-    wiring_transform = lambda curve, to_root: curve,
-    delay_transform = lambda curve, to_root: curve + to_root
+    wiring_transform = _homogeneous_wiring,
+    delay_transform = _homogeneous_delay,
 )
 
 HETEROGENEOUS = CostSpec(
-    wiring_transform = lambda curve, to_root: curve ** 2, 
-    delay_transform = lambda curve, to_root: math.log(curve) + math.log(to_root)
+    wiring_transform = _heterogeneous_wiring, 
+    delay_transform = _heterogeneous_delay,
 )
 
 COST_SPECS = {
