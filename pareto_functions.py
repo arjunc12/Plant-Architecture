@@ -34,12 +34,12 @@ COST_SPECS = {
     'heterogeneous': HETEROGENEOUS,
 }
 
-def wiring_cost(G):
+def wiring_cost(G, cost_spec=HOMOGENEOUS):
     # wiring cost is simply the sum of all edge lengths
     wiring = 0
     for u, v in G.edges():
         wiring += G[u][v]['length']
-    return wiring
+    return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
 def conduction_delay(G):
     '''

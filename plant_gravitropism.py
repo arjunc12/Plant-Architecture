@@ -148,8 +148,8 @@ def compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, tip
     """
     curve = curve_length(G, branch_x, branch_y, tip_x, tip_y)
     to_root = seg_base_dist + t * seg_length
-    wiring = curve
-    delay = curve + to_root
+    wiring = cost_spec.wiring_transform(curve, to_root)
+    delay = cost_spec.delay_transform(curve, to_root)
     cost = alpha * wiring + (1 - alpha) * delay
     return cost, wiring, delay
 
@@ -1004,7 +1004,7 @@ def main():
         '--output_dir',
         type=str,
         default="gravitropism_pareto_fronts",
-        help='Directory where generated CSV files will be written'
+        help='Directory where generated CSV files will be written (default: gravitropism_pareto_fronts)'
     )
 
     parser.add_argument(
@@ -1026,7 +1026,7 @@ def main():
     arbors = sorted(os.listdir(path)) if args.smart else sorted(get_last_day_files())
     total = len(arbors)
 
-    cost_spec = pf.COST_SPEC[args.cost_method]
+    cost_spec = pf.COST_SPECS[args.cost_method]
     # Bind all fixed arguments — only arbor_fname varies per worker call
     worker = functools.partial(
         process_arbor_worker,
@@ -1040,7 +1040,7 @@ def main():
         astep=args.astep,
         Gmin=args.Gmin,
         Gmax=args.Gmax,
-        Gstep=args.Gstep,2
+        Gstep=args.Gstep,
         verbose=args.verbose,
         cost_spec=cost_spec,
     )
