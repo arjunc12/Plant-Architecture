@@ -155,6 +155,34 @@ def toy_network2():
 
     return G
 
+def toy_arbor_gen(root, laterals, name='toy arbor'):
+    root_nodes = list(root)
+    if len(root_nodes) == 0:
+        raise ValueError('root must contain at least one coordinate')
+
+    G = nx.Graph()
+    root_base = root_nodes[0]
+
+    for r in root_nodes:
+        G.add_node(r)
+        G.nodes[r]['label'] = 'main root'
+
+    G.nodes[root_base]['label'] = 'main root base'
+    G.graph['main root base'] = root_base
+    G.graph['arbor name'] = name
+
+    for u, v in zip(root_nodes, root_nodes[1:]):
+        connect_points(G, u, v)
+
+    for lateral in laterals:
+        G.add_node(lateral)
+        G.nodes[lateral]['label'] = 'lateral root'
+        connect_points(G, root_base, lateral)
+
+    relabel_lateral_root_tips(G)
+
+    return G
+
 def image_metadata(image):
     image = image.strip('_')
     image = image.strip('.rsml')
