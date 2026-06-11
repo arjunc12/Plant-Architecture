@@ -44,7 +44,7 @@ def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, s
         print(f"Skipping {arbor_fname}: no reconstruction found")
         return
 
-    skip = initialize_file(fname, arbor_fname)
+    skip = initialize_file(fname, arbor_fname, cost_spec=cost_spec)
 
     if smart:
         df = pd.read_csv(fname, skipinitialspace=True)
@@ -907,7 +907,7 @@ def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
 # File I/O
 # -------------------------
 
-def initialize_file(fname, arbor):
+def initialize_file(fname, arbor, cost_spec=pf.HOMOGENEOUS):
     """
     Initialize output CSV and return set of already-evaluated (G, alpha) pairs.
     """
@@ -926,8 +926,8 @@ def initialize_file(fname, arbor):
         observed = rar.read_arbor_full(arbor)
         f.write('%s, %s, %s, %f, %f, %f, %f\n' % (
             "observed", "", "",
-            pf.wiring_cost(observed),
-            gravitropism_conduction_delay(observed),
+            pf.wiring_cost(observed, cost_spec=cost_spec),
+            pf.conduction_delay(observed, cost_spec=cost_spec),
             0, 0
         ))
 

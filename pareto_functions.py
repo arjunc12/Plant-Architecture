@@ -41,6 +41,63 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
         wiring += G[u][v]['length']
     return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
+
+# New version of conduction_delay (with lateral_root_path_length as a helper function)
+
+def lateral_root_path_length(G, tip):
+    """Sum edge lengths from tip of a lateral root back to main root insertion point."""
+    length = 0
+    visited = set()
+    queue = [tip]
+    while queue:
+        node = queue.pop(0)
+        if node in visited:
+            continue
+        visited.add(node)
+        for neighbor in G.neighbors(node):
+            if neighbor not in visited:
+                label = G.nodes[neighbor]['label']
+                if label in ('lateral root', 'lateral root tip'):
+                    length += G[node][neighbor]['length']
+                    queue.append(neighbor)
+                elif label in ('main root', 'main root base'):
+                    length += G[node][neighbor]['length']
+                    # stop here — this is the insertion point
+    return length
+
+def conduction_delay(G, cost_spec=HOMOGENEOUS):
+    droot = {}
+    queue = []
+    visited = set()
+    root = G.graph.get('main root base', G.graph.get('main root'))
+    queue.append(root)
+    droot[root] = 0
+    delay = 0
+
+    while len(queue) > 0:
+        curr = queue.pop(0)
+        assert curr not in visited
+        visited.add(curr)
+
+        if G.nodes[curr]['label'] == 'lateral root tip':
+            curve = lateral_root_path_length(G, curr)
+            to_root = droot[curr] - curve   # subtract lateral length to get main root distance
+            # troubleshooting
+            if to_root < 0:
+                print(f"Warning: negative to_root={to_root:.6f} at tip {curr}, "
+                      f"droot = {droot[curr]:.6f}, curve = {curve:.6f}")
+            
+            delay += cost_spec.delay_transform(curve, to_root)
+
+        for u in G.neighbors(curr):
+            if u not in visited:
+                queue.append(u)
+                droot[u] = droot[curr] + G[curr][u]['length']
+
+    assert len(visited) == G.number_of_nodes()
+    return delay
+
+"""
 def conduction_delay(G):
     '''
     use a breadth-first search to compute the distance to from the root to each point
@@ -78,6 +135,7 @@ def conduction_delay(G):
     assert len(visited) == G.number_of_nodes()
 
     return delay
+"""
 
 def pareto_costs(G):
     '''
