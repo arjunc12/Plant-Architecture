@@ -34,7 +34,8 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 # Worker function — must be at module level for multiprocessing to pickle it
 # -------------------------
 def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, smart_grid_mesh,
-                          amin, amax, astep, Gmin, Gmax, Gstep, verbose=False, cost_spec=pf.HOMOGENEOUS):
+                          amin, amax, astep, Gmin, Gmax, Gstep, verbose=False,
+                          cost_specs=(('homogeneous', pf.HOMOGENEOUS),)):
     """Process a single arbor — called by each worker process."""
     print(f"[START] {arbor_fname}", flush=True)
 
@@ -44,16 +45,24 @@ def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, s
         print(f"Skipping {arbor_fname}: no reconstruction found")
         return
 
-    skip = initialize_file(fname, arbor_fname, cost_spec=cost_spec)
+    skip = initialize_file(fname, arbor_fname, cost_specs=cost_specs)
 
     if smart:
         df = pd.read_csv(fname, skipinitialspace=True)
-        params, smart_skip = generate_smart_grid(df, smart_num, smart_grid_size, smart_grid_mesh)
+        params = set()
+        smart_skip = set()
+        for method_name, _ in cost_specs:
+            df_method = df[df['cost method'] == method_name]
+            if df_method[df_method['arbor type'] == 'optimal'].empty:
+                continue
+            method_params, method_skip = generate_smart_grid(df_method, smart_num, smart_grid_size, smart_grid_mesh)
+            params.update(method_params)
+            smart_skip.update((method_name, g, alpha) for g, alpha in method_skip)
         skip |= smart_skip
     else:
         params = generate_grid(amin, amax, astep, Gmin, Gmax, Gstep)
 
-    process_arbor(arbor_fname, fname, params, skip, verbose=verbose, cost_spec=cost_spec)
+    process_arbor(arbor_fname, fname, params, skip, verbose=verbose, cost_specs=cost_specs)
 
     print(f"[DONE] {arbor_fname}", flush=True)
 
@@ -907,37 +916,38 @@ def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
 # File I/O
 # -------------------------
 
-def initialize_file(fname, arbor, cost_spec=pf.HOMOGENEOUS):
+def initialize_file(fname, arbor, cost_specs=(('homogeneous', pf.HOMOGENEOUS),)):
     """
-    Initialize output CSV and return set of already-evaluated (G, alpha) pairs.
+    Initialize output CSV and return set of already-evaluated (cost method, G, alpha) triples.
     """
     first_time = not os.path.exists(fname) or os.path.getsize(fname) == 0
 
     if not first_time:
         df = pd.read_csv(fname, skipinitialspace=True)
         df = df[df['arbor type'] == 'optimal']
-        return set(zip(df['G'].round(6), df['alpha'].round(6)))
+        return set(zip(df['cost method'], df['G'].round(6), df['alpha'].round(6)))
 
     with open(fname, 'w') as f:
         f.write(
-            'arbor type, G, alpha, wiring cost, conduction delay, '
+            'arbor type, cost method, G, alpha, wiring cost, conduction delay, '
             'total orthogonal distance, total squared orthogonal distance\n'
         )
         observed = rar.read_arbor_full(arbor)
-        f.write('%s, %s, %s, %f, %f, %f, %f\n' % (
-            "observed", "", "",
-            pf.wiring_cost(observed, cost_spec=cost_spec),
-            pf.conduction_delay(observed, cost_spec=cost_spec),
-            0, 0
-        ))
+        for method_name, cost_spec in cost_specs:
+            f.write('%s, %s, %s, %s, %f, %f, %f, %f\n' % (
+                "observed", method_name, "", "",
+                pf.wiring_cost(observed, cost_spec=cost_spec),
+                pf.conduction_delay(observed, cost_spec=cost_spec),
+                0, 0
+            ))
 
     return set()
 
 
-def append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
+def append_result(fname, method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
     with open(fname, 'a') as f:
-        f.write('%s, %.6f, %.6f, %f, %f, %f, %f\n' % (
-            "optimal", g, alpha, wiring, delay, orthogonal, sq_orthogonal
+        f.write('%s, %s, %.6f, %.6f, %f, %f, %f, %f\n' % (
+            "optimal", method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal
         ))
 
 
@@ -945,17 +955,19 @@ def append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
 # Processing
 # -------------------------
 
-def process_arbor(arbor, fname, params, skip, verbose=False, cost_spec=pf.HOMOGENEOUS):
+def process_arbor(arbor, fname, params, skip, verbose=False,
+                  cost_specs=(('homogeneous', pf.HOMOGENEOUS),)):
     """Evaluate all parameter combinations for a given arbor and save results."""
     for g, alpha in params:
-        if (round(g, 6), round(alpha, 6)) in skip:
-            continue
+        for method_name, cost_spec in cost_specs:
+            if (method_name, round(g, 6), round(alpha, 6)) in skip:
+                continue
 
-        # Only print G/alpha progress if verbose
-        if verbose:
-            print(f"Processing {arbor}: G={g}, alpha={alpha}")
-        wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha, cost_spec=cost_spec)
-        append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
+            # Only print G/alpha progress if verbose
+            if verbose:
+                print(f"Processing {arbor}: method={method_name}, G={g}, alpha={alpha}")
+            wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha, cost_spec=cost_spec)
+            append_result(fname, method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
 
 
 def get_last_day_files():
@@ -1011,7 +1023,7 @@ def main():
         '--cost_method',
         type=str,
         default='homogeneous',
-        choices=list(pf.COST_SPECS.keys()),
+        choices=list(pf.COST_SPECS.keys()) + ['both'],
         help='Chosen cost calculation method (default: homogeneous)'
     )
 
@@ -1026,7 +1038,7 @@ def main():
     arbors = sorted(os.listdir(path)) if args.smart else sorted(get_last_day_files())
     total = len(arbors)
 
-    cost_spec = pf.COST_SPECS[args.cost_method]
+    cost_specs = pf.resolve_cost_specs(args.cost_method)
     # Bind all fixed arguments — only arbor_fname varies per worker call
     worker = functools.partial(
         process_arbor_worker,
@@ -1042,7 +1054,7 @@ def main():
         Gmax=args.Gmax,
         Gstep=args.Gstep,
         verbose=args.verbose,
-        cost_spec=cost_spec,
+        cost_specs=cost_specs,
     )
 
     print(f"Processing {total} arbors with {args.num_workers} workers "

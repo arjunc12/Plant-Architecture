@@ -29,10 +29,19 @@ HETEROGENEOUS = CostSpec(
     delay_transform = _heterogeneous_delay,
 )
 
+
 COST_SPECS = {
     'homogeneous': HOMOGENEOUS,
     'heterogeneous': HETEROGENEOUS,
 }
+
+def resolve_cost_specs(cost_method):
+    if cost_method == 'both':
+        return [
+            ('homogeneous', HOMOGENEOUS),
+            ('heterogeneous', HETEROGENEOUS),
+        ]
+    return [(cost_method, COST_SPECS[cost_method])]
 
 def wiring_cost(G, cost_spec=HOMOGENEOUS):
     # wiring cost is simply the sum of all edge lengths
@@ -86,7 +95,7 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
             if to_root < 0:
                 print(f"Warning: negative to_root={to_root:.6f} at tip {curr}, "
                       f"droot = {droot[curr]:.6f}, curve = {curve:.6f}")
-            
+            to_root = max(0.0, to_root)
             delay += cost_spec.delay_transform(curve, to_root)
 
         for u in G.neighbors(curr):
