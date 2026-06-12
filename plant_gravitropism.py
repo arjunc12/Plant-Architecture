@@ -34,7 +34,8 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 # Worker function — must be at module level for multiprocessing to pickle it
 # -------------------------
 def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, smart_grid_mesh,
-                          amin, amax, astep, Gmin, Gmax, Gstep, verbose=False):
+                          amin, amax, astep, Gmin, Gmax, Gstep, verbose=False,
+                          cost_specs=(('homogeneous', pf.HOMOGENEOUS),)):
     """Process a single arbor — called by each worker process."""
     print(f"[START] {arbor_fname}", flush=True)
 
@@ -44,16 +45,24 @@ def process_arbor_worker(arbor_fname, path, smart, smart_num, smart_grid_size, s
         print(f"Skipping {arbor_fname}: no reconstruction found")
         return
 
-    skip = initialize_file(fname, arbor_fname)
+    skip = initialize_file(fname, arbor_fname, cost_specs=cost_specs)
 
     if smart:
         df = pd.read_csv(fname, skipinitialspace=True)
-        params, smart_skip = generate_smart_grid(df, smart_num, smart_grid_size, smart_grid_mesh)
+        params = set()
+        smart_skip = set()
+        for method_name, _ in cost_specs:
+            df_method = df[df['cost method'] == method_name]
+            if df_method[df_method['arbor type'] == 'optimal'].empty:
+                continue
+            method_params, method_skip = generate_smart_grid(df_method, smart_num, smart_grid_size, smart_grid_mesh)
+            params.update(method_params)
+            smart_skip.update((method_name, g, alpha) for g, alpha in method_skip)
         skip |= smart_skip
     else:
         params = generate_grid(amin, amax, astep, Gmin, Gmax, Gstep)
 
-    process_arbor(arbor_fname, fname, params, skip, verbose=verbose)
+    process_arbor(arbor_fname, fname, params, skip, verbose=verbose, cost_specs=cost_specs)
 
     print(f"[DONE] {arbor_fname}", flush=True)
 
@@ -129,7 +138,7 @@ def orthogonal_distance_to_curve(G, b, c, obs_x, obs_y, x_start, x_end, num_samp
 # Cost computation
 # -------------------------
 
-def compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, tip_x, tip_y):
+def compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, tip_x, tip_y, cost_spec=pf.HOMOGENEOUS):
     """
     Compute total cost, wiring, and delay for a given branch point.
 
@@ -148,8 +157,8 @@ def compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, tip
     """
     curve = curve_length(G, branch_x, branch_y, tip_x, tip_y)
     to_root = seg_base_dist + t * seg_length
-    wiring = curve
-    delay = curve + to_root
+    wiring = cost_spec.wiring_transform(curve, to_root)
+    delay = cost_spec.delay_transform(curve, to_root)
     cost = alpha * wiring + (1 - alpha) * delay
     return cost, wiring, delay
 
@@ -163,7 +172,7 @@ def branch_point_from_t(x0, y0, x1, y1, t):
 # Optimization: brute force (used when tip x falls between segment endpoints)
 # -------------------------
 
-def find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
+def find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=pf.HOMOGENEOUS):
     """
     Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
     by brute-force search over t in [0, 1] with step 0.01.
@@ -183,7 +192,7 @@ def find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
     for t in pylab.arange(0, 1 + 0.01, 0.01):
         branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
         cost, wiring, delay = compute_cost(
-            alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q
+            alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q, cost_spec=cost_spec 
         )
         if cost <= best_cost:
             best_cost = cost
@@ -199,7 +208,7 @@ def find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
 # Enhanced brute force using Brent's method
 # -------------------------
 
-def find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
+def find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=pf.HOMOGENEOUS):
     """
     Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
     using Brent's method to directly minimize the cost function.
@@ -213,32 +222,17 @@ def find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
     """
     seg_length = euclidean((x0, y0), (x1, y1))
 
-    # G=0 case: use exact analytical solution from optimal_midpoint.py
-    if G == 0:
-        if alpha == 1:
-            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_alpha1(
-                (x0, y0), (x1, y1), (p, q)
-            )
-        else:
-            cost_val, (best_x, best_y), best_t = optimal_midpoint.optimal_midpoint_exact(
-                (x0, y0), (x1, y1), (p, q), alpha, seg_base_dist
-            )
-        wiring = euclidean((best_x, best_y), (p, q))
-        to_root = seg_base_dist + best_t * seg_length
-        delay = wiring + to_root
-        return cost_val, wiring, delay, best_t, best_x, best_y, p, q
-
     # G != 0: minimize cost directly using Brent's method
     def cost_at_t(t):
         branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
-        c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q)
+        c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q, cost_spec=cost_spec)
         return c
 
     result = minimize_scalar(cost_at_t, bounds=(0, 1), method='bounded')
     best_t = result.x
     best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
     best_cost, best_wiring, best_delay = compute_cost(
-        alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
+        alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q, cost_spec=cost_spec
     )
 
     return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
@@ -308,7 +302,7 @@ def find_root_in_unit_interval(func, num_guesses=1):
             pass
     return sorted(roots)
 
-def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
+def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=pf.HOMOGENEOUS):
     """
     Find the optimal branch point on segment (x0,y0)-(x1,y1) for lateral tip (p, q)
     using the analytical derivative of the cost function.
@@ -349,7 +343,7 @@ def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
 
         def cost_at_t(t):
             branch_x, branch_y = branch_point_from_t(x0, y0, x1, y1, t)
-            c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q)
+            c, _, _ = compute_cost(alpha, G, seg_base_dist, t, seg_length, branch_x, branch_y, p, q, cost_spec=cost_spec)
             return c
 
         roots = find_root_in_unit_interval(costprime)
@@ -362,7 +356,7 @@ def find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q):
 
         best_x, best_y = branch_point_from_t(x0, y0, x1, y1, best_t)
         best_cost, best_wiring, best_delay = compute_cost(
-            alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q
+            alpha, G, seg_base_dist, best_t, seg_length, best_x, best_y, p, q, cost_spec=cost_spec
         )
 
         return best_cost, best_wiring, best_delay, best_t, best_x, best_y, p, q
@@ -512,7 +506,7 @@ def get_closest_and_valid_segments(lat_tips, segments):
 # Core optimization
 # -------------------------
 
-def optimize_tip(tip, segments, base_dist, alpha, G):
+def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     p, q = tip
     results = []
 
@@ -522,11 +516,11 @@ def optimize_tip(tip, segments, base_dist, alpha, G):
         seg_base_dist = base_dist[(x0, y0)]
 
         if is_between(x0, p, x1) or OPTIMIZATION_METHOD == 'brute_force':
-            result = find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
+            result = find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
         elif OPTIMIZATION_METHOD == 'brent':
-            result = find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
+            result = find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
         else:
-            result = find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q)
+            result = find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
 
         results.append(result)
 
@@ -534,7 +528,7 @@ def optimize_tip(tip, segments, base_dist, alpha, G):
     return best
 
 
-def arbor_best_cost(arbor, G, alpha):
+def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
@@ -563,7 +557,7 @@ def arbor_best_cost(arbor, G, alpha):
     final = []
     for tip in lat_tips:
         valid_segments = get_insertion_segment(arbor, tip, segments)
-        result = optimize_tip(tip, valid_segments, base_dist, alpha, G)
+        result = optimize_tip(tip, valid_segments, base_dist, alpha, G, cost_spec=cost_spec)
         if result is not None:
             final.append(result)
         else:
@@ -675,7 +669,7 @@ def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip,
 # Core evaluation
 # -------------------------
 
-def evaluate_parameters(arbor_fname, G, alpha):
+def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     Evaluate a single (G, alpha) combination for a given arbor.
 
@@ -685,7 +679,7 @@ def evaluate_parameters(arbor_fname, G, alpha):
     """
     # Load arbor once and reuse
     G_graph = rar.read_arbor_full(arbor_fname)
-    results = arbor_best_cost(G_graph, G, alpha)
+    results = arbor_best_cost(G_graph, G, alpha, cost_spec=cost_spec)
 
     wiring = 0
     delay = 0
@@ -922,37 +916,38 @@ def generate_smart_grid(df, smart_num, grid_size, grid_mesh):
 # File I/O
 # -------------------------
 
-def initialize_file(fname, arbor):
+def initialize_file(fname, arbor, cost_specs=(('homogeneous', pf.HOMOGENEOUS),)):
     """
-    Initialize output CSV and return set of already-evaluated (G, alpha) pairs.
+    Initialize output CSV and return set of already-evaluated (cost method, G, alpha) triples.
     """
     first_time = not os.path.exists(fname) or os.path.getsize(fname) == 0
 
     if not first_time:
         df = pd.read_csv(fname, skipinitialspace=True)
         df = df[df['arbor type'] == 'optimal']
-        return set(zip(df['G'].round(6), df['alpha'].round(6)))
+        return set(zip(df['cost method'], df['G'].round(6), df['alpha'].round(6)))
 
     with open(fname, 'w') as f:
         f.write(
-            'arbor type, G, alpha, wiring cost, conduction delay, '
+            'arbor type, cost method, G, alpha, wiring cost, conduction delay, '
             'total orthogonal distance, total squared orthogonal distance\n'
         )
         observed = rar.read_arbor_full(arbor)
-        f.write('%s, %s, %s, %f, %f, %f, %f\n' % (
-            "observed", "", "",
-            pf.wiring_cost(observed),
-            gravitropism_conduction_delay(observed),
-            0, 0
-        ))
+        for method_name, cost_spec in cost_specs:
+            f.write('%s, %s, %s, %s, %f, %f, %f, %f\n' % (
+                "observed", method_name, "", "",
+                pf.wiring_cost(observed, cost_spec=cost_spec),
+                pf.conduction_delay(observed, cost_spec=cost_spec),
+                0, 0
+            ))
 
     return set()
 
 
-def append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
+def append_result(fname, method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
     with open(fname, 'a') as f:
-        f.write('%s, %.6f, %.6f, %f, %f, %f, %f\n' % (
-            "optimal", g, alpha, wiring, delay, orthogonal, sq_orthogonal
+        f.write('%s, %s, %.6f, %.6f, %f, %f, %f, %f\n' % (
+            "optimal", method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal
         ))
 
 
@@ -960,17 +955,19 @@ def append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal):
 # Processing
 # -------------------------
 
-def process_arbor(arbor, fname, params, skip, verbose=False):
+def process_arbor(arbor, fname, params, skip, verbose=False,
+                  cost_specs=(('homogeneous', pf.HOMOGENEOUS),)):
     """Evaluate all parameter combinations for a given arbor and save results."""
     for g, alpha in params:
-        if (round(g, 6), round(alpha, 6)) in skip:
-            continue
+        for method_name, cost_spec in cost_specs:
+            if (method_name, round(g, 6), round(alpha, 6)) in skip:
+                continue
 
-        # Only print G/alpha progress if verbose
-        if verbose:
-            print(f"Processing {arbor}: G={g}, alpha={alpha}")
-        wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha)
-        append_result(fname, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
+            # Only print G/alpha progress if verbose
+            if verbose:
+                print(f"Processing {arbor}: method={method_name}, G={g}, alpha={alpha}")
+            wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha, cost_spec=cost_spec)
+            append_result(fname, method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
 
 
 def get_last_day_files():
@@ -1015,17 +1012,33 @@ def main():
 
     parser.add_argument('--verbose', action='store_true', default=False)
 
+    parser.add_argument(
+        '--output_dir',
+        type=str,
+        default="gravitropism_pareto_fronts",
+        help='Directory where generated CSV files will be written (default: gravitropism_pareto_fronts)'
+    )
+
+    parser.add_argument(
+        '--cost_method',
+        type=str,
+        default='homogeneous',
+        choices=list(pf.COST_SPECS.keys()) + ['both'],
+        help='Chosen cost calculation method (default: homogeneous)'
+    )
+
     args = parser.parse_args()
 
     global OPTIMIZATION_METHOD
     OPTIMIZATION_METHOD = args.optimization_method
 
-    path = f"{RESULTS_DIR}/gravitropism_pareto_fronts"
+    path = f"{RESULTS_DIR}/{args.output_dir}"
     os.makedirs(path, exist_ok=True)
 
     arbors = sorted(os.listdir(path)) if args.smart else sorted(get_last_day_files())
     total = len(arbors)
 
+    cost_specs = pf.resolve_cost_specs(args.cost_method)
     # Bind all fixed arguments — only arbor_fname varies per worker call
     worker = functools.partial(
         process_arbor_worker,
@@ -1041,10 +1054,11 @@ def main():
         Gmax=args.Gmax,
         Gstep=args.Gstep,
         verbose=args.verbose,
+        cost_specs=cost_specs,
     )
 
     print(f"Processing {total} arbors with {args.num_workers} workers "
-          f"using {args.optimization_method}...")
+          f"using {args.optimization_method}, cost_method={args.cost_method}...")
 
     with Pool(processes=args.num_workers) as pool:
         for i, _ in enumerate(pool.imap_unordered(worker, arbors), 1):
