@@ -53,6 +53,7 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
 
 # New version of conduction_delay (with lateral_root_path_length as a helper function)
 
+
 def lateral_root_path_length(G, tip):
     """Sum edge lengths from tip of a lateral root back to main root insertion point."""
     length = 0
@@ -106,8 +107,10 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
     assert len(visited) == G.number_of_nodes()
     return delay
 
-"""
-def conduction_delay(G):
+
+# ----------------- Initial version of conduction_delay (prior to change for choice in cost computation methods) ------------- 
+
+def conduction_delay_initial(G):
     '''
     use a breadth-first search to compute the distance to from the root to each point
 
@@ -144,7 +147,151 @@ def conduction_delay(G):
     assert len(visited) == G.number_of_nodes()
 
     return delay
-"""
+
+
+'''
+# --------------   VVVV TESTING VERSIONS VVVV   ----------------
+def lateral_root_path_length(G, tip):
+    """Sum edge lengths from tip of a lateral root back to main root insertion point."""
+    length = 0
+    visited = set()
+    queue = [tip]
+    print(f"    [lateral_root_path_length (1/11)] initial queue: {queue}")
+
+    while queue:
+        print(f"    [lateral_root_path_length (2/11)] queue state: {queue} | visited so far: {visited}")
+        node = queue.pop(0)
+        print(f"    [lateral_root_path_length (3/11)] popped node {node}")
+
+        if node in visited:
+            print(f"    [lateral_root_path_length (4/11)]   already visited {node} -- skipping")
+            continue
+        visited.add(node)
+        print(f"    [lateral_root_path_length (5/11)]   marking {node} as visited")
+        for neighbor in G.neighbors(node):
+            if neighbor not in visited:
+                label = G.nodes[neighbor]['label']
+
+                edge_len = G[node][neighbor]['length'] # --- TODO: REMOVE (this is part of the testing w/ print statements)
+                print(f"    [lateral_root_path_length (6/11)]   checking neighbor {neighbor} | label = '{label}' | edge length {node}->{neighbor} = {edge_len:.6f}")
+
+                if label in ('lateral root', 'lateral root tip'):
+                    length += G[node][neighbor]['length']
+                    queue.append(neighbor)
+                    print(f"    [lateral_root_path_length (7/11)]     -> still on the lateral: add {edge_len:.6f} to length (running total = {length:.6f}), enqueue {neighbor}")
+
+                elif label in ('main root', 'main root base'):
+                    length += G[node][neighbor]['length']
+                    print(f"    [lateral_root_path_length (8/11)]     -> reached main root at {neighbor}: add {edge_len:.6f} to length (running total = {length:.6f}), NOT enqueued (stop here)")
+                    # stop here — this is the insertion point
+            else: # TODO: REMOVE (this is part of the testing w/ print statements)
+                print(f"    [lateral_root_path_length (9/11)]   neighbor {neighbor} already visited -- skipping (potential branch/cycle in lateral)")
+                print(f"    [lateral_root_path_length (10/11)] done. visited nodes: {visited}")
+                print(f"    [lateral_root_path_length (11/11)] returning total length = {length:.6f}")
+    print(f"    [lateral_root_path_length (FINAL/11)] Returning a final length of {length:.6f}\n")
+    return length
+
+def conduction_delay(G, cost_spec=HOMOGENEOUS):
+    droot = {}
+    queue = []
+    visited = set()
+    root = G.graph.get('main root base', G.graph.get('main root'))
+    queue.append(root)
+    droot[root] = 0
+    delay = 0
+
+    print(f"\n========== START conduction_delay: starting BFS from root {root} START ==========")
+
+    while len(queue) > 0:
+        curr = queue.pop(0)
+        assert curr not in visited
+        visited.add(curr)
+
+        print(f"\n--- [1/12] Popped node {curr} | label = '{G.nodes[curr]['label']}' | droot[{curr}] = {droot[curr]:.6f} ---")
+        
+        if G.nodes[curr]['label'] == 'lateral root tip':
+
+            print(f"  >>> [2/12] {curr} is a lateral root tip -- computing its contribution to delay")
+            
+            curve = lateral_root_path_length(G, curr)
+            
+            print(f"  [3/12] curve (path length along the lateral, tip -> insertion point) = {curve:.6f}....")
+            print(f"  [4/12] ....droot[{curr}] (BFS distance from root to {curr}, following the tree) = {droot[curr]:.6f}")
+            
+            to_root = droot[curr] - curve   # subtract lateral length to get main root distance
+            
+            print(f"  [5/12] to_root = droot[{curr}] - curve = {droot[curr]:.6f} - {curve:.6f} = {to_root:.6f}")
+            
+            # troubleshooting
+            if to_root < 0:
+                print(f"Warning: negative to_root={to_root:.6f} at tip {curr}, "
+                      f"droot = {droot[curr]:.6f}, curve = {curve:.6f}")
+            to_root = max(0.0, to_root)
+
+            print(f"  [6/12] to_root (clamped to >= 0) = {to_root:.6f}")
+            increment = cost_spec.delay_transform(curve, to_root) # TODO: REMOVE (this is part of the testing w/ print statements)
+            print(f"  [7/12] cost_spec.delay_transform(curve={curve:.6f}, to_root={to_root:.6f}) = {increment:.6f}")
+
+            delay += cost_spec.delay_transform(curve, to_root)
+
+            print(f"  [8/12] delay so far (running total) = {delay:.6f}")
+
+            print(f"[9/12] Delay at node {curr}: {delay}")
+
+        for u in G.neighbors(curr):
+            if u not in visited:
+                queue.append(u)
+                print(f"  [10/12] appending {u} to queue. current queue: {queue}")
+                droot[u] = droot[curr] + G[curr][u]['length']
+                print(f"  [11/12] droot at {u}: {droot[u]}")
+
+    assert len(visited) == G.number_of_nodes()
+
+    print(f"  [FINAL/12] Returning final delay of --> {delay}")
+    return delay
+
+def conduction_delay_initial(G):
+    """
+    use a breadth-first search to compute the distance to from the root to each point
+
+    when we encounter a visit node for the first time, we record its distance to the root
+    (which is the sum of its parent's distance, plus the length of the edge from the parent
+    to the current node').  We keep a running total of the total distances from the root
+    to each node.
+    """
+    droot = {}
+    queue = []
+    curr = None
+    visited = set()
+
+    root = G.graph.get('main root base', G.graph.get('main root')) # root = G.graph['main root']
+
+    queue.append(root)
+    droot[root] = 0
+
+    delay = 0
+    while len(queue) > 0:
+        curr = queue.pop(0)
+        # we should never visit a node twice
+        assert curr not in visited
+        visited.add(curr)
+        # we only measure delay for the lateral root tips
+        if G.nodes[curr]['label'] == 'lateral root tip':
+            delay += droot[curr]
+            print(f"Delay at node {curr}: {delay}") # ADDED
+        for u in G.neighbors(curr):
+            if u not in visited:
+                queue.append(u)
+                droot[u] = droot[curr] + G[curr][u]['length']
+
+    # make sure we visited every node
+    assert len(visited) == G.number_of_nodes()
+
+    return delay
+
+# # --------------   ^^^^ TESTING VERSIONS ^^^^   ----------------
+'''
+
 
 def pareto_costs(G):
     '''
@@ -437,7 +584,7 @@ def main():
     # 194_1_C_day3
      #G = read_arbor_full('189_3_C_day3.csv') #- produces an image
      #G = read_arbor_full('194_1_C_day3.csv') #- produces an image
-     G = read_arbor_full('001_1_C_day5.csv')
+     print("hello") #G = read_arbor_full('001_1_C_day5.csv')
      #viz_trees(G)
      #viz_front(G)
     #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
