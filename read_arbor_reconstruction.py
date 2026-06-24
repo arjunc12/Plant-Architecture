@@ -38,6 +38,8 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     connections = []
     lateral_starts_set = set(lateral_starts)
 
+    print(" vvvv Currently in connect_lateral_roots, checking if G is connected... vvv") # TODO: REMOVE PRINT STATEMENT
+
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
 
@@ -76,11 +78,17 @@ def connect_lateral_roots(G, root_points, lateral_starts):
                 best_t = t
 
         connections.append((lateral_start, best_seg, best_t, best_point))
-
+    
+    assert nx.is_connected(G), " --- [1/3] Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "--- [1/3] Graph has a cycle after connect_lateral_roots"
+    
     # Phase 2: group connection points by segment
     seg_connections = defaultdict(list)
     for lateral_start, best_seg, best_t, best_point in connections:
         seg_connections[best_seg].append((best_t, best_point, lateral_start))
+
+    assert nx.is_connected(G), " --- [2/3] Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "--- [2/3] Graph has a cycle after connect_lateral_roots"
 
     # Phase 3: for each segment, sort by t, split into subsegments, connect laterals
     for seg, seg_conns in seg_connections.items():
@@ -129,9 +137,17 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         # make sure the original segment still exists
         assert nx.has_path(G, p0, p1), "check #2: no path between main root segment %s and %s" % (p0, p1)
 
+    assert nx.is_connected(G), " --- [3/3] Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "--- [3/3] Graph has a cycle after connect_lateral_roots"
+
     # make sure every lateral root start can reach the base
     for start in lateral_starts:
         assert nx.has_path(G, start, G.graph['main root base']), f"no path to root from {start} to base"
+    
+    assert nx.is_connected(G), " --- [END/3] Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "--- [END/3] Graph has a cycle after connect_lateral_roots"
+
+    print("^^^ End of connect_lateral_roots ^^^")
 
 def has_reconstruction(fname):
     '''
@@ -147,6 +163,8 @@ def read_arbor_full(fname):
     method individually reconstructs the main root and lateral roots separately. Afterwards,
     each lateral root is connected to the closest main root point
     '''
+
+    print("vvvvvv Start of read_arbor_full vvvvvv") # TODO: REMOVE PRINT STATEMENT
     G = nx.Graph()
     G.graph['arbor name'] = fname.strip('.csv')
 
@@ -191,6 +209,8 @@ def read_arbor_full(fname):
                     G.nodes[point]['label'] = 'lateral root'
 
                 prev_point = point
+            
+
 
     # label the base of the main root
     main_root_base = root_points[0]
@@ -205,6 +225,8 @@ def read_arbor_full(fname):
 
     # re-label the base of the main root and tips of the lateral roots
     relabel_lateral_root_tips(G)
+
+    print("^^^^^^ End of read_arbor_full ^^^^^^") #TODO: REMOVE PRINT STATEMENT
 
     return G
 

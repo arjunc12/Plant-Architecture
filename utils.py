@@ -31,6 +31,11 @@ def relabel_lateral_root_tips(G):
             # degree 1 lateral root is a tip
             G.nodes[u]['label'] = 'lateral root tip'
 
+    print("In relabel_lateral_root_tips, is the graph still connected?:") # TODO: REMOVE PRINT STATEMENT
+    assert nx.is_connected(G), "Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "Graph has a cycle after connect_lateral_roots"
+    print("Finished relabel_lateral_root_tips")
+
 def connect_points(G, u, v):
     G.add_edge(u, v)
     G[u][v]['length'] = euclidean(u, v)
