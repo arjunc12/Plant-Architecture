@@ -38,7 +38,7 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     connections = []
     lateral_starts_set = set(lateral_starts)
 
-    print(" vvvv Currently in connect_lateral_roots, checking if G is connected... vvv") # TODO: REMOVE PRINT STATEMENT
+    print("vvvv Currently in connect_lateral_roots, checking if G is connected... vvv") # TODO: REMOVE PRINT STATEMENT
 
     for lateral_start in lateral_starts:
         assert G.has_node(lateral_start)
@@ -48,6 +48,7 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         it's not actually a start.
         Some starts might be the start of multiple lateral roots. Those roots will have
         degree > 1 but will not have paths to any other starts
+        '''
         '''
         if G.degree(lateral_start) > 1 and any(
             nx.has_path(G, lateral_start, other_start)
@@ -61,6 +62,10 @@ def connect_lateral_roots(G, root_points, lateral_starts):
             for root_point in root_points
         )
         if is_connected:
+            continue
+        '''
+
+        if nx.has_path(G, lateral_start, root_points[0]):
             continue
 
         # find which main root segment is closest
@@ -79,16 +84,16 @@ def connect_lateral_roots(G, root_points, lateral_starts):
 
         connections.append((lateral_start, best_seg, best_t, best_point))
     
-    assert nx.is_connected(G), " --- [1/3] Graph is not fully connected after connect_lateral_roots"
-    assert nx.is_tree(G), "--- [1/3] Graph has a cycle after connect_lateral_roots"
+    # assert nx.is_connected(G), " --- [1/3] Graph is not fully connected after phase 1"
+    # assert nx.is_tree(G), "--- [1/3] Graph has a cycle after phase 1"
     
     # Phase 2: group connection points by segment
     seg_connections = defaultdict(list)
     for lateral_start, best_seg, best_t, best_point in connections:
         seg_connections[best_seg].append((best_t, best_point, lateral_start))
 
-    assert nx.is_connected(G), " --- [2/3] Graph is not fully connected after connect_lateral_roots"
-    assert nx.is_tree(G), "--- [2/3] Graph has a cycle after connect_lateral_roots"
+    # assert nx.is_connected(G), " --- [2/3] Graph is not fully connected after phase 2"
+    # assert nx.is_tree(G), "--- [2/3] Graph has a cycle after phase 2"
 
     # Phase 3: for each segment, sort by t, split into subsegments, connect laterals
     for seg, seg_conns in seg_connections.items():
@@ -137,8 +142,8 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         # make sure the original segment still exists
         assert nx.has_path(G, p0, p1), "check #2: no path between main root segment %s and %s" % (p0, p1)
 
-    assert nx.is_connected(G), " --- [3/3] Graph is not fully connected after connect_lateral_roots"
-    assert nx.is_tree(G), "--- [3/3] Graph has a cycle after connect_lateral_roots"
+    assert nx.is_connected(G), " --- [3/3] Graph is not fully connected after phase 3"
+    assert nx.is_tree(G), "--- [3/3] Graph has a cycle after phase 3"
 
     # make sure every lateral root start can reach the base
     for start in lateral_starts:
@@ -147,7 +152,7 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     assert nx.is_connected(G), " --- [END/3] Graph is not fully connected after connect_lateral_roots"
     assert nx.is_tree(G), "--- [END/3] Graph has a cycle after connect_lateral_roots"
 
-    print("^^^ End of connect_lateral_roots ^^^")
+    print("^^^ End of connect_lateral_roots ^^^") # TODO: REMOVE PRINT STATEMENT
 
 def has_reconstruction(fname):
     '''
