@@ -53,26 +53,125 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
 
 # ------ Version 3 of conduction_delay calc system -----
 
-def lateral_root_path_length(G, tip):
-    """Sum edge lengths from tip of a lateral root back to main root insertion point."""
-    length = 0
+def lateral_root_path_length(G, tip, droot, main_root_nodes):
+    """
+    Walk from tip to its main root insertion point by always stepping to the
+    lateral-root neighbor with the smallest effective_droot value, then return
+    the total edge-length accumulated plus (for disconnected laterals) the
+    euclidean distance from the walk's final node to the nearest main root node.
+ 
+    effective_droot(node) is defined as:
+        droot[node]                              if node was reached by the BFS
+                                                 (i.e. it is connected to the main root)
+        min euclidean distance to any main root  otherwise
+                                                 (disconnected component fallback)
+ 
+    This resolves both known failure cases:
+ 
+      CASE 1 — BRANCHING LATERALS (shared branch point):
+        The old BFS fanned out from the branch point into sibling branches,
+        overcounting. The greedy effective_droot walk never turns toward a
+        sibling: nodes on the true path back to the insertion point always
+        have a smaller droot than nodes on sibling branches.
+ 
+      CASE 2 — DISCONNECTED LATERALS (no connection to main root):
+        These nodes have no droot entry. effective_droot falls back to
+        euclidean distance to the nearest main root node, so the walk still
+        moves in the correct direction (toward the main root). When the walk
+        exhausts all lateral neighbors (reaching the end of the disconnected
+        component closest to the main root), it adds the euclidean distance
+        from that endpoint to the nearest main root node and returns.
+ 
+    Parameters
+    ----------
+    G               : nx.Graph — the arbor graph
+    tip             : node     — lateral root tip to start from
+    droot           : dict     — {node: cumulative BFS distance from root}
+    main_root_nodes : list     — all nodes whose label is 'main root' or
+                                 'main root base', pre-computed by conduction_delay
+ 
+    Returns
+    -------
+    float — total path length from tip to its insertion point (or to the
+            nearest main root node, for disconnected tips)
+    """
+    def effective_droot(node):
+        """
+        BFS-based distance if available, otherwise euclidean to nearest main root.
+        This lets the greedy walk navigate correctly even when a node has no
+        droot entry (i.e. it is not connected to the main root in G).
+        """
+        if node in droot:
+            return droot[node]
+        return min(euclidean(node, mr) for mr in main_root_nodes)
+ 
+    length  = 0
+    current = tip
     visited = set()
-    queue = [tip]
-    while queue:
-        node = queue.pop(0)
-        if node in visited:
-            continue
-        visited.add(node)
-        for neighbor in G.neighbors(node):
-            if neighbor not in visited:
-                label = G.nodes[neighbor]['label']
-                if label in ('lateral root', 'lateral root tip'):
-                    length += G[node][neighbor]['length']
-                    queue.append(neighbor)
-                elif label in ('main root', 'main root base'):
-                    length += G[node][neighbor]['length']
-                    # stop here — this is the insertion point
-    return length
+ 
+    print(f"\n    [lateral_root_path_length] called for tip {tip}")
+    print(f"    [lateral_root_path_length] tip droot = {droot.get(tip, 'NOT IN DROOT (disconnected)')}")
+    print(f"    [lateral_root_path_length] tip effective_droot = {effective_droot(tip):.6f}")
+ 
+    while True:
+        visited.add(current)
+        print(f"\n    [lateral_root_path_length] at node {current} "
+              f"| length so far = {length:.6f} | visited = {visited}")
+ 
+        best_neighbor    = None
+        best_eff_droot   = float('inf')
+        best_edge_len    = None
+ 
+        for neighbor in G.neighbors(current):
+            if neighbor in visited:
+                print(f"    [lateral_root_path_length]   neighbor {neighbor} already visited -- skipping")
+                continue
+ 
+            label    = G.nodes[neighbor]['label']
+            edge_len = G[current][neighbor]['length']
+            eff_d    = effective_droot(neighbor)
+            print(f"    [lateral_root_path_length]   neighbor {neighbor} | label = '{label}' "
+                  f"| edge = {edge_len:.6f} | effective_droot = {eff_d:.6f}"
+                  + (" (from BFS)" if neighbor in droot else " (euclidean fallback — disconnected)"))
+ 
+            # -----------------------------------------------------------------
+            # CASE 1 FIX — main root node found: add this final edge and stop
+            # immediately. No other neighbors are considered, so sibling
+            # branches are never entered.
+            # -----------------------------------------------------------------
+            if label in ('main root', 'main root base'):
+                length += edge_len
+                print(f"    [lateral_root_path_length]   -> MAIN ROOT reached at {neighbor}: "
+                      f"add edge {edge_len:.6f}, total = {length:.6f}. Stopping.")
+                return length
+ 
+            # Among unvisited lateral neighbors, pick the one closest to root.
+            if label in ('lateral root', 'lateral root tip'):
+                if eff_d < best_eff_droot:
+                    best_eff_droot = eff_d
+                    best_neighbor  = neighbor
+                    best_edge_len  = edge_len
+ 
+        # -----------------------------------------------------------------
+        # CASE 2 FIX — walk exhausted without finding a main root node.
+        # This is the end of a disconnected lateral component. Add the
+        # euclidean distance from the current node to the nearest main root
+        # node, so the disconnected tip still contributes a meaningful curve
+        # value rather than being skipped or returning None.
+        # -----------------------------------------------------------------
+        if best_neighbor is None:
+            nearest_mr   = min(main_root_nodes, key=lambda mr: euclidean(current, mr))
+            gap_dist     = euclidean(current, nearest_mr)
+            length      += gap_dist
+            print(f"    [lateral_root_path_length]   -> no further lateral neighbors from {current}.")
+            print(f"    [lateral_root_path_length]   -> DISCONNECTED: nearest main root node = {nearest_mr}, "
+                  f"euclidean gap = {gap_dist:.6f}, adding to length (total = {length:.6f}). Stopping.")
+            return length
+ 
+        print(f"    [lateral_root_path_length]   -> stepping to {best_neighbor} "
+              f"(effective_droot = {best_eff_droot:.6f}), adding edge {best_edge_len:.6f}")
+        length  += best_edge_len
+        current  = best_neighbor
 
 def conduction_delay(G, cost_spec=HOMOGENEOUS): # v3
     droot = {}
@@ -82,6 +181,14 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS): # v3
     queue.append(root)
     droot[root] = 0
     delay = 0
+
+    # Pre-compute the list of main root nodes once; passed into
+    # lateral_root_path_length for the disconnected-tip euclidean fallback.
+    main_root_nodes = [n for n in G.nodes()
+                       if G.nodes[n]['label'] in ('main root', 'main root base')]
+ 
+    print(f"\n========== conduction_delay: starting BFS from root {root} ==========")
+    print(f"  main root nodes ({len(main_root_nodes)} total): {main_root_nodes}")
 
     while len(queue) > 0:
         curr = queue.pop(0)
@@ -95,16 +202,50 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS): # v3
             if to_root < 0:
                 print(f"Warning: negative to_root={to_root:.6f} at tip {curr}, "
                       f"droot = {droot[curr]:.6f}, curve = {curve:.6f}")
-            to_root = max(0.0, to_root)
-            delay += cost_spec.delay_transform(curve, to_root)
+            to_root   = max(0.0, to_root)
+            increment = cost_spec.delay_transform(curve, to_root)
+            print(f"  cost_spec.delay_transform({curve:.6f}, {to_root:.6f}) = {increment:.6f}")
+            delay += increment
+            print(f"  running delay total = {delay:.6f}")
 
         for u in G.neighbors(curr):
             if u not in visited:
                 queue.append(u)
                 droot[u] = droot[curr] + G[curr][u]['length']
-
+    # --- Phase 2: process disconnected lateral tips not reached by BFS ---
+    unreached = set(G.nodes()) - visited
+    disconnected_tips = [n for n in unreached
+                         if G.nodes[n]['label'] == 'lateral root tip']
+ 
+    if disconnected_tips:
+        print(f"\n  --- Phase 2: {len(disconnected_tips)} disconnected lateral root tip(s) ---")
+        for curr in disconnected_tips:
+            print(f"\n--- Disconnected tip {curr} | label = '{G.nodes[curr]['label']}' | NOT IN droot ---")
+            print(f"  >>> computing curve via lateral_root_path_length (euclidean fallback active)")
+            curve = lateral_root_path_length(G, curr, droot, main_root_nodes)
+ 
+            # For disconnected tips, droot[curr] does not exist.
+            # to_root is defined as 0: there is no known main-root path distance,
+            # so the entire curve value is treated as the lateral length.
+            to_root = 0.0
+            print(f"  curve (lateral walk + euclidean gap to nearest main root) = {curve:.6f}")
+            print(f"  to_root = 0.0 (tip is disconnected; no BFS distance available)")
+            increment = cost_spec.delay_transform(curve, to_root)
+            print(f"  cost_spec.delay_transform({curve:.6f}, {to_root:.6f}) = {increment:.6f}")
+            delay += increment
+            print(f"  running delay total = {delay:.6f}")
+    elif unreached:
+        print(f"\n  {len(unreached)} non-tip node(s) unreachable from root (not counted in delay):")
+        for node in unreached:
+            print(f"      {node} | label = '{G.nodes[node]['label']}'")
+    else:
+        print(f"\n  All {len(visited)} nodes reached by BFS — no disconnected components.")
+ 
+    print(f"\n========== conduction_delay: finished, total delay = {delay:.6f} ==========\n")
     assert len(visited) == G.number_of_nodes()
+
     return delay
+
 
 
 
