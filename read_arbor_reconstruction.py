@@ -17,6 +17,13 @@ def check_root_points(root_points):
         y1 = root_points[i][1]
         assert y1 >= y0
 
+
+def connect_lateral_roots_new(G, root_points, lateral_starts):
+    '''
+    new version of connect lateral roots, this will need to track the start and 
+    end points of each of the lateral root segments in some way (potentially by creating objects)
+    '''
+
 def connect_lateral_roots(G, root_points, lateral_starts):
     '''
     Method for connecting the start of each lateral root to the closest point
@@ -49,7 +56,7 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         Some starts might be the start of multiple lateral roots. Those roots will have
         degree > 1 but will not have paths to any other starts
         '''
-        '''
+        
         if G.degree(lateral_start) > 1 and any(
             nx.has_path(G, lateral_start, other_start)
             for other_start in lateral_starts_set
@@ -63,11 +70,12 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         )
         if is_connected:
             continue
+        
         '''
-
         if nx.has_path(G, lateral_start, root_points[0]):
             continue
-
+        '''
+            
         # find which main root segment is closest
         best_dist = float("inf")
         best_point = None
@@ -162,7 +170,66 @@ def has_reconstruction(fname):
     '''
     return os.path.exists('%s/%s' % (RECONSTRUCTIONS_DIR, fname))
 
+
 def read_arbor_full(fname):
+    G = nx.Graph()
+    G.graph['arbor name'] = fname.strip('.csv')
+
+    # might change to include lat_beginning
+    prev_point = None
+    curr_root = None
+
+    # also might change    
+    root_points = []
+    lateral_starts = []
+
+    with open('%s/%s' % (RECONSTRUCTIONS_DIR, fname)) as f:
+        for line in f:
+            line = line.strip('\n')
+            line = line.split(',')
+
+            if len(line) == 1: # reached either the main root base or the beginning of a lateral root
+                curr_root = line[0]
+                prev_point = None
+            else: # reached a root coordinate point
+                point = tuple(map(float, line))
+
+                if prev_point == None: # if this is the first point on the current root
+                    if not G.has_node(point): # if this point hasn't been included in the graph object yet
+                        G.add_node(point)
+                        if curr_root != 'main root': # if the non-coord. CSV row didn't say 'main root', it means it's a lateral
+                            lateral_starts.append(point) # note: might also be appending non-start nodes
+                            print(f" --- Appended {point} to lateral_starts. Current status of lateral_starts: {lateral_starts} ---")
+                else:
+                    if prev_point == point: # continue if they're the same since it's most likely a duplicate (note: might be causing an issue)
+                        continue
+                    G.add_edge(prev_point, point)
+                    G[prev_point][point]['length'] = euclidean(prev_point, point)
+                
+                if curr_root == 'main root':
+                    G.nodes[point]['label'] = 'main root'
+                    root_points.append(point)
+                else:
+                    G.nodes[point]['label'] = 'lateral root'
+                
+                prev_point = point
+        
+    # labeling main root base
+    main_root_base = root_points[0]
+    G.nodes[main_root_base]['label'] = 'main root base'
+    G.graph['main root base'] = main_root_base
+
+    # connect the first point in each lateral root to the closest point along the main root
+    connect_lateral_roots(G, root_points, lateral_starts) # Note: most likely where the issue stems from, will need to add lat_root_start and lat_root_end labels 
+
+    relabel_lateral_root_tips(G) # just relabeling base of main root and tips of lateral roots <<< note: might show how to access lateral root tips
+
+    return G
+
+
+
+
+def read_arbor_full_initial(fname):
     '''
     Read the arbor reconstruction corresponding to a full arbor tracing. First, this
     method individually reconstructs the main root and lateral roots separately. Afterwards,
@@ -189,6 +256,7 @@ def read_arbor_full(fname):
                 # we've found a new main or lateral root
                 # reset the root that we are traversing
                 curr_root = line[0]
+                print(f" [read_arbor_full] () This is curr_root if len(line) == 1: {curr_root}")
                 prev_point = None
             else:
                 point = tuple(map(float, line))

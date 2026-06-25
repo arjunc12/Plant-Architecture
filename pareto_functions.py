@@ -53,7 +53,7 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
 
 # ------ Version 3 of conduction_delay calc system -----
 
-def lateral_root_path_length(G, tip, droot, main_root_nodes):
+def lateral_root_path_length_v3(G, tip, droot, main_root_nodes):
     """
     Walk from tip to its main root insertion point by always stepping to the
     lateral-root neighbor with the smallest effective_droot value, then return
@@ -173,7 +173,7 @@ def lateral_root_path_length(G, tip, droot, main_root_nodes):
         length  += best_edge_len
         current  = best_neighbor
 
-def conduction_delay(G, cost_spec=HOMOGENEOUS): # v3
+def conduction_delay_v3(G, cost_spec=HOMOGENEOUS): # v3
     droot = {}
     queue = []
     visited = set()
@@ -196,7 +196,7 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS): # v3
         visited.add(curr)
 
         if G.nodes[curr]['label'] == 'lateral root tip':
-            curve = lateral_root_path_length(G, curr)
+            curve = lateral_root_path_length(G, curr, droot, main_root_nodes)
             to_root = droot[curr] - curve   # subtract lateral length to get main root distance
             # troubleshooting
             if to_root < 0:
@@ -273,7 +273,7 @@ def lateral_root_path_length(G, tip):
                     # stop here — this is the insertion point
     return length
 
-def conduction_delay_v2(G, cost_spec=HOMOGENEOUS):
+def conduction_delay(G, cost_spec=HOMOGENEOUS):
     droot = {}
     queue = []
     visited = set()
