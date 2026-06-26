@@ -313,6 +313,7 @@ def read_arbor_full(fname):
 
     with open('%s/%s' % (RECONSTRUCTIONS_DIR, fname)) as f:
         id = 0 # assigning unique ID's to each node in case of duplicate nodes
+        inc = True # to make sure id doesn't increment unnecessarily
         for line in f:
             line = line.strip('\n')
             line = line.split(',')
@@ -322,32 +323,32 @@ def read_arbor_full(fname):
                 prev_id = None
             else: # reached a root coordinate point
                 point = tuple(map(float, line))
+                G.add_node(id, coords=point)
 
                 if prev_id == None: # if this is the first point on the current root
-                    G.add_node(id, coords=point)
                     if curr_root != 'main root':
                         lateral_starts.append(id)
-                        print(f" --- Appended {point} at id <{id}> to lateral_starts. Current status of lateral_starts: {lateral_starts} ---")
+                        print(f" --- Appended {point} at id <{id}> to lateral_starts since {curr_root} is not main root. Current status of lateral_starts: {lateral_starts} --- ")
                     
                 else:
                     if prev_id == id: # (for later: this will never be the case so might delete) continue if they're the same since it's most likely a duplicate (note: might be causing an issue)
                         continue
                     G.add_edge(prev_id, id)
-                    prev_coords = G.nodes[prev_id]['coords']
-                    curr_coords = G.nodes[id]['coords']
-                    G[prev_id][id]['length'] = euclidean(prev_coords, curr_coords)
-                    print(f" ----- Found the length between {prev_id} and {id} --> Length of {G[prev_id][id]['length']}")
+                    prev_coords = G.nodes[prev_id]["coords"]
+                    # curr_coords = G.nodes[id]['coords']
+                    G[prev_id][id]['length'] = euclidean(prev_coords, point)
+                    print(f" --- Found the length between {prev_id} and {id} --> Length of {G[prev_id][id]['length']} ---")
                 
                 if curr_root == 'main root':
                     G.nodes[id]['label'] = 'main root' # (for later: might cause an error)
                     # G.nodes[id]['label'] = 'main root'
                     root_ids.append(id)
-                    print(f" --- Found main root to be {G.nodes[id]} at <{id}>")
+                    print(f" --- Found main root to be {G.nodes[id]} at <{id}> ---")
                 else:
                     G.nodes[id]['label'] = 'lateral root'
                 
                 prev_id = id
-            id += 1
+                id += 1
 
     print(f"Final status of root_ids: {root_ids}")
     print(f"Final status of lateral_starts: {lateral_starts}")
@@ -360,6 +361,8 @@ def read_arbor_full(fname):
     G.graph['main root base'] = main_root_base
 
     # connect the first point in each lateral root to the closest point along the main root
+    assert False, "Finished read_arbor_full before calling connect_lateral_roots"
+
     connect_lateral_roots(G, root_ids, lateral_starts) # Note: most likely where the issue stems from, will need to add lat_root_start and lat_root_end labels 
 
     relabel_lateral_root_tips(G) # just relabeling base of main root and tips of lateral roots <<< note: might show how to access lateral root tips
