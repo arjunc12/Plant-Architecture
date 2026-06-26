@@ -24,6 +24,134 @@ def connect_lateral_roots_new(G, root_points, lateral_starts):
     end points of each of the lateral root segments in some way (potentially by creating objects)
     '''
 
+    segments = [(root_points[i], root_points[i+1]) for i in range(len(root_points) - 1)]
+
+    connections = []
+
+
+    # need to continue checking vvv
+
+    lateral_starts_set = set(lateral_starts)
+
+    print("vvvv Currently in connect_lateral_roots, checking if G is connected... vvv") # TODO: REMOVE PRINT STATEMENT
+
+    for lateral_start in lateral_starts:
+        assert G.has_node(lateral_start)
+
+        '''
+        if a lateral root has multiple neighbors AND can reach another start, then
+        it's not actually a start.
+        Some starts might be the start of multiple lateral roots. Those roots will have
+        degree > 1 but will not have paths to any other starts
+        '''
+        
+        if G.degree(lateral_start) > 1 and any(
+            nx.has_path(G, lateral_start, other_start)
+            for other_start in lateral_starts_set
+            if other_start != lateral_start
+        ):
+            continue
+
+        is_connected = any(
+            nx.has_path(G, root_point, lateral_start)
+            for root_point in root_points
+        )
+        if is_connected:
+            continue
+        
+        '''
+        if nx.has_path(G, lateral_start, root_points[0]):
+            continue
+        '''
+            
+        # find which main root segment is closest
+        best_dist = float("inf")
+        best_point = None
+        best_seg = None
+        best_t = None
+
+        for p0, p1 in segments:
+            dist, proj_point, t = optimal_midpoint.optimal_midpoint_alpha1(p0, p1, lateral_start)
+            if dist < best_dist:
+                best_dist = dist
+                best_point = proj_point
+                best_seg = (p0, p1)
+                best_t = t
+
+        connections.append((lateral_start, best_seg, best_t, best_point))
+    
+    # assert nx.is_connected(G), " --- [1/3] Graph is not fully connected after phase 1"
+    # assert nx.is_tree(G), "--- [1/3] Graph has a cycle after phase 1"
+    
+    # Phase 2: group connection points by segment
+    seg_connections = defaultdict(list)
+    for lateral_start, best_seg, best_t, best_point in connections:
+        seg_connections[best_seg].append((best_t, best_point, lateral_start))
+
+    # assert nx.is_connected(G), " --- [2/3] Graph is not fully connected after phase 2"
+    # assert nx.is_tree(G), "--- [2/3] Graph has a cycle after phase 2"
+
+    # Phase 3: for each segment, sort by t, split into subsegments, connect laterals
+    for seg, seg_conns in seg_connections.items():
+        p0, p1 = seg
+        assert G.has_edge(p0, p1), "No main root edge between %s and %s" % (p0, p1)
+        seg_conns_sorted = sorted(seg_conns, key=lambda x: x[0])
+
+        # Only remove the segment edge if there are interior split points
+        has_interior = any(0 < t < 1 and proj != p0 and proj != p1
+                          for t, proj, _ in seg_conns_sorted)
+        if has_interior:
+            G.remove_edge(p0, p1)
+
+        # we will go along this segment for each interior point that needs to become its own node
+        # track the last node that we connected a lateral root to
+        prev_node = p0
+        for t, proj_point, lateral_start in seg_conns_sorted:
+            # connect to the first part of the segment, no new node needed
+            if t == 0 or proj_point == p0:
+                connect_point = p0
+            # connect to the second endpoint of the segment, no new node needed
+            elif t == 1 or proj_point == p1:
+                connect_point = p1
+            else:
+                # creating a new node out of a midpoint
+                connect_point = proj_point
+                # make the new node into its own point
+                if not G.has_node(connect_point):
+                    G.add_node(connect_point)
+                    G.nodes[connect_point]['label'] = 'main root'
+                # connect the new node to the previous node along the line segment
+                if not G.has_edge(prev_node, connect_point):
+                    G.add_edge(prev_node, connect_point)
+                    G[prev_node][connect_point]['length'] = euclidean(prev_node, connect_point)
+                # the connection point from this iteration becomes the most recent point
+                prev_node = connect_point
+
+            G.add_edge(connect_point, lateral_start)
+            G[connect_point][lateral_start]['length'] = euclidean(connect_point, lateral_start)
+
+        # the most recently used connection point should be connected to the segment end to close the segment
+        if has_interior and prev_node != p1:
+            G.add_edge(prev_node, p1)
+            G[prev_node][p1]['length'] = euclidean(prev_node, p1)
+
+        # make sure the original segment still exists
+        assert nx.has_path(G, p0, p1), "check #2: no path between main root segment %s and %s" % (p0, p1)
+
+    assert nx.is_connected(G), " --- [3/3] Graph is not fully connected after phase 3"
+    assert nx.is_tree(G), "--- [3/3] Graph has a cycle after phase 3"
+
+    # make sure every lateral root start can reach the base
+    for start in lateral_starts:
+        assert nx.has_path(G, start, G.graph['main root base']), f"no path to root from {start} to base"
+    
+    assert nx.is_connected(G), " --- [END/3] Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "--- [END/3] Graph has a cycle after connect_lateral_roots"
+
+    print("^^^ End of connect_lateral_roots ^^^") # TODO: REMOVE PRINT STATEMENT
+
+
+
 def connect_lateral_roots(G, root_points, lateral_starts):
     '''
     Method for connecting the start of each lateral root to the closest point
@@ -184,6 +312,7 @@ def read_arbor_full(fname):
     lateral_starts = []
 
     with open('%s/%s' % (RECONSTRUCTIONS_DIR, fname)) as f:
+        id = 0 # assigning unique ID's to each node in case of duplicate nodes
         for line in f:
             line = line.strip('\n')
             line = line.split(',')
@@ -196,7 +325,7 @@ def read_arbor_full(fname):
 
                 if prev_point == None: # if this is the first point on the current root
                     if not G.has_node(point): # if this point hasn't been included in the graph object yet
-                        G.add_node(point)
+                        G.add_node(id, coords=point)
                         if curr_root != 'main root': # if the non-coord. CSV row didn't say 'main root', it means it's a lateral
                             lateral_starts.append(point) # note: might also be appending non-start nodes
                             print(f" --- Appended {point} to lateral_starts. Current status of lateral_starts: {lateral_starts} ---")
@@ -213,6 +342,8 @@ def read_arbor_full(fname):
                     G.nodes[point]['label'] = 'lateral root'
                 
                 prev_point = point
+            id += 1
+
         
     # labeling main root base
     main_root_base = root_points[0]
