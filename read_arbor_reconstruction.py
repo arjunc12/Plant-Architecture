@@ -304,11 +304,11 @@ def read_arbor_full(fname):
     G.graph['arbor name'] = fname.strip('.csv')
 
     # might change to include lat_beginning
-    prev_point = None
+    prev_id = None
     curr_root = None
 
     # also might change    
-    root_points = []
+    root_ids = []
     lateral_starts = []
 
     with open('%s/%s' % (RECONSTRUCTIONS_DIR, fname)) as f:
@@ -319,39 +319,48 @@ def read_arbor_full(fname):
 
             if len(line) == 1: # reached either the main root base or the beginning of a lateral root
                 curr_root = line[0]
-                prev_point = None
+                prev_id = None
             else: # reached a root coordinate point
                 point = tuple(map(float, line))
 
-                if prev_point == None: # if this is the first point on the current root
-                    if not G.has_node(point): # if this point hasn't been included in the graph object yet
-                        G.add_node(id, coords=point)
-                        if curr_root != 'main root': # if the non-coord. CSV row didn't say 'main root', it means it's a lateral
-                            lateral_starts.append(point) # note: might also be appending non-start nodes
-                            print(f" --- Appended {point} to lateral_starts. Current status of lateral_starts: {lateral_starts} ---")
+                if prev_id == None: # if this is the first point on the current root
+                    G.add_node(id, coords=point)
+                    if curr_root != 'main root':
+                        lateral_starts.append(id)
+                        print(f" --- Appended {point} at id <{id}> to lateral_starts. Current status of lateral_starts: {lateral_starts} ---")
+                    
                 else:
-                    if prev_point == point: # continue if they're the same since it's most likely a duplicate (note: might be causing an issue)
+                    if prev_id == id: # (for later: this will never be the case so might delete) continue if they're the same since it's most likely a duplicate (note: might be causing an issue)
                         continue
-                    G.add_edge(prev_point, point)
-                    G[prev_point][point]['length'] = euclidean(prev_point, point)
+                    G.add_edge(prev_id, id)
+                    prev_coords = G.nodes[prev_id]['coords']
+                    curr_coords = G.nodes[id]['coords']
+                    G[prev_id][id]['length'] = euclidean(prev_coords, curr_coords)
+                    print(f" ----- Found the length between {prev_id} and {id} --> Length of {G[prev_id][id]['length']}")
                 
                 if curr_root == 'main root':
-                    G.nodes[point]['label'] = 'main root'
-                    root_points.append(point)
+                    G.nodes[id]['label'] = 'main root' # (for later: might cause an error)
+                    # G.nodes[id]['label'] = 'main root'
+                    root_ids.append(id)
+                    print(f" --- Found main root to be {G.nodes[id]} at <{id}>")
                 else:
-                    G.nodes[point]['label'] = 'lateral root'
+                    G.nodes[id]['label'] = 'lateral root'
                 
-                prev_point = point
+                prev_id = id
             id += 1
 
+    print(f"Final status of root_ids: {root_ids}")
+    print(f"Final status of lateral_starts: {lateral_starts}")
+    print(f"Final id: {id}")
+    
         
     # labeling main root base
-    main_root_base = root_points[0]
+    main_root_base = root_ids[0]
     G.nodes[main_root_base]['label'] = 'main root base'
     G.graph['main root base'] = main_root_base
 
     # connect the first point in each lateral root to the closest point along the main root
-    connect_lateral_roots(G, root_points, lateral_starts) # Note: most likely where the issue stems from, will need to add lat_root_start and lat_root_end labels 
+    connect_lateral_roots(G, root_ids, lateral_starts) # Note: most likely where the issue stems from, will need to add lat_root_start and lat_root_end labels 
 
     relabel_lateral_root_tips(G) # just relabeling base of main root and tips of lateral roots <<< note: might show how to access lateral root tips
 
