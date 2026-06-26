@@ -18,13 +18,13 @@ def check_root_points(root_points):
         assert y1 >= y0
 
 
-def connect_lateral_roots_new(G, root_points, lateral_starts):
+def connect_lateral_roots_new(G, root_ids, lateral_starts):
     '''
     new version of connect lateral roots, this will need to track the start and 
     end points of each of the lateral root segments in some way (potentially by creating objects)
     '''
 
-    segments = [(root_points[i], root_points[i+1]) for i in range(len(root_points) - 1)]
+    segments = [(root_ids[i], root_ids[i+1]) for i in range(len(root_ids) - 1)]
 
     connections = []
 
@@ -53,7 +53,7 @@ def connect_lateral_roots_new(G, root_points, lateral_starts):
             continue
 
         is_connected = any(
-            nx.has_path(G, root_point, lateral_start)
+            nx.has_path(G, root_point, lateral_start) # check later: this might cause issues since it looks like it needs a coordinate not an ID
             for root_point in root_points
         )
         if is_connected:
@@ -71,11 +71,14 @@ def connect_lateral_roots_new(G, root_points, lateral_starts):
         best_t = None
 
         for p0, p1 in segments:
-            dist, proj_point, t = optimal_midpoint.optimal_midpoint_alpha1(p0, p1, lateral_start)
+            p0_coords = G.nodes[p0]['coords']
+            p1_coords = G.nodes[p1]['coords']
+
+            dist, proj_point, t = optimal_midpoint.optimal_midpoint_alpha1(p0_coords, p1_coords, lateral_start)
             if dist < best_dist:
                 best_dist = dist
                 best_point = proj_point
-                best_seg = (p0, p1)
+                best_seg = (p0_coords, p1_coords)
                 best_t = t
 
         connections.append((lateral_start, best_seg, best_t, best_point))
@@ -108,10 +111,10 @@ def connect_lateral_roots_new(G, root_points, lateral_starts):
         prev_node = p0
         for t, proj_point, lateral_start in seg_conns_sorted:
             # connect to the first part of the segment, no new node needed
-            if t == 0 or proj_point == p0:
+            if t == 0 or proj_point == G.nodes[p0]["coords"]:
                 connect_point = p0
             # connect to the second endpoint of the segment, no new node needed
-            elif t == 1 or proj_point == p1:
+            elif t == 1 or proj_point == G.nodes[p1]["coords"]:
                 connect_point = p1
             else:
                 # creating a new node out of a midpoint
