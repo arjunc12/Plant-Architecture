@@ -18,6 +18,12 @@ def check_root_points(root_points):
         assert y1 >= y0
 
 
+def coords(G, node):
+    '''
+    Helper to make it easier to access coordinates using a node ID
+    '''
+    return G.nodes[node]['coords']
+
 def connect_lateral_roots_new(G, root_ids, lateral_starts):
     '''
     new version of connect lateral roots, this will need to track the start and 
@@ -54,7 +60,7 @@ def connect_lateral_roots_new(G, root_ids, lateral_starts):
 
         is_connected = any(
             nx.has_path(G, root_point, lateral_start) # check later: this might cause issues since it looks like it needs a coordinate not an ID
-            for root_point in root_points
+            for root_point in root_ids
         )
         if is_connected:
             continue
@@ -73,8 +79,9 @@ def connect_lateral_roots_new(G, root_ids, lateral_starts):
         for p0, p1 in segments:
             p0_coords = G.nodes[p0]['coords']
             p1_coords = G.nodes[p1]['coords']
+            lat_coords = G.nodes[lateral_start]['coords']
 
-            dist, proj_point, t = optimal_midpoint.optimal_midpoint_alpha1(p0_coords, p1_coords, lateral_start)
+            dist, proj_point, t = optimal_midpoint.optimal_midpoint_alpha1(p0_coords, p1_coords, lat_coords)
             if dist < best_dist:
                 best_dist = dist
                 best_point = proj_point
@@ -119,19 +126,29 @@ def connect_lateral_roots_new(G, root_ids, lateral_starts):
             else:
                 # creating a new node out of a midpoint
                 connect_point = proj_point
+                
                 # make the new node into its own point
-                if not G.has_node(connect_point):
-                    G.add_node(connect_point)
-                    G.nodes[connect_point]['label'] = 'main root'
+                # if not G.has_node(connect_point): <<<<< check later: removing for now since duplicates are okay, but might cause issues later on 
+                #     next_id = G.graph['next_id']
+                #     G.add_node(next_id, coords=connect_point)
+                #     G.nodes[next_id]['label'] = 'main root'
+                #     G.graph['next_id'] = next_id + 1
+
+                next_id = G.graph['next_id']
+                G.add_node(next_id, coords=connect_point)
+                G.nodes[next_id]['label'] = 'main root'
+                G.graph['next_id'] = next_id + 1
+
+                    
                 # connect the new node to the previous node along the line segment
                 if not G.has_edge(prev_node, connect_point):
                     G.add_edge(prev_node, connect_point)
-                    G[prev_node][connect_point]['length'] = euclidean(prev_node, connect_point)
+                    G[prev_node][connect_point]['length'] = euclidean(G.nodes[prev_node]['coords'], G.nodes[connect_point]['coords'])
                 # the connection point from this iteration becomes the most recent point
                 prev_node = connect_point
 
             G.add_edge(connect_point, lateral_start)
-            G[connect_point][lateral_start]['length'] = euclidean(connect_point, lateral_start)
+            G[connect_point][lateral_start]['length'] = euclidean(G.node[connect_point]['coords'], G.nodes[lateral_start]['coords'])
 
         # the most recently used connection point should be connected to the segment end to close the segment
         if has_interior and prev_node != p1:
@@ -356,6 +373,9 @@ def read_arbor_full(fname):
     print(f"Final status of root_ids: {root_ids}")
     print(f"Final status of lateral_starts: {lateral_starts}")
     print(f"Final id: {id}")
+
+    # Creating a new attribute to be used when creating new nodes along lateral roots in connect_lateral_roots
+    G.graph["next_id"] = id 
     
         
     # labeling main root base
