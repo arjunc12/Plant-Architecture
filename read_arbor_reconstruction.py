@@ -203,7 +203,8 @@ def connect_lateral_roots(G, root_points, lateral_starts):
     root_points - the (x, y) coordinates for the points on the main root tracing
     lateral_starts - the (x, y) coordinates for the points at the start of every lateral root
     '''
-
+    print("\n...STARTING PHASE 1 ...")
+    
     segments = [(root_points[i], root_points[i+1]) for i in range(len(root_points) - 1)]
 
     # Phase 1: find best connection point for each lateral start
@@ -243,48 +244,63 @@ def connect_lateral_roots(G, root_points, lateral_starts):
         '''
             
         # find which main root segment is closest
+        print(f"... Finding which main root segment is closest ...")
         best_dist = float("inf")
         best_point = None
         best_seg = None
         best_t = None
-
+        print(f" --- Current status of segments: {segments} ---")
         for p0, p1 in segments:
+
+            print(f" ------ Calling optimal_midpoint_alpha1 with >> {p0}, {p1}, {lateral_start} ------")
             dist, proj_point, t = optimal_midpoint.optimal_midpoint_alpha1(p0, p1, lateral_start)
             if dist < best_dist:
+                print(" ------> dist < best_dist ✔ <------")
                 best_dist = dist
                 best_point = proj_point
                 best_seg = (p0, p1)
                 best_t = t
 
         connections.append((lateral_start, best_seg, best_t, best_point))
-    
+        print(f" --- Current status of connections: {connections} ---")
+
     # assert nx.is_connected(G), " --- [1/3] Graph is not fully connected after phase 1"
     # assert nx.is_tree(G), "--- [1/3] Graph has a cycle after phase 1"
     
     # Phase 2: group connection points by segment
+    print("\n...STARTING PHASE 2 ...")
     seg_connections = defaultdict(list)
+    print(f"Creating seg_connections:")
     for lateral_start, best_seg, best_t, best_point in connections:
         seg_connections[best_seg].append((best_t, best_point, lateral_start))
+        print(f" --- Appended {(best_t, best_point, lateral_start)} to {seg_connections[best_seg]} ---")
 
     # assert nx.is_connected(G), " --- [2/3] Graph is not fully connected after phase 2"
     # assert nx.is_tree(G), "--- [2/3] Graph has a cycle after phase 2"
 
     # Phase 3: for each segment, sort by t, split into subsegments, connect laterals
+    print("\n...STARTING PHASE 3 ...")
+
+    print(f"This is seg_connections.items(): {seg_connections.items()}")
     for seg, seg_conns in seg_connections.items():
+        print(f"---  Current seg: {seg} and seg_conns: {seg_conns} ---")
         p0, p1 = seg
         assert G.has_edge(p0, p1), "No main root edge between %s and %s" % (p0, p1)
         seg_conns_sorted = sorted(seg_conns, key=lambda x: x[0])
+        print(f"--- Sorted seg_conns: {seg_conns_sorted} ---")
 
         # Only remove the segment edge if there are interior split points
         has_interior = any(0 < t < 1 and proj != p0 and proj != p1
                           for t, proj, _ in seg_conns_sorted)
         if has_interior:
+            print(f"------ The following segment edge had an interior: ({p0}, {p1})")
             G.remove_edge(p0, p1)
 
         # we will go along this segment for each interior point that needs to become its own node
         # track the last node that we connected a lateral root to
         prev_node = p0
         for t, proj_point, lateral_start in seg_conns_sorted:
+            print(f" --- Looping through seg_conns_sorted - Current t: {t} | Current proj_point: {proj_point} | Current lateral_start: {lateral_start} --- ")
             # connect to the first part of the segment, no new node needed
             if t == 0 or proj_point == p0:
                 connect_point = p0
