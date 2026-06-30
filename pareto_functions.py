@@ -51,10 +51,32 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
     return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
 
+# pretty much the same as version 2
 def lateral_root_path_length(G, tip):
     """Sum edge lengths from tip of a lateral root back to main root insertion point."""
     # go down the lateral neighbors until you reach the 'main root' node right next to the node labeled 'lateral root start'
-    
+
+    length = 0
+    visited = set()
+    queue = [tip]
+
+    while queue:
+        node = queue.pop(0)
+        if node in visited:
+            continue
+        visited.add(node)
+
+        for neighbor in G.neighbors(node):
+            if neighbor not in visited:
+                label = G.nodes[neighbor]['label']
+                if label in ('lateral root', 'lateral root tip', 'lateral root start'):
+                    length += G[node][neighbor]['length']
+                    queue.append(neighbor)
+                elif label in ('main root', 'main root base'):
+                    length += G[node][neighbor]['length']
+                    # no more nodes to append since this is the end of the lateral root
+                    assert len(queue) == 0, "   << [lateral_root_path_length] Queue is not empty after traversing entire lateral root."
+    return length
 
     
 
