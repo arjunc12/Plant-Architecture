@@ -932,11 +932,12 @@ def initialize_file(fname, arbor, cost_specs=(('homogeneous', pf.HOMOGENEOUS),))
             'arbor type, cost method, G, alpha, wiring cost, conduction delay, '
             'total orthogonal distance, total squared orthogonal distance\n'
         )
+        observed_initial = rar.read_arbor_full_initial(arbor)
         observed = rar.read_arbor_full(arbor)
         for method_name, cost_spec in cost_specs:
             f.write('%s, %s, %s, %s, %f, %f, %f, %f\n' % (
                 "observed", method_name, "", "",
-                pf.wiring_cost(observed, cost_spec=cost_spec),
+                pf.wiring_cost(observed_initial, cost_spec=cost_spec),
                 pf.conduction_delay(observed, cost_spec=cost_spec),
                 0, 0
             ))
