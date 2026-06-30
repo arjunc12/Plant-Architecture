@@ -53,13 +53,42 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
 
 def lateral_root_path_length(G, tip):
     """Sum edge lengths from tip of a lateral root back to main root insertion point."""
-    f
+    # go down the lateral neighbors until you reach the 'main root' node right next to the node labeled 'lateral root start'
+    
+
+    
 
 def conduction_delay(G, cost_spec=HOMOGENEOUS): 
-    droot = {} # to store distances from each node to the main root
+    dist_root = {} # to store distances from each node to the main root
     queue = []
     visited = set()
-    main_root = G.graph.get('main root base', G.graph.get('main root')) #
+    main_root = G.graph.get('main root base', G.graph.get('main root')) # aka an ID of 0 (first node in CSV always has this ID)
+    queue.append(main_root)
+    dist_root[main_root] = 0
+    delay = 0
+
+    while len(queue) > 0:
+        curr = queue.pop(0)
+
+        assert curr not in visited # making sure we haven't visited this node yet
+        visited.add(curr)
+
+        if G.nodes[curr]['label'] == 'lateral root tip':
+            curve = lateral_root_path_length(G, curr)
+            to_root = dist_root[curr] - curve
+            
+            # making sure to_root isn't negative
+            assert to_root > 0, f"[Error] Negative to_root = {to_root:.6f} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]:.6f}, curve = {curve:.6f}"
+            delay += cost_spec.delay_transform(curve, to_root)
+        
+        for curr_neighbor in G.neighbors(curr):
+            if curr_neighbor not in visited:
+                queue.append(curr_neighbor)
+                dist_root[curr_neighbor] = dist_root[curr] + G[curr][curr_neighbor]['length']
+    
+    assert len(visited) == G.number_of_nodes(), "!!! --- Not all nodes were visited --- !!!"
+    return delay
+            
 
 
 # ----- Version 2 of conduction_delay (with lateral_root_path_length as a helper function)

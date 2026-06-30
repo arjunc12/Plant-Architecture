@@ -357,11 +357,9 @@ def read_arbor_full(fname):
     G = nx.Graph()
     G.graph['arbor name'] = fname.strip('.csv')
 
-    # might change to include lat_beginning
     prev_id = None
     curr_root = None
 
-    # also might change    
     root_ids = []
     lateral_starts = []
 
@@ -390,7 +388,7 @@ def read_arbor_full(fname):
                         continue
                     G.add_edge(prev_id, id)
                     prev_coords = G.nodes[prev_id]["coords"]
-                    # curr_coords = G.nodes[id]['coords']
+
                     G[prev_id][id]['length'] = euclidean(prev_coords, point)
                     print(f" --- Found the length between {prev_id} and {id} --> Length of {G[prev_id][id]['length']} ---")
                 
@@ -400,8 +398,7 @@ def read_arbor_full(fname):
                     root_ids.append(id)
                     print(f" --- Found main root to be {G.nodes[id]} at <{id}> ---")
                 else:
-                    #if G.nodes[id]['label'] == None:
-                    #    G.nodes[id]['label'] = 'lateral root'
+                    
                     if prev_id != None:
                         G.nodes[id]['label'] = 'lateral root'
                 
