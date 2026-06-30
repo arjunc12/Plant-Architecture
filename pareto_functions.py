@@ -59,7 +59,8 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
     droot = {} # to store distances from each node to the main root
     queue = []
     visited = set()
-    main_root = #
+    main_root = G.graph.get('main root base', G.graph.get('main root')) #
+
 
 # ----- Version 2 of conduction_delay (with lateral_root_path_length as a helper function)
 

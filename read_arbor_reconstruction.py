@@ -382,6 +382,7 @@ def read_arbor_full(fname):
                 if prev_id == None: # if this is the first point on the current root
                     if curr_root != 'main root':
                         lateral_starts.append(id)
+                        G.nodes[id]['label'] = 'lateral root start'
                         print(f" --- Appended {point} at id <{id}> to lateral_starts since {curr_root} is not main root. Current status of lateral_starts: {lateral_starts} --- ")
                     
                 else:
@@ -399,7 +400,10 @@ def read_arbor_full(fname):
                     root_ids.append(id)
                     print(f" --- Found main root to be {G.nodes[id]} at <{id}> ---")
                 else:
-                    G.nodes[id]['label'] = 'lateral root'
+                    #if G.nodes[id]['label'] == None:
+                    #    G.nodes[id]['label'] = 'lateral root'
+                    if prev_id != None:
+                        G.nodes[id]['label'] = 'lateral root'
                 
                 prev_id = id
                 id += 1
