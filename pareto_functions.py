@@ -51,7 +51,7 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
     return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
 
-# pretty much the same as version 2
+# final version
 def lateral_root_path_length(G, tip):
     """Sum edge lengths from tip of a lateral root back to main root insertion point."""
     # go down the lateral neighbors until you reach the 'main root' node right next to the node labeled 'lateral root start'
@@ -98,7 +98,6 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
         if G.nodes[curr]['label'] == 'lateral root tip':
             curve = lateral_root_path_length(G, curr)
             to_root = dist_root[curr] - curve
-            print(f" (conduction_delay) -- to_root = dist_root[curr] - curve --> {to_root} = {dist_root[curr]} - {curve}") # TODO: REMOVE PRINT STATEMENT
             
             # making sure to_root isn't negative
             assert to_root > 0, f"[Error] Negative to_root = {to_root:.6f} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]:.6f}, curve = {curve:.6f}"
@@ -109,7 +108,7 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
                 queue.append(curr_neighbor)
                 dist_root[curr_neighbor] = dist_root[curr] + G[curr][curr_neighbor]['length']
     
-    assert len(visited) == G.number_of_nodes(), "!!! --- Not all nodes were visited --- !!!"
+    assert len(visited) == G.number_of_nodes(), "Not all nodes were visited"
     return delay
             
 
@@ -155,7 +154,6 @@ def conduction_delay_v2(G, cost_spec=HOMOGENEOUS):
         if G.nodes[curr]['label'] == 'lateral root tip':
             curve = lateral_root_path_length_v2(G, curr)
             to_root = droot[curr] - curve   # subtract lateral length to get main root distance
-            print(f" (conduction_delay_v2) -- to_root = droot[curr] - curve --> {to_root} = {droot[curr]} - {curve}") # TODO: REMOVE PRINT STATEMENT
             # troubleshooting
             if to_root < 0:
                 print(f"Warning: negative to_root={to_root:.6f} at tip {curr}, "
@@ -202,7 +200,6 @@ def conduction_delay_initial(G):
         # we only measure delay for the lateral root tips
         if G.nodes[curr]['label'] == 'lateral root tip':
             delay += droot[curr]
-            print(f" (conduction_delay_initial) -- no to_root or curve, droot[curr] = {droot[curr]}") # TODO: REMOVE PRINT STATEMENT
         for u in G.neighbors(curr):
             if u not in visited:
                 queue.append(u)
