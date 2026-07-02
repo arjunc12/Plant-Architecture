@@ -56,7 +56,6 @@ def lateral_root_path_length(G, tip):
     lat_start = G.nodes[tip]['lateral start']
     shortest_path = nx.shortest_path(G, source=tip, target=lat_start)
 
-    print(f"shortest path found between {tip} and {lat_start}: {shortest_path}")
 
     # find the sum of all the lengths along this path
     length = 0
@@ -67,7 +66,6 @@ def lateral_root_path_length(G, tip):
         dist = G[node][neighbor]['length']
         length += dist
     
-    print(f"Calculated lateral root length: {length}")
     return length
 
 
@@ -121,8 +119,7 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
             
             # making sure to_root isn't negative
             
-            # TODO: PUT ASSERT STATEMENT BACK
-            # assert to_root >= 0, f"[Error] Negative to_root = {to_root} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]}, curve = {curve}"
+            assert to_root >= 0, f"[Error] Negative to_root = {to_root} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]}, curve = {curve}"
             if to_root < 0:
                 print(f"###### \nWARNING: negative to_root={to_root:.6f} at tip {curr}, "
                       f"dist_root = {dist_root[curr]}, curve = {curve:}\n########")

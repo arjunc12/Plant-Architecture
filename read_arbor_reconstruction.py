@@ -52,9 +52,6 @@ def add_lateral_labels(G):
                         queue.append(neighbor)
                         
 
-
-
-
 def connect_lateral_roots_new(G, root_ids, lateral_starts):
     '''
     new version of connect lateral roots, this will need to track the start and 
@@ -154,7 +151,6 @@ def connect_lateral_roots_new(G, root_ids, lateral_starts):
                 G.add_node(next_id, coords=proj_point)
                 G.nodes[next_id]['label'] = 'main root'
                 G.graph['next_id'] = next_id + 1
-                print(f"------- p0: {p0} | p1: {p1} next_id: {next_id} | proj_point: {proj_point} | lateral_start: {lateral_start} | lateral start coords: {G.nodes[lateral_start]['coords']}--------") # TODO: REMOVE PRINT STATEMENT
 
                 connect_point = next_id
                     
