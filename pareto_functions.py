@@ -51,8 +51,28 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
     return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
 
-# final version
+# fifth version 
 def lateral_root_path_length(G, tip):
+    lat_start = G.nodes[tip]['lateral start']
+    shortest_path = nx.shortest_path(G, source=tip, target=lat_start)
+
+    print(f"shortest path found between {tip} and {lat_start}: {shortest_path}")
+
+    # find the sum of all the lengths along this path
+    length = 0
+    for i in range(len(shortest_path)-1):
+        node = shortest_path[i]
+        neighbor = shortest_path[i+1]
+
+        dist = G[node][neighbor]['length']
+        length += dist
+    
+    print(f"Calculated lateral root length: {length}")
+    return length
+
+
+# fourth version
+def lateral_root_path_length_4(G, tip):
     """Sum edge lengths from tip of a lateral root back to main root insertion point."""
     # go down the lateral neighbors until you reach the 'main root' node right next to the node labeled 'lateral root start'
 
