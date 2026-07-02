@@ -24,11 +24,15 @@ def coords(G, node):
     '''
     return G.nodes[node]['coords']
 
-'''
-def add_lateral_labels(G, lateral_starts):
-    for start in lateral_starts:
+
+def add_lateral_labels(G):
+    lateral_tips = [
+        n for n, data in G.nodes(data=True)
+        if data.get("label") == "lateral root tip"
+        ]
+    for tip in lateral_tips:
         visited = set()
-        queue = [start]
+        queue = [tip]
 
         while queue:
             node = queue.pop(0)
@@ -39,9 +43,16 @@ def add_lateral_labels(G, lateral_starts):
             for neighbor in G.neighbors(node):
                 if neighbor not in visited:
                     label = G.nodes[neighbor]['label']
-                    if label in ('lateral root tip', 'main root')
+                    if label == 'main root':
+                        # if main root is reached, declare start/tip and stop here
+                        G.nodes[tip]['lateral start'] = neighbor
+                        G.nodes[neighbor]['lateral tip'] = tip
+                    else:
+                        # skip the node if main root hasn't yet been reached
+                        queue.append(neighbor)
+                        
 
-'''
+
 
 
 def connect_lateral_roots_new(G, root_ids, lateral_starts):
@@ -143,6 +154,7 @@ def connect_lateral_roots_new(G, root_ids, lateral_starts):
                 G.add_node(next_id, coords=proj_point)
                 G.nodes[next_id]['label'] = 'main root'
                 G.graph['next_id'] = next_id + 1
+                print(f"------- p0: {p0} | p1: {p1} next_id: {next_id} | proj_point: {proj_point} | lateral_start: {lateral_start} | lateral start coords: {G.nodes[lateral_start]['coords']}--------") # TODO: REMOVE PRINT STATEMENT
 
                 connect_point = next_id
                     
@@ -385,6 +397,7 @@ def read_arbor_full(fname):
 
     relabel_lateral_root_tips(G) # just relabeling base of main root and tips of lateral roots <<< note: might show how to access lateral root tips
     
+    add_lateral_labels(G)
     #assert False, "Finished read_arbor_full and called connect_lateral_roots_new. Stopped before relabel_lateral_root_tips."
 
     return G
