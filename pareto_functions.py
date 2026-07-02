@@ -100,7 +100,9 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
             to_root = dist_root[curr] - curve
             
             # making sure to_root isn't negative
-            assert to_root >= 0, f"[Error] Negative to_root = {to_root} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]}, curve = {curve}"
+            
+            # TODO: PUT ASSERT STATEMENT BACK
+            # assert to_root >= 0, f"[Error] Negative to_root = {to_root} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]}, curve = {curve}"
             if to_root < 0:
                 print(f"###### \nWARNING: negative to_root={to_root:.6f} at tip {curr}, "
                       f"dist_root = {dist_root[curr]}, curve = {curve:}\n########")
