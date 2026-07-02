@@ -81,7 +81,6 @@ def lateral_root_path_length(G, tip):
     
 
 def conduction_delay(G, cost_spec=HOMOGENEOUS): 
-    print(f"\n---------------- should be good -------------------------\n")
     dist_root = {} # to store distances from each node to the main root
     queue = []
     visited = set()
