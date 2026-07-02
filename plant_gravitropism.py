@@ -678,7 +678,9 @@ def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     tuple : (wiring, delay, total_orthogonal, total_sq_orthogonal)
     """
     # Load arbor once and reuse
-    G_graph = rar.read_arbor_full(arbor_fname)
+    G_graph = rar.read_arbor_full_initial(arbor_fname)
+    G_graph_new = rar.read_arbor_full(arbor_fname)
+    
     results = arbor_best_cost(G_graph, G, alpha, cost_spec=cost_spec)
 
     wiring = 0

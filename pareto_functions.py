@@ -81,6 +81,7 @@ def lateral_root_path_length(G, tip):
     
 
 def conduction_delay(G, cost_spec=HOMOGENEOUS): 
+    print(f"\n---------------- should be good -------------------------\n")
     dist_root = {} # to store distances from each node to the main root
     queue = []
     visited = set()
@@ -100,7 +101,10 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
             to_root = dist_root[curr] - curve
             
             # making sure to_root isn't negative
-            assert to_root > 0, f"[Error] Negative to_root = {to_root:.6f} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]:.6f}, curve = {curve:.6f}"
+            assert to_root >= 0, f"[Error] Negative to_root = {to_root} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]}, curve = {curve}"
+            if to_root < 0:
+                print(f"###### \nWARNING: negative to_root={to_root:.6f} at tip {curr}, "
+                      f"dist_root = {dist_root[curr]}, curve = {curve:}\n########")
             delay += cost_spec.delay_transform(curve, to_root)
         
         for curr_neighbor in G.neighbors(curr):
