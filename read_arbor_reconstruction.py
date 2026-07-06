@@ -26,6 +26,9 @@ def coords(G, node):
 
 
 def add_lateral_labels(G):
+    '''
+    Assigns each lateral root start to its associated lateral root tip and vice versa
+    '''
     lateral_tips = [
         n for n, data in G.nodes(data=True)
         if data.get("label") == "lateral root tip"
@@ -394,7 +397,6 @@ def read_arbor_full(fname):
     relabel_lateral_root_tips(G) # just relabeling base of main root and tips of lateral roots <<< note: might show how to access lateral root tips
     
     add_lateral_labels(G)
-    #assert False, "Finished read_arbor_full and called connect_lateral_roots_new. Stopped before relabel_lateral_root_tips."
 
     return G
 

@@ -52,6 +52,7 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
 
 
 def path_length(G, start, end):
+    "finds the numeric distance between two specified nodes "
     shortest_path = nx.shortest_path(G, source=start, target=end)
 
     length = 0
@@ -66,6 +67,8 @@ def path_length(G, start, end):
 
 # fifth version 
 def lateral_root_path_length(G, tip):
+    """Sum edge lengths from tip of a lateral root back to main root insertion point."""
+
     lat_start = G.nodes[tip]['lateral start']
     shortest_path = nx.shortest_path(G, source=tip, target=lat_start)
 
