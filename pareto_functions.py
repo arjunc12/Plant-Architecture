@@ -51,11 +51,31 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
     return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
 
+def path_length(G, start, end):
+    shortest_path = nx.shortest_path(G, source=start, target=end)
+
+    length = 0
+    for i in range(len(shortest_path)-1):
+        node = shortest_path[i]
+        neighbor = shortest_path[i+1]
+
+        dist = G[node][neighbor]['length']
+        length += dist
+    
+    return length
+
 # fifth version 
 def lateral_root_path_length(G, tip):
     lat_start = G.nodes[tip]['lateral start']
     shortest_path = nx.shortest_path(G, source=tip, target=lat_start)
 
+    # finding the neighbor of the lateral start that connects to the main root
+    lat_start_neighbors = G.neighbors(lat_start)
+    lat_main_root_point = None
+
+    for neighbor in lat_start_neighbors:
+        if G.nodes[neighbor]['label'] in ('main root', 'main root base'):
+            lat_main_root_point = neighbor
 
     # find the sum of all the lengths along this path
     length = 0
@@ -66,7 +86,7 @@ def lateral_root_path_length(G, tip):
         dist = G[node][neighbor]['length']
         length += dist
     
-    return length
+    return length, lat_main_root_point
 
 
 # fourth version
@@ -114,8 +134,9 @@ def conduction_delay(G, cost_spec=HOMOGENEOUS):
         visited.add(curr)
 
         if G.nodes[curr]['label'] == 'lateral root tip':
-            curve = lateral_root_path_length(G, curr)
-            to_root = dist_root[curr] - curve
+            curve, lat_main_root_point = lateral_root_path_length(G, curr)
+            # to_root = dist_root[curr] - curve
+            to_root = path_length(G, 0, lat_main_root_point)
             
             # making sure to_root isn't negative
             
