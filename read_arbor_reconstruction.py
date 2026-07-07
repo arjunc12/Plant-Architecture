@@ -57,8 +57,17 @@ def add_lateral_labels(G):
 
 def connect_lateral_roots_new(G, root_ids, lateral_starts):
     '''
-    new version of connect lateral roots, this will need to track the start and 
-    end points of each of the lateral root segments in some way (potentially by creating objects)
+    Method for connecting the start of each lateral root to the closest point
+    on the main root, including points along segments (not just traced nodes).
+
+    For each lateral root start, we find the closest point on any main root segment.
+    If the closest point lies strictly between two traced nodes, we split that segment
+    by inserting a new node. If the closest point is a traced node, we connect directly.
+
+    G - the network consisting of disconnected main and lateral roots
+    root_ids - the node IDs for the points on the main root tracing
+    lateral_starts - the node IDs for the points at the start of every lateral root
+    
     '''
     segments = [(root_ids[i], root_ids[i+1]) for i in range(len(root_ids) - 1)]
 
@@ -190,16 +199,9 @@ def connect_lateral_roots_new(G, root_ids, lateral_starts):
 
 def connect_lateral_roots(G, root_points, lateral_starts):
     '''
-    Method for connecting the start of each lateral root to the closest point
-    on the main root, including points along segments (not just traced nodes).
-
-    For each lateral root start, we find the closest point on any main root segment.
-    If the closest point lies strictly between two traced nodes, we split that segment
-    by inserting a new node. If the closest point is a traced node, we connect directly.
-
-    G - the network consisting of disconnected main and lateral roots
-    root_points - the (x, y) coordinates for the points on the main root tracing
-    lateral_starts - the (x, y) coordinates for the points at the start of every lateral root
+    Initial version of connect lateral roots, which uses coordinates to differentiate nodes rather
+    than IDs. This version is still being used to calculate wiring cost, draw arbors, and evaluate parameters 
+    in plant_gravitropism.py. 
     '''
     
     segments = [(root_points[i], root_points[i+1]) for i in range(len(root_points) - 1)]
@@ -329,6 +331,13 @@ def has_reconstruction(fname):
 
 
 def read_arbor_full(fname):
+    '''
+    Read the arbor reconstruction corresponding to a full arbor tracing. First, this
+    method individually reconstructs the main root and lateral roots separately. Afterwards,
+    each lateral root is connected to the closest main root point. Nodes are differentiated by ID
+    with coordinates, neighbor nodes, and distances to each neighbor as attributes. 
+    '''
+
     G = nx.Graph()
     G.graph['arbor name'] = fname.strip('.csv')
 
@@ -401,13 +410,14 @@ def read_arbor_full(fname):
     return G
 
 
-
-
 def read_arbor_full_initial(fname):
     '''
     Read the arbor reconstruction corresponding to a full arbor tracing. First, this
     method individually reconstructs the main root and lateral roots separately. Afterwards,
     each lateral root is connected to the closest main root point
+
+    note: this initial version of read_arbor_full is still used by functions that calculate the
+    wiring cost and the evaluate_parameters function. 
     '''
 
     G = nx.Graph()
