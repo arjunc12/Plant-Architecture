@@ -13,6 +13,7 @@ METADATA_DIR = '%s/metadata' % DATA_DIR
 
 RESULTS_DIR = '%s/results' % DATA_DIR
 BEST_OF_BEST_DIR = '%s/gravitropism_results' % RESULTS_DIR
+EVALUATED_COSTS_DIR = '%s/gravitropism_pareto_fronts' % RESULTS_DIR #data/results/gravitropism_pareto_fronts
 
 PARETO_FRONTS_DIR = '%s/pareto-fronts' % RESULTS_DIR
 STATISTICS_DIR = '%s/statistics' % RESULTS_DIR
