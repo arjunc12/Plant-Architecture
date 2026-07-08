@@ -5,6 +5,7 @@ import os
 import re
 from constants import DRAWINGS_DIR
 from pathlib import Path
+from pprint import pprint
 
 NODE_SIZE = {'main root' : 30, 'main root base' : 30, 'lateral root' : 10, 'insertion point' : 10, 'lateral root tip' : 30}
 NODE_COLOR = {'main root' : 'm' , 'main root base' : 'k', 'lateral root' : 'b', 'insertion point' : 'r', 'lateral root tip' : 'k'}
@@ -21,6 +22,7 @@ def closest_main_root_point(G, lateral_root_tip):
 
     return curr
 
+
 def relabel_lateral_root_tips(G):
     '''
     relabels all lateral root tips
@@ -30,6 +32,9 @@ def relabel_lateral_root_tips(G):
         if G.nodes[u]['label'] == 'lateral root' and G.degree(u) == 1:
             # degree 1 lateral root is a tip
             G.nodes[u]['label'] = 'lateral root tip'
+
+    assert nx.is_connected(G), "Graph is not fully connected after connect_lateral_roots"
+    assert nx.is_tree(G), "Graph has a cycle after connect_lateral_roots"
 
 def connect_points(G, u, v):
     G.add_edge(u, v)
@@ -152,6 +157,34 @@ def toy_network2():
     relabel_lateral_root_tips(G)
 
     G.graph['arbor name'] = 'toy-network2'
+
+    return G
+
+def toy_arbor_gen(root, laterals, name='toy arbor'):
+    root_nodes = list(root)
+    if len(root_nodes) == 0:
+        raise ValueError('root must contain at least one coordinate')
+
+    G = nx.Graph()
+    root_base = root_nodes[0]
+
+    for r in root_nodes:
+        G.add_node(r)
+        G.nodes[r]['label'] = 'main root'
+
+    G.nodes[root_base]['label'] = 'main root base'
+    G.graph['main root base'] = root_base
+    G.graph['arbor name'] = name
+
+    for u, v in zip(root_nodes, root_nodes[1:]):
+        connect_points(G, u, v)
+
+    for lateral in laterals:
+        G.add_node(lateral)
+        G.nodes[lateral]['label'] = 'lateral root'
+        connect_points(G, root_base, lateral)
+
+    relabel_lateral_root_tips(G)
 
     return G
 

@@ -1,4 +1,4 @@
-from math import sqrt
+from math import sqrt, log
 from utils import *
 import networkx as nx
 from scipy.spatial.distance import euclidean
@@ -6,55 +6,138 @@ import numpy as np
 from read_arbor_reconstruction import read_arbor_full
 from constants import *
 from optimal_midpoint import optimal_midpoint, optimal_midpoint_approx, optimal_midpoint_alpha1
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import seaborn as sns
 import os
 import pandas as pd
 
-def wiring_cost(G):
+CostSpec = namedtuple('CostSpec', ['wiring_transform', 'delay_transform'])
+
+def _homogeneous_wiring(curve, to_root): return curve
+def _homogeneous_delay(curve, to_root): return curve + to_root
+
+def _heterogeneous_wiring(curve, to_root): return curve ** 2
+def _heterogeneous_delay(curve, to_root): return log(1 + curve) + log(1 + to_root)
+
+HOMOGENEOUS = CostSpec(
+    wiring_transform = _homogeneous_wiring,
+    delay_transform = _homogeneous_delay,
+)
+
+HETEROGENEOUS = CostSpec(
+    wiring_transform = _heterogeneous_wiring, 
+    delay_transform = _heterogeneous_delay,
+)
+
+
+COST_SPECS = {
+    'homogeneous': HOMOGENEOUS,
+    'heterogeneous': HETEROGENEOUS,
+}
+
+def resolve_cost_specs(cost_method):
+    if cost_method == 'both':
+        return [
+            ('homogeneous', HOMOGENEOUS),
+            ('heterogeneous', HETEROGENEOUS),
+        ]
+    return [(cost_method, COST_SPECS[cost_method])]
+
+def wiring_cost(G, cost_spec=HOMOGENEOUS):
     # wiring cost is simply the sum of all edge lengths
     wiring = 0
     for u, v in G.edges():
         wiring += G[u][v]['length']
-    return wiring
+    return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
-def conduction_delay(G):
-    '''
-    use a breadth-first search to compute the distance to from the root to each point
 
-    when we encounter a visit node for the first time, we record its distance to the root
-    (which is the sum of its parent's distance, plus the length of the edge from the parent
-    to the current node').  We keep a running total of the total distances from the root
-    to each node.
+def path_length(G, start, end):
+    "finds the numeric distance between two specified nodes "
+    shortest_path = nx.shortest_path(G, source=start, target=end)
+
+    length = 0
+    for i in range(len(shortest_path)-1):
+        node = shortest_path[i]
+        neighbor = shortest_path[i+1]
+
+        dist = G[node][neighbor]['length']
+        length += dist
+    
+    return length
+
+def lateral_root_path_length(G, tip):
+    """Sum edge lengths from tip of a lateral root back to main root insertion point."""
+
+    lat_start = G.nodes[tip]['lateral start']
+    shortest_path = nx.shortest_path(G, source=tip, target=lat_start)
+
+    # finding the neighbor of the lateral start that connects to the main root
+    lat_start_neighbors = G.neighbors(lat_start)
+    lat_main_root_point = None
+
+    for neighbor in lat_start_neighbors:
+        if G.nodes[neighbor]['label'] in ('main root', 'main root base'):
+            lat_main_root_point = neighbor
+
+    # find the sum of all the lengths along this path
+    length = 0
+    for i in range(len(shortest_path)-1):
+        node = shortest_path[i]
+        neighbor = shortest_path[i+1]
+
+        dist = G[node][neighbor]['length']
+        length += dist
+    
+    return length, lat_main_root_point
+
+
+    
+
+def conduction_delay(G, cost_spec=HOMOGENEOUS): 
     '''
-    droot = {}
+    Conducts a breadth-first search to compute the distance from the root to each point
+
+    The distance from each node to the root is seperately calculated from the length of each
+    lateral root so that we can flexibly switch between homogeneous and heterogeneous calcuation 
+    methods. 
+    '''
+
+    dist_root = {} # to store distances from each node to the main root
     queue = []
-    curr = None
     visited = set()
-
-    root = G.graph.get('main root base', G.graph.get('main root')) # root = G.graph['main root']
-
-    queue.append(root)
-    droot[root] = 0
-
+    main_root = G.graph.get('main root base', G.graph.get('main root')) # aka an ID of 0 (first node in CSV always has this ID)
+    queue.append(main_root)
+    dist_root[main_root] = 0
     delay = 0
+
     while len(queue) > 0:
         curr = queue.pop(0)
-        # we should never visit a node twice
-        assert curr not in visited
+
+        assert curr not in visited # making sure we haven't visited this node yet
         visited.add(curr)
-        # we only measure delay for the lateral root tips
+
         if G.nodes[curr]['label'] == 'lateral root tip':
-            delay += droot[curr]
-        for u in G.neighbors(curr):
-            if u not in visited:
-                queue.append(u)
-                droot[u] = droot[curr] + G[curr][u]['length']
-
-    # make sure we visited every node
-    assert len(visited) == G.number_of_nodes()
-
+            curve, lat_main_root_point = lateral_root_path_length(G, curr)
+            # to_root = dist_root[curr] - curve
+            to_root = path_length(G, 0, lat_main_root_point)
+            
+            # making sure to_root isn't negative
+            assert to_root >= 0, f"[Error] Negative to_root = {to_root} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]}, curve = {curve}"
+            if to_root < 0:
+                print(f"###### \nWARNING: negative to_root={to_root:.6f} at tip {curr}, "
+                      f"dist_root = {dist_root[curr]}, curve = {curve:}\n########")
+            delay += cost_spec.delay_transform(curve, to_root)
+        
+        for curr_neighbor in G.neighbors(curr):
+            if curr_neighbor not in visited:
+                queue.append(curr_neighbor)
+                dist_root[curr_neighbor] = dist_root[curr] + G[curr][curr_neighbor]['length']
+    
+    assert len(visited) == G.number_of_nodes(), "Not all nodes were visited"
     return delay
+            
+
+
 
 def pareto_costs(G):
     '''
@@ -347,7 +430,7 @@ def main():
     # 194_1_C_day3
      #G = read_arbor_full('189_3_C_day3.csv') #- produces an image
      #G = read_arbor_full('194_1_C_day3.csv') #- produces an image
-     G = read_arbor_full('001_1_C_day5.csv')
+     print("hello") #G = read_arbor_full('001_1_C_day5.csv')
      #viz_trees(G)
      #viz_front(G)
     #for arbor in os.listdir(RECONSTRUCTIONS_DIR):
