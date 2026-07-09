@@ -43,33 +43,36 @@ def extract_optimal_dist_vals(fname):
                     heterog_opt_sq_orthog_dist = sq_orthog
             
 
-        print(f"HOMOGENEOUS Info related to optimal orthog: {homog_opt_info}")
-        print(f"HETEROGENEOUS Info related to optimal orthog: {heterog_opt_info}")
+        #print(f"HOMOGENEOUS Info related to optimal orthog: {homog_opt_info}")
+        #print(f"HETEROGENEOUS Info related to optimal orthog: {heterog_opt_info}")
 
         return homog_opt_info, heterog_opt_info
 
 
 def construct_CSV(arbor_folder):
+        '''
+        Navigates through all the CSV files in the gravitropism_pareto_fronts folder and compiles all the 
+        necessary information associated with the minimum sq. orthogonal distance into one CSV. 
+        '''
         folder = Path(arbor_folder)
         csv_content = [["arbor", "cost method", "G", "alpha", "total squared orthogonal distance"]]
 
+        # navigate through all files in the folder
         for arbor_file in folder.glob("*.csv"):
-            print(f"This is arbor file: {arbor_file}")
             homog_opt_info, heterog_opt_info = extract_optimal_dist_vals(arbor_file)
             csv_content.append(homog_opt_info)
             csv_content.append(heterog_opt_info)
         
-        print(csv_content)
-
-        with open("data/results/heterogeneous_results", "w", newline="") as csv_file:
+        # write all relevant info into the CSV
+        with open("data/results/heterogeneous_results/optimal_distance_values.csv", "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerows(csv_content)
 
 
 def main():
-    print("Compiling all optimal heterogeneous/homogeneous alpha values...\n")
-    #construct_CSV(EVALUATED_COSTS_DIR)
-    construct_CSV("data/results/hetero_and_homogeneous")
+    print("Compiling all optimal heterogeneous/homogeneous alpha values...")
+    construct_CSV(EVALUATED_COSTS_DIR)
+    #construct_CSV("data/results/hetero_and_homogeneous")
     print("\nDone.")
 
 if __name__ == '__main__':
