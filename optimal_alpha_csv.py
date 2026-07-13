@@ -43,9 +43,6 @@ def extract_optimal_dist_vals(fname, name_len):
                     heterog_opt_sq_orthog_dist = sq_orthog
             
         # tracking difference between the alpha and squared orthogonal distances of both computation methods
-        print(f"this is homog_opt_info[3]: {homog_opt_info[3]}")
-        print(f"this is heterog_opt_info[3]: {heterog_opt_info[3]}")
-
         alpha_diff = abs(float(homog_opt_info[3]) - float(heterog_opt_info[3]))
         sq_orthog_dist_diff = abs(homog_opt_sq_orthog_dist - heterog_opt_sq_orthog_dist)
 
