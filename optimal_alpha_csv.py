@@ -35,14 +35,16 @@ def extract_optimal_dist_vals(fname, name_len):
 
             if cost_method == ' homogeneous':
                  if sq_orthog != 0 and sq_orthog < homog_opt_sq_orthog_dist:  # skipping the sq. orthogonal distance at the observed arbor values
-                    homog_opt_info = [fname_str[name_len+1:], line[1], line[2], line[3], line[-1]] # extracting cost method, G, alpha, and sq. orthogonal distance
+                    #print(f"this is fname_str[name_len+1:-4]: {fname_str[name_len+1:-4]}")
+                    homog_opt_info = [fname_str[name_len+1:-4], line[1], line[2], line[3], line[-1]] # extracting cost method, G, alpha, and sq. orthogonal distance
                     homog_opt_sq_orthog_dist = sq_orthog
             else:
                 if sq_orthog != 0 and sq_orthog < heterog_opt_sq_orthog_dist:
-                    heterog_opt_info = [fname_str[name_len+1:], line[1], line[2], line[3], line[-1]]
+                    heterog_opt_info = [fname_str[name_len+1:-4], line[1], line[2], line[3], line[-1]]
                     heterog_opt_sq_orthog_dist = sq_orthog
             
         # tracking difference between the alpha and squared orthogonal distances of both computation methods
+
         alpha_diff = abs(float(homog_opt_info[3]) - float(heterog_opt_info[3]))
         sq_orthog_dist_diff = abs(homog_opt_sq_orthog_dist - heterog_opt_sq_orthog_dist)
 
@@ -65,10 +67,11 @@ def construct_CSV(arbor_folder):
         # navigate through all files in the folder
         #for arbor_file in folder.glob("*.csv"):
         for i, arbor_file in enumerate(folder.glob("*.csv")):
-            if i >= 1000:
+            try:
+                homog_opt_info, heterog_opt_info, alpha_diff, sq_orthog_dist_diff = extract_optimal_dist_vals(arbor_file, name_len)
+            except: 
+                print(f"Encountered an incomplete file ({arbor_file}), stopping.") # stopping entirely to prevent reading incomplete data
                 break
-
-            homog_opt_info, heterog_opt_info, alpha_diff, sq_orthog_dist_diff = extract_optimal_dist_vals(arbor_file, name_len)
             csv_content.append(homog_opt_info)
             csv_content.append(heterog_opt_info)
             diff_csv.append([homog_opt_info[0], alpha_diff, sq_orthog_dist_diff])
@@ -86,8 +89,6 @@ def construct_CSV(arbor_folder):
 def main():
     print("Compiling all optimal heterogeneous/homogeneous alpha values...")
     construct_CSV(EVALUATED_COSTS_DIR)
-
-    #construct_CSV("data/results/hetero_and_homogeneous")
     print("\nDone.")
 
 if __name__ == '__main__':
@@ -97,3 +98,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print('Interrupted')
         sys.exit(0)
+    
