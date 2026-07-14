@@ -43,8 +43,8 @@ def extract_optimal_dist_vals(fname, name_len):
                     heterog_opt_sq_orthog_dist = sq_orthog
             
         # tracking difference between the alpha and squared orthogonal distances of both computation methods
-        print(f"this is homog_opt_info[3]: {homog_opt_info[3]}")
-        print(f"this is heterog_opt_info[3]: {heterog_opt_info[3]}")
+        #print(f"this is homog_opt_info[3]: {homog_opt_info[3]}")
+        #print(f"this is heterog_opt_info[3]: {heterog_opt_info[3]}")
 
         alpha_diff = abs(float(homog_opt_info[3]) - float(heterog_opt_info[3]))
         sq_orthog_dist_diff = abs(homog_opt_sq_orthog_dist - heterog_opt_sq_orthog_dist)
@@ -68,10 +68,13 @@ def construct_CSV(arbor_folder):
         # navigate through all files in the folder
         #for arbor_file in folder.glob("*.csv"):
         for i, arbor_file in enumerate(folder.glob("*.csv")):
-            if i >= 1000:
+            #if i >= 1000:
+            #    break
+            try:
+                homog_opt_info, heterog_opt_info, alpha_diff, sq_orthog_dist_diff = extract_optimal_dist_vals(arbor_file, name_len)
+            except: 
+                print(f"Encountered an incomplete file ({arbor_file}), stopping.") # stopping entirely to prevent reading incomplete data
                 break
-
-            homog_opt_info, heterog_opt_info, alpha_diff, sq_orthog_dist_diff = extract_optimal_dist_vals(arbor_file, name_len)
             csv_content.append(homog_opt_info)
             csv_content.append(heterog_opt_info)
             diff_csv.append([homog_opt_info[0], alpha_diff, sq_orthog_dist_diff])
