@@ -1,14 +1,19 @@
 name: plant-architecture
 channels:
+  - conda-forge
   - defaults
 dependencies:
-  - seaborn
-  - networkx
-  - plotly
-  - dash
-  - statsmodels
-  - scikit-posthocs
+  - python=3.12.3
   - jupyter
-  - jupyterlab
+  - scipy
+  - matplotlib
+  - plotly
+  - networkx
+  - pandas
+  - seaborn
   - pingouin
-prefix: /Users/arjunchandrasekhar/opt/anaconda3/envs/plant-architecture
+  - sympy
+  - statsmodels
+  - scikit-bio
+  - python-kaleido
+  - scikit-posthocs
