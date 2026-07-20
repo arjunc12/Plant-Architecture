@@ -274,7 +274,7 @@ def evaluate_parameters_draw(arbor, G, alpha):
     )
 
 
-def plot_arbors(arbor, G, alpha, show_observed=True, paper=False, save_fname=None):
+def plot_arbors(arbor, G, alpha, show_observed=True, show_insertion_points=True, show_lateral_nodes=True, paper=False, save_fname=None):
     """Render an ID-based Arbor graph and report its optimization metrics."""
     arbor_name = arbor.graph.get("arbor name", "toy arbor")
     wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
@@ -297,10 +297,11 @@ def plot_arbors(arbor, G, alpha, show_observed=True, paper=False, save_fname=Non
         lateral_segments = get_observed_lateral_segments(arbor)
         for trace in get_lateral_segment_drawings(arbor, lateral_segments, color="green"):
             fig.add_trace(trace)
-
-        lateral_nodes = get_lateral_nodes(lateral_segments)
-        for trace in get_lateral_node_drawings(arbor, lateral_nodes, color="white"):
-            fig.add_trace(trace)
+        
+        if show_lateral_nodes:
+            lateral_nodes = get_lateral_nodes(lateral_segments)
+            for trace in get_lateral_node_drawings(arbor, lateral_nodes, color="white"):
+                fig.add_trace(trace)
 
         lateral_tips = [
             node for node in arbor.nodes if arbor.nodes[node]["label"] == "lateral root tip"
