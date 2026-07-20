@@ -120,7 +120,7 @@ def get_lateral_nodes(lateral_segments):
     return list(nodes)
 
 
-def get_lateral_node_drawings(arbor, lateral_nodes, color="white"):
+def get_lateral_node_drawings(arbor, lateral_nodes, color="lime"):
     return [
         go.Scatter(
             x=[get_coords(arbor, node)[0]], y=[get_coords(arbor, node)[1]],
@@ -284,7 +284,7 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
     """Render an ID-based Arbor graph and report its optimization metrics."""
     
     arbor_name = arbor.graph.get("arbor name", "toy arbor")
-    results = create_graphs(arbor, G, alpha)
+    #results = create_graphs(arbor, G, alpha)
 
     wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
         arbor, G, alpha
@@ -309,7 +309,7 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
         
         if show_lateral_nodes:
             lateral_nodes = get_lateral_nodes(lateral_segments)
-            for trace in get_lateral_node_drawings(arbor, lateral_nodes, color="white"):
+            for trace in get_lateral_node_drawings(arbor, lateral_nodes, color="yellowgreen"):
                 fig.add_trace(trace)
 
         lateral_tips = [
@@ -331,9 +331,9 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
             )
         )
 
-    if show_optimized:
-        for trace in get_opt_to_pq_drawings(G, results, color="blue"):
-            fig.add_trace(trace)
+    #if show_optimized:
+     #   for trace in get_opt_to_pq_drawings(G, results, color="blue"):
+      #      fig.add_trace(trace)
     
     fig.update_layout(
         title=f"Arbor: {arbor_name}   |   G={G}, alpha={alpha}",
