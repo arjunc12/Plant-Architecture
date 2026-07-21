@@ -273,7 +273,6 @@ def evaluate_parameters_draw(arbor, G, alpha):
         sum(error[1] for error in errors),
     )
 
-
 def create_graphs(arbor, G, alpha):
     """
     Generates the optimized results for given G and alpha.
@@ -284,7 +283,7 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
     """Render an ID-based Arbor graph and report its optimization metrics."""
     
     arbor_name = arbor.graph.get("arbor name", "toy arbor")
-    results = create_graphs(arbor, G, alpha)
+    #results = create_graphs(arbor, G, alpha)
 
     wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
         arbor, G, alpha
@@ -331,9 +330,9 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
             )
         )
 
-    if show_optimized:
-        for trace in get_opt_to_pq_drawings(G, results, color="blue"):
-            fig.add_trace(trace)
+    #if show_optimized:
+    #    for trace in get_opt_to_pq_drawings(G, results, color="blue"):
+    #        fig.add_trace(trace)
     
     fig.update_layout(
         title=f"Arbor: {arbor_name}   |   G={G}, alpha={alpha}",
