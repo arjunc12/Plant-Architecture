@@ -703,6 +703,35 @@ def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
 
     return wiring, delay, total_orthogonal, total_sq_orthogonal
 
+def evaluate_parameters_draw(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
+    """
+    Evaluate a single (G, alpha) combination for an already-loaded arbor graph.
+
+    Returns
+    -------
+    tuple : (wiring, delay, total_orthogonal, total_sq_orthogonal)
+    """
+    results = arbor_best_cost(arbor, G, alpha, cost_spec=cost_spec)
+
+    wiring = 0
+    delay = 0
+    total_orthogonal = 0
+    total_sq_orthogonal = 0
+
+    for result in results:
+        wiring += result[1]
+        delay += result[2]
+
+        main_root_pt = (result[4], result[5])
+        lateral_tip = (result[6], result[7])
+
+        orth, sq_orth = calculate_orthogonal_errors(G, arbor, main_root_pt, lateral_tip)
+        total_orthogonal += orth
+        total_sq_orthogonal += sq_orth
+
+    wiring += main_root_length(arbor)
+
+    return wiring, delay, total_orthogonal, total_sq_orthogonal
 
 # -------------------------
 # Conduction delay for observed arbor
