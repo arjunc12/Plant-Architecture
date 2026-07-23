@@ -679,6 +679,7 @@ def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     # Load arbor once and reuse
     G_graph = rar.read_arbor_full_initial(arbor_fname)
+    G_graph_new = rar.read_arbor_full(arbor_fname)
     
     results = arbor_best_cost(G_graph, G, alpha, cost_spec=cost_spec)
 
@@ -935,6 +936,14 @@ def initialize_file(fname, arbor, cost_specs=(('homogeneous', pf.HOMOGENEOUS),))
         )
         observed_initial = rar.read_arbor_full_initial(arbor)
         observed = rar.read_arbor_full(arbor)
+        # Compute all-pairs shortest path lengths once per arbor and cache them
+        # on the graph, so conduction_delay (via lateral_root_path_length and
+        # path_length) can look distances up directly instead of each lateral
+        # root tip triggering its own separate shortest-path search.
+        
+        # vvvvv **new** vvvvv
+        pf.attach_distances(observed)
+        # ^^^^^ **new** ^^^^^
         for method_name, cost_spec in cost_specs:
             f.write('%s, %s, %s, %s, %f, %f, %f, %f\n' % (
                 "observed", method_name, "", "",
