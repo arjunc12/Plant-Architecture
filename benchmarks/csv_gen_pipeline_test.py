@@ -1,5 +1,5 @@
 """
-benchmarks/pipeline_comparison_test.py
+benchmarks/csv_gen_pipeline_test.py
 
 Compares the CSV generation pipeline using the original
 pareto_functions.py / plant_gravitropism.py against the new
