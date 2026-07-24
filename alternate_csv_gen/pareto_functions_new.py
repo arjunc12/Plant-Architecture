@@ -1,5 +1,9 @@
 # A new approach to generating cost method CSVs. This will use all pairs shortest path length
+from pathlib import Path
+import sys
 
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 from math import sqrt, log
 from utils import *
 import networkx as nx

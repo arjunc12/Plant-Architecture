@@ -3,9 +3,8 @@ import scipy.integrate as integrate
 import pylab
 import numpy as np
 import sys
-import read_arbor_reconstruction as rar
 import networkx as nx
-import pareto_functions as pf
+import pareto_functions_new as pf
 from constants import *
 from scipy.optimize import minimize_scalar, fsolve
 from scipy.spatial.distance import euclidean
@@ -14,6 +13,13 @@ import argparse
 import pandas as pd
 import warnings
 import optimal_midpoint
+# importing read_arbor_reconstruction
+from pathlib import Path
+import sys
+
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+import read_arbor_reconstruction as rar
 
 # multiprocessing imports
 from multiprocessing import Pool
@@ -943,7 +949,7 @@ def initialize_file(fname, arbor, cost_specs=(('homogeneous', pf.HOMOGENEOUS),))
         
         # vvvvv **new** vvvvv
         pf.attach_distances(observed)
-        # ^^^^^ **new** ^^^^^
+        # ^^^^^) **new** ^^^^^
         for method_name, cost_spec in cost_specs:
             f.write('%s, %s, %s, %s, %f, %f, %f, %f\n' % (
                 "observed", method_name, "", "",
