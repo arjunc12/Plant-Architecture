@@ -4,7 +4,7 @@ import pylab
 import numpy as np
 import sys
 import networkx as nx
-import pareto_functions_new as pf
+import pareto_functions_new_v2 as pf
 from constants import *
 from scipy.optimize import minimize_scalar, fsolve
 from scipy.spatial.distance import euclidean
@@ -395,7 +395,7 @@ def get_main_root_segments(arbor):
     return segments
 
 
-def compute_main_root_base_distances(arbor):
+def compute_main_root_base_distances(arbor, segments):
     """
     Returns a dict mapping each main root node to its distance from the main root base,
     using edge 'length' attributes and the ordering from get_main_root_segments.
@@ -403,7 +403,7 @@ def compute_main_root_base_distances(arbor):
     base = arbor.graph['main root base']
 
     base_dist = {base: 0}
-    for seg_start, seg_end in get_main_root_segments(arbor):
+    for seg_start, seg_end in segments:
         base_dist[seg_end] = base_dist[seg_start] + arbor[seg_start][seg_end]['length']
 
     return base_dist
@@ -553,7 +553,7 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y), ...]
     """
     segments = get_main_root_segments(arbor)
-    base_dist = compute_main_root_base_distances(arbor)
+    base_dist = compute_main_root_base_distances(arbor, segments)
 
     lat_tips = [
         node for node in arbor.nodes()
@@ -685,7 +685,6 @@ def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     # Load arbor once and reuse
     G_graph = rar.read_arbor_full_initial(arbor_fname)
-    G_graph_new = rar.read_arbor_full(arbor_fname)
     
     results = arbor_best_cost(G_graph, G, alpha, cost_spec=cost_spec)
 
