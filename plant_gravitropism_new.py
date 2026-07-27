@@ -4,7 +4,7 @@ import pylab
 import numpy as np
 import sys
 import networkx as nx
-import pareto_functions_new_v2 as pf
+import pareto_functions_new as pf
 from constants import *
 from scipy.optimize import minimize_scalar, fsolve
 from scipy.spatial.distance import euclidean
@@ -552,8 +552,11 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     -------
     list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y), ...]
     """
-    segments = get_main_root_segments(arbor)
-    base_dist = compute_main_root_base_distances(arbor, segments)
+    #segments = get_main_root_segments(arbor)
+    #base_dist = compute_main_root_base_distances(arbor, segments)
+
+    segments = arbor.graph['main_root_segments']
+    base_dist = arbor.graph['main_root_base_distances']
 
     lat_tips = [
         node for node in arbor.nodes()
@@ -675,6 +678,27 @@ def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip,
 # Core evaluation
 # -------------------------
 
+def attach_main_root_cache(arbor):
+    '''
+    Attaches main root segments to the arbor dictionary to prevent calling 
+    compute_main_root_base_distances more often than needed throughout the pipeline.  
+
+    '''
+    segments = get_main_root_segments(arbor)
+    insertion_segments = {}
+
+    lat_tips = [node for node in arbor.nodes()
+                if arbor.nodes[node]['label'] == 'lateral root tip']
+
+    for tip in lat_tips:
+        insertion_segments[tip] = get_insertion_segment(arbor, tip, segments)
+
+    arbor.graph["main_root_segments"] = segments
+    arbor.graph["main_root_base_distances"] = compute_main_root_base_distances(arbor, segments)
+    arbor.graph['valid_segments']
+
+    return arbor
+
 def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     Evaluate a single (G, alpha) combination for a given arbor.
@@ -685,7 +709,7 @@ def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     # Load arbor once and reuse
     G_graph = rar.read_arbor_full_initial(arbor_fname)
-    
+    attach_main_root_cache(G_graph) # add main root segments to arbor dictionary
     results = arbor_best_cost(G_graph, G, alpha, cost_spec=cost_spec)
 
     wiring = 0
