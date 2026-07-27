@@ -565,7 +565,7 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
 
     final = []
     for tip in lat_tips:
-        valid_segments = get_insertion_segment(arbor, tip, segments)
+        valid_segments = arbor.graph['valid_segments'][tip]
         result = optimize_tip(tip, valid_segments, base_dist, alpha, G, cost_spec=cost_spec)
         if result is not None:
             final.append(result)
