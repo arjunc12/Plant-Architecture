@@ -506,7 +506,7 @@ def get_closest_and_valid_segments(lat_tips, segments):
 # Core optimization
 # -------------------------
 
-def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
+def optimize_tip_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     p, q = tip
     results = []
 
@@ -528,7 +528,8 @@ def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     return best
 
 
-def arbor_best_cost_initial(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
+
+def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
