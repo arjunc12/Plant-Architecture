@@ -2,6 +2,10 @@
 
 Geometry is always read from ``arbor.nodes[node_id]["coords"]``. This keeps
 separate graph nodes separate even when they occupy the same coordinates.
+
+Note: This is the corrected version of the draw arbors pipeline that mitigates
+        generating graphs with disconnected lateral roots by using the new 
+        ID-based differentiation system. 
 """
 
 import numpy as np
