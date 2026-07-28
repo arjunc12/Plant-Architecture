@@ -528,7 +528,7 @@ def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     return best
 
 
-def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
+def arbor_best_cost_initial(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
