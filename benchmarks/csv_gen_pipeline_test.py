@@ -1,5 +1,5 @@
 """
-benchmarks/csv_gen_pipeline_test.py
+benchmarks/csv_gen_pipeline_test_v2.py
 
 Compares the CSV generation pipeline using the original
 pareto_functions.py / plant_gravitropism.py against the new
@@ -23,9 +23,15 @@ What this benchmarks, and why:
        sweep is dominated by evaluate_parameters, which neither
        version changed.
 
-    3. A correctness check: confirms observed wiring cost and
-       conduction delay match between pipelines, so the caching
-       change hasn't altered results, only how they're computed.
+    3. A correctness check: confirms evaluate_parameters() produces
+       matching wiring cost and conduction delay between pipelines,
+       under both the homogeneous and heterogeneous cost specs, at a
+       fixed set of (alpha, G) pairs. Note this exercises
+       arbor_best_cost — a code path neither version changed — so
+       it's a broader regression check across the grid-evaluation
+       surface rather than a targeted test of attach_distances
+       itself; the initialize_file timing above is what isolates the
+       actual change.
 
 Whether the cache is actually a net win depends on the ratio of
 lateral root tips to total nodes in the arbor — attach_distances
@@ -50,8 +56,8 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import plant_gravitropism as pg_old
-#import alternate_csv_gen.plant_gravitropism_new_v2 as pg_new
 import plant_gravitropism_new as pg_new
+
 
 # Arbor file to benchmark on — same one used in timing_test.py
 FNAME = "pimpi_Big4_D5_set1_day5_20191012_297_103_4_S.csv"
@@ -61,6 +67,18 @@ OLD_OUT = os.path.join(TMP_DIR, "old_" + FNAME)
 NEW_OUT = os.path.join(TMP_DIR, "new_" + FNAME)
 
 N_REPEATS = 20  # repeats for the isolated initialize_file timing
+
+# (alpha, G) pairs to check evaluate_parameters() against, for both cost methods
+CORRECTNESS_PAIRS = [
+    (0.01, 0),
+    (0.25, 0),
+    (0.5, 0),
+    (0.75, 0),
+    (1, 0),
+    (0.5, 3),
+    (1, 3),
+]
+COST_METHODS = ['homogeneous', 'heterogeneous']
 
 
 def reset_output(fname):
@@ -83,15 +101,12 @@ def describe_arbor(pg_module):
 def time_initialize_file(pg_module, out_fname, n_repeats):
     cost_specs = pg_module.pf.resolve_cost_specs('homogeneous')
     total = 0.0
-    last_row = None
     for _ in range(n_repeats):
         reset_output(out_fname)
         start = time.time()
         pg_module.initialize_file(out_fname, FNAME, cost_specs=cost_specs)
         total += time.time() - start
-        with open(out_fname) as f:
-            last_row = f.readlines()[1]  # header, then the 'observed' row
-    return total, last_row
+    return total
 
 
 def time_full_pipeline(pg_module, out_fname, params):
@@ -103,11 +118,39 @@ def time_full_pipeline(pg_module, out_fname, params):
     return time.time() - start
 
 
-def parse_observed_row(row):
-    """Extract (wiring cost, conduction delay) floats from an 'observed' CSV row."""
-    fields = [f.strip() for f in row.split(',')]
-    # arbor type, cost method, G, alpha, wiring cost, conduction delay, ...
-    return float(fields[4]), float(fields[5])
+def run_correctness_check():
+    """
+    Compare evaluate_parameters() wiring cost / conduction delay between the
+    old and new pipelines, for both cost methods, at each (alpha, G) pair in
+    CORRECTNESS_PAIRS. Prints a PASS/FAIL line per combination plus an
+    overall verdict, and returns True iff everything matched.
+    """
+    print(f"Correctness check — evaluate_parameters(), {len(COST_METHODS)} cost "
+          f"method(s) x {len(CORRECTNESS_PAIRS)} (alpha, G) pairs:\n")
+
+    all_match = True
+    for method_name in COST_METHODS:
+        old_cost_spec = pg_old.pf.COST_SPECS[method_name]
+        new_cost_spec = pg_new.pf.COST_SPECS[method_name]
+
+        for alpha, G in CORRECTNESS_PAIRS:
+            old_wiring, old_delay, _, _ = pg_old.evaluate_parameters(
+                FNAME, G, alpha, cost_spec=old_cost_spec)
+            new_wiring, new_delay, _, _ = pg_new.evaluate_parameters(
+                FNAME, G, alpha, cost_spec=new_cost_spec)
+
+            wiring_match = abs(old_wiring - new_wiring) < 1e-6
+            delay_match = abs(old_delay - new_delay) < 1e-6
+            match = wiring_match and delay_match
+            all_match = all_match and match
+
+            status = "PASS" if match else "FAIL"
+            print(f"  [{status}] method={method_name:13s} alpha={alpha:<5} G={G:<4} "
+                  f"old=(wiring={old_wiring:.6f}, delay={old_delay:.6f})  "
+                  f"new=(wiring={new_wiring:.6f}, delay={new_delay:.6f})")
+
+    print(f"\nOverall: {'PASS — all values match' if all_match else 'FAIL — see mismatches above'}")
+    return all_match
 
 
 def main():
@@ -119,8 +162,8 @@ def main():
     # 1. Isolated initialize_file timing (the actual optimized code path)
     # -------------------------
     print(f"Timing initialize_file() over {N_REPEATS} repeats (fresh file each time)...")
-    old_total, old_row = time_initialize_file(pg_old, OLD_OUT, N_REPEATS)
-    new_total, new_row = time_initialize_file(pg_new, NEW_OUT, N_REPEATS)
+    old_total = time_initialize_file(pg_old, OLD_OUT, N_REPEATS)
+    new_total = time_initialize_file(pg_new, NEW_OUT, N_REPEATS)
 
     print(f"  old (pareto_functions.py):     {old_total:.3f}s total, "
           f"{old_total / N_REPEATS * 1000:.2f}ms/call")
@@ -134,15 +177,8 @@ def main():
     # -------------------------
     # 2. Correctness check
     # -------------------------
-    old_wiring, old_delay = parse_observed_row(old_row)
-    new_wiring, new_delay = parse_observed_row(new_row)
-    wiring_match = abs(old_wiring - new_wiring) < 1e-6
-    delay_match = abs(old_delay - new_delay) < 1e-6
-
-    print("\nCorrectness check (observed wiring cost / conduction delay):")
-    print(f"  old: wiring={old_wiring:.6f}, delay={old_delay:.6f}")
-    print(f"  new: wiring={new_wiring:.6f}, delay={new_delay:.6f}")
-    print(f"  {'PASS' if (wiring_match and delay_match) else 'FAIL — results differ!'}")
+    print()
+    run_correctness_check()
 
     # -------------------------
     # 3. Full pipeline timing (initialize_file + full grid sweep)
