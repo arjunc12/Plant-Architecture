@@ -695,7 +695,7 @@ def attach_main_root_cache(arbor):
 
     arbor.graph["main_root_segments"] = segments
     arbor.graph["main_root_base_distances"] = compute_main_root_base_distances(arbor, segments)
-    arbor.graph['valid_segments']
+    arbor.graph['valid_segments'] = insertion_segments
 
     return arbor
 

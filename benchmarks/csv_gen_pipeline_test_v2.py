@@ -56,7 +56,9 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import plant_gravitropism as pg_old
+#import alternate_csv_gen.plant_gravitropism_new_v2 as pg_new
 import plant_gravitropism_new as pg_new
+
 
 # Arbor file to benchmark on — same one used in timing_test.py
 FNAME = "pimpi_Big4_D5_set1_day5_20191012_297_103_4_S.csv"

@@ -50,6 +50,7 @@ import statistics
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import plant_gravitropism as pg_old
+#import alternate_csv_gen.plant_gravitropism_new_v2 as pg_new
 import plant_gravitropism_new as pg_new
 import read_arbor_reconstruction as rar
 
