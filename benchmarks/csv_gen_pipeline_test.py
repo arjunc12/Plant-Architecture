@@ -56,7 +56,8 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import plant_gravitropism as pg_old
-import plant_gravitropism_new as pg_new
+#import plant_gravitropism_new as pg_new
+import plant_gravitropism_alt as pg_new
 
 
 # Arbor file to benchmark on — same one used in timing_test.py
