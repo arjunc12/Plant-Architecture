@@ -4,7 +4,7 @@ import pylab
 import numpy as np
 import sys
 import networkx as nx
-import pareto_functions_alt as pf
+import pareto_functions as pf
 from constants import *
 from scipy.optimize import minimize_scalar, fsolve
 from scipy.spatial.distance import euclidean
