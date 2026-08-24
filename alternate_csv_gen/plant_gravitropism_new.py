@@ -4,7 +4,7 @@ import pylab
 import numpy as np
 import sys
 import networkx as nx
-import pareto_functions as pf
+import pareto_functions_new as pf
 from constants import *
 from scipy.optimize import minimize_scalar, fsolve
 from scipy.spatial.distance import euclidean
@@ -13,7 +13,12 @@ import argparse
 import pandas as pd
 import warnings
 import optimal_midpoint
+# importing read_arbor_reconstruction
+from pathlib import Path
+import sys
 
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 import read_arbor_reconstruction as rar
 
 # multiprocessing imports
@@ -390,7 +395,7 @@ def get_main_root_segments(arbor):
     return segments
 
 
-def compute_main_root_base_distances(arbor, segments):
+def compute_main_root_base_distances(arbor):
     """
     Returns a dict mapping each main root node to its distance from the main root base,
     using edge 'length' attributes and the ordering from get_main_root_segments.
@@ -398,7 +403,7 @@ def compute_main_root_base_distances(arbor, segments):
     base = arbor.graph['main root base']
 
     base_dist = {base: 0}
-    for seg_start, seg_end in segments:
+    for seg_start, seg_end in get_main_root_segments(arbor):
         base_dist[seg_end] = base_dist[seg_start] + arbor[seg_start][seg_end]['length']
 
     return base_dist
@@ -547,11 +552,8 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     -------
     list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y), ...]
     """
-    #segments = get_main_root_segments(arbor)
-    #base_dist = compute_main_root_base_distances(arbor, segments)
-
-    segments = arbor.graph['main_root_segments']
-    base_dist = arbor.graph['main_root_base_distances']
+    segments = get_main_root_segments(arbor)
+    base_dist = compute_main_root_base_distances(arbor)
 
     lat_tips = [
         node for node in arbor.nodes()
@@ -560,7 +562,7 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
 
     final = []
     for tip in lat_tips:
-        valid_segments = arbor.graph['valid_segments'][tip]
+        valid_segments = get_insertion_segment(arbor, tip, segments)
         result = optimize_tip(tip, valid_segments, base_dist, alpha, G, cost_spec=cost_spec)
         if result is not None:
             final.append(result)
@@ -673,27 +675,6 @@ def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip,
 # Core evaluation
 # -------------------------
 
-def attach_main_root_cache(arbor):
-    '''
-    Attaches main root segments to the arbor dictionary to prevent calling 
-    compute_main_root_base_distances more often than needed throughout the pipeline.  
-
-    '''
-    segments = get_main_root_segments(arbor)
-    insertion_segments = {}
-
-    lat_tips = [node for node in arbor.nodes()
-                if arbor.nodes[node]['label'] == 'lateral root tip']
-
-    for tip in lat_tips:
-        insertion_segments[tip] = get_insertion_segment(arbor, tip, segments)
-
-    arbor.graph["main_root_segments"] = segments
-    arbor.graph["main_root_base_distances"] = compute_main_root_base_distances(arbor, segments)
-    arbor.graph['valid_segments'] = insertion_segments
-
-    return arbor
-
 def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     Evaluate a single (G, alpha) combination for a given arbor.
@@ -704,7 +685,8 @@ def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     # Load arbor once and reuse
     G_graph = rar.read_arbor_full_initial(arbor_fname)
-    attach_main_root_cache(G_graph) # add main root segments to arbor dictionary
+    G_graph_new = rar.read_arbor_full(arbor_fname)
+    
     results = arbor_best_cost(G_graph, G, alpha, cost_spec=cost_spec)
 
     wiring = 0
@@ -727,35 +709,6 @@ def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
 
     return wiring, delay, total_orthogonal, total_sq_orthogonal
 
-def evaluate_parameters_draw(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
-    """
-    Evaluate a single (G, alpha) combination for an already-loaded arbor graph.
-
-    Returns
-    -------
-    tuple : (wiring, delay, total_orthogonal, total_sq_orthogonal)
-    """
-    results = arbor_best_cost(arbor, G, alpha, cost_spec=cost_spec)
-
-    wiring = 0
-    delay = 0
-    total_orthogonal = 0
-    total_sq_orthogonal = 0
-
-    for result in results:
-        wiring += result[1]
-        delay += result[2]
-
-        main_root_pt = (result[4], result[5])
-        lateral_tip = (result[6], result[7])
-
-        orth, sq_orth = calculate_orthogonal_errors(G, arbor, main_root_pt, lateral_tip)
-        total_orthogonal += orth
-        total_sq_orthogonal += sq_orth
-
-    wiring += main_root_length(arbor)
-
-    return wiring, delay, total_orthogonal, total_sq_orthogonal
 
 # -------------------------
 # Conduction delay for observed arbor
@@ -994,6 +947,9 @@ def initialize_file(fname, arbor, cost_specs=(('homogeneous', pf.HOMOGENEOUS),))
         # path_length) can look distances up directly instead of each lateral
         # root tip triggering its own separate shortest-path search.
         
+        # vvvvv **new** vvvvv
+        pf.attach_distances(observed)
+        # ^^^^^) **new** ^^^^^
         for method_name, cost_spec in cost_specs:
             f.write('%s, %s, %s, %s, %f, %f, %f, %f\n' % (
                 "observed", method_name, "", "",

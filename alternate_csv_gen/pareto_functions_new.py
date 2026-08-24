@@ -57,11 +57,41 @@ def wiring_cost(G, cost_spec=HOMOGENEOUS):
     return cost_spec.wiring_transform(wiring, 0) # 0 is a placeholder value that isn't used
 
 
+def compute_all_pairs_lengths(G):
+    """
+    Compute the weighted shortest-path length between every pair of nodes in G,
+    using edge 'length' attributes as weights.
+
+    Returns
+    -------
+    dict of dicts : distances[u][v] -> shortest path length from u to v
+    """
+    return dict(nx.all_pairs_dijkstra_path_length(G, weight='length'))
 
 
+# vvvvv **new** vvvvv
+def attach_distances(G):
+    """
+    Compute all-pairs shortest path lengths for G and cache them on the graph
+    itself (G.graph['distances']), so downstream distance lookups (path_length,
+    lateral_root_path_length, and anything they feed such as conduction_delay)
+    can pull the answer from the cache instead of each re-running its own
+    shortest-path search.
+
+    Call this once per loaded graph, before the distance-dependent functions
+    below are used on it.
+    """
+    G.graph['distances'] = compute_all_pairs_lengths(G)
+    return G
+# ^^^^^ **new** ^^^^^
 
 def path_length(G, start, end):
-    "finds the numeric distance between two specified nodes"
+    "finds the numeric distance between two specified nodes "
+    # vvvvv **new** vvvvv
+    distances = G.graph.get('distances')
+    # ^^^^^ **new** ^^^^^
+    if distances is not None:
+        return distances[start][end]
 
     shortest_path = nx.shortest_path(G, source=start, target=end)
 
@@ -79,7 +109,10 @@ def lateral_root_path_length(G, tip):
     """Sum edge lengths from tip of a lateral root back to main root insertion point."""
 
     lat_start = G.nodes[tip]['lateral start']
-    shortest_path = nx.shortest_path(G, source=tip, target=lat_start)
+
+    # vvvvv **new** vvvvv
+    # removed call to nx.shortest_path
+    # ^^^^^ **new** ^^^^^
 
     # finding the neighbor of the lateral start that connects to the main root
     lat_start_neighbors = G.neighbors(lat_start)
@@ -89,14 +122,22 @@ def lateral_root_path_length(G, tip):
         if G.nodes[neighbor]['label'] in ('main root', 'main root base'):
             lat_main_root_point = neighbor
 
-    # find the sum of all the lengths along this path
-    length = 0
-    for i in range(len(shortest_path)-1):
-        node = shortest_path[i]
-        neighbor = shortest_path[i+1]
+    # find the sum of all the lengths along this path (tip -> lat_start)  
+    # vvvvv **new** vvvvv
+    distances = G.graph.get('distances')
+    if distances is not None:
+        length = distances[tip][lat_start]
+    else:
+        shortest_path = nx.shortest_path(G, source=tip, target=lat_start)
 
-        dist = G[node][neighbor]['length']
-        length += dist
+        length = 0
+        for i in range(len(shortest_path)-1):
+            node = shortest_path[i]
+            # ^^^^^ **new** ^^^^^
+            neighbor = shortest_path[i+1] 
+
+            dist = G[node][neighbor]['length']
+            length += dist
 
     return length, lat_main_root_point
 
