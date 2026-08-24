@@ -40,7 +40,7 @@ for method in ['brute_force', 'brent', 'analytical']:
     pg.OPTIMIZATION_METHOD = method
     start = time.time()
     for g, alpha in params:
-        pg.arbor_best_cost(pg.rar.read_arbor_full(FNAME), g, alpha)
+        pg.arbor_best_cost(pg.rar.read_arbor_full_initial(FNAME), g, alpha)
     elapsed = time.time() - start
     print(f"{method}: {elapsed:.1f}s")
 
@@ -48,7 +48,7 @@ for method in ['brute_force', 'brent', 'analytical']:
 # Orthogonal distance calculation in isolation
 # -------------------------
 print()
-arbor = pg.rar.read_arbor_full(FNAME)
+arbor = pg.rar.read_arbor_full_initial(FNAME)
 # Use arbitrary G/alpha to get a set of results to compute distances for
 results = pg.arbor_best_cost(arbor, 0.0, 0.5)
 
