@@ -505,6 +505,27 @@ def get_closest_and_valid_segments(lat_tips, segments):
 # -------------------------
 # Core optimization
 # -------------------------
+def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
+    p, q = tip
+    results = []
+
+    for seg in segments:
+        x0, y0 = seg[0]
+        x1, y1 = seg[1]
+        seg_base_dist = base_dist[(x0, y0)]
+
+        if is_between(x0, p, x1) or OPTIMIZATION_METHOD == 'brute_force':
+            result = find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
+        elif OPTIMIZATION_METHOD == 'brent':
+            result = find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
+        else:
+            result = find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
+
+        results.append(result)
+
+    best = min(results)
+    return best
+
 
 def optimize_tip_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     p, q = tip
