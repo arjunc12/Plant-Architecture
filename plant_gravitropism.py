@@ -548,9 +548,44 @@ def optimize_tip_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGE
     best = min(results)
     return best
 
-
-
 def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
+    """
+    For each lateral root tip in the arbor, find the optimal branch point
+    on the main root under the given (G, alpha) parameters.
+
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        Already-loaded observed arbor graph.
+    G : float
+        Gravity parameter.
+    alpha : float
+        Weighting parameter.
+
+    Returns
+    -------
+    list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y), ...]
+    """
+    segments = get_main_root_segments(arbor)
+    base_dist = compute_main_root_base_distances(arbor)
+
+    lat_tips = [
+        node for node in arbor.nodes()
+        if arbor.nodes[node]['label'] == 'lateral root tip'
+    ]
+
+    final = []
+    for tip in lat_tips:
+        valid_segments = get_insertion_segment(arbor, tip, segments)
+        result = optimize_tip(tip, valid_segments, base_dist, alpha, G, cost_spec=cost_spec)
+        if result is not None:
+            final.append(result)
+        else:
+            print(f"Warning: No valid results for lateral tip at {tip}")
+
+    return final
+
+def arbor_best_cost_initial(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
