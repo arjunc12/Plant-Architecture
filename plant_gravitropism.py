@@ -505,7 +505,18 @@ def get_closest_and_valid_segments(lat_tips, segments):
 # -------------------------
 # Core optimization
 # -------------------------
-def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
+
+def optimize_tip(arbor, tip_id, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
+    p, q = arbor.nodes[tip_id]["coords"]
+
+    for start_id, end_id in segments:
+        x0, y0 = arbor.nodes[start_id]["coords"]
+        x1, y1 = arbor.nodes[end_id]["coords"]
+        seg_base_dist = base_dist[start_id]
+
+        # existing find_best_cost_* call, unchanged
+
+def optimize_tip_ID_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     p, q = tip
     results = []
 
@@ -549,6 +560,47 @@ def optimize_tip_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGE
     return best
 
 def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
+    """
+    Find the optimal main-root branch point for every lateral-root tip.
+
+    The graph is ID-based throughout: graph traversal, segment selection,
+    and base-distance lookup all use node IDs. Coordinates are retrieved
+    inside optimize_tip only for geometric calculations.
+    """
+    segments = get_main_root_segments(arbor)  # [(start_id, end_id), ...]
+    base_dist = compute_main_root_base_distances(arbor)  # {node_id: distance}
+
+    lateral_tips = [
+        node_id
+        for node_id in arbor.nodes()
+        if arbor.nodes[node_id]["label"] == "lateral root tip"
+    ]
+
+    final = []
+    for tip_id in lateral_tips:
+        valid_segments = get_insertion_segment(arbor, tip_id, segments)
+
+        result = optimize_tip(
+            arbor,
+            tip_id,
+            valid_segments,
+            base_dist,
+            alpha,
+            G,
+            cost_spec=cost_spec,
+        )
+
+        if result is not None:
+            # Preserve the tip ID for later ID-based graph lookups.
+            # result still contains geometric output coordinates from the optimizer.
+            final.append(result + (tip_id,))
+        else:
+            tip_coords = arbor.nodes[tip_id]["coords"]
+            print(f"Warning: No valid results for lateral tip at {tip_coords}")
+
+    return final
+
+def arbor_best_cost_ID_initial(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
@@ -1205,7 +1257,9 @@ def process_arbor(arbor, fname, params, skip, verbose=False,
             # Only print G/alpha progress if verbose
             if verbose:
                 print(f"Processing {arbor}: method={method_name}, G={g}, alpha={alpha}")
-            wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha, cost_spec=cost_spec)
+            #wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha, cost_spec=cost_spec)
+            wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(fname, g, alpha, cost_spec=cost_spec)
+            
             append_result(fname, method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
 
 
