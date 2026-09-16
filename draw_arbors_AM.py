@@ -292,7 +292,8 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
     arbor_name = arbor.graph.get("arbor name", "toy arbor")
     results = create_graphs(arbor, G, alpha)
 
-    wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
+    #wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
+    wiring, delay, total_orthogonal, total_sq_orthogonal = pg.evaluate_parameters(
         arbor, G, alpha
     )
 
