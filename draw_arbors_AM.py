@@ -294,7 +294,8 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
 
     #wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
     wiring, delay, total_orthogonal, total_sq_orthogonal = pg.evaluate_parameters(
-        arbor, G, alpha
+        #arbor, G, alpha
+        arbor_name, G, alpha
     )
 
     print(f"\n→ G = {G}, alpha = {alpha}")

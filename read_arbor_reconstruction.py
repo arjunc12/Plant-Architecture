@@ -339,6 +339,7 @@ def read_arbor_full(fname):
     '''
 
     G = nx.Graph()
+    #howdyyyyy
     G.graph['arbor name'] = fname.strip('.csv')
 
     prev_id = None
