@@ -660,22 +660,6 @@ def collect_lateral_root_points(arbor, lateral_tip):
     return lateral_points
 
 
-def collect_lateral_root_segments(arbor, lateral_tip):
-    """
-    Return list of (x0, y0, x1, y1) segments along the lateral root path
-    from tip back to the main root insertion point.
-
-    lateral_tip is a node ID; path entries are node IDs, so coordinates
-    come from each node's 'coords' attribute.
-    """
-    segments = []
-    path = collect_lateral_root_points(arbor, lateral_tip)
-    for i in range(len(path) - 1):
-        x0, y0 = arbor.nodes[path[i]]['coords']
-        x1, y1 = arbor.nodes[path[i + 1]]['coords']
-        segments.append((x0, y0, x1, y1))
-    return segments
-
 def collect_lateral_root_points_initial(arbor, lateral_tip):
     """
     BFS from lateral_tip through 'lateral root' and 'lateral root tip' nodes
@@ -846,6 +830,32 @@ def calculate_orthogonal_errors_initial(gravity, arbor, main_root_pt, lateral_ti
 # -------------------------
 
 def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
+    arbor = rar.read_arbor_full(arbor_fname)
+
+    results = arbor_best_cost(arbor, G, alpha, cost_spec=cost_spec)
+
+    wiring = 0
+    delay = 0
+    total_orthogonal = 0
+    total_sq_orthogonal = 0
+
+    for result in results:
+        wiring += result[1]
+        delay += result[2]
+
+        main_root_pt = (result[4], result[5])
+        lateral_tip = result[8]   # node ID, appended by arbor_best_cost
+
+        orth, sq_orth = calculate_orthogonal_errors(G, arbor, main_root_pt, lateral_tip)
+        total_orthogonal += orth
+        total_sq_orthogonal += sq_orth
+
+    wiring += main_root_length(arbor)
+
+    return wiring, delay, total_orthogonal, total_sq_orthogonal
+
+
+def evaluate_parameters_initial(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     Evaluate a single (G, alpha) combination for a given arbor.
 
