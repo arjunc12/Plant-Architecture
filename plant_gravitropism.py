@@ -629,6 +629,55 @@ def arbor_best_cost_initial(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
 
 def collect_lateral_root_points(arbor, lateral_tip):
     """
+    BFS from lateral_tip through 'lateral root', 'lateral root start', and
+    'lateral root tip' nodes in the ID-based arbor graph.
+
+    'lateral root start' has to be included: read_arbor_full labels the
+    first point of a lateral root that way (instead of 'lateral root'), so
+    without it the segment closest to the main root gets silently dropped.
+
+    Returns
+    -------
+    list of node IDs belonging to this lateral root, ordered from tip back
+    toward (but not including) the main root.
+    """
+    lateral_labels = ('lateral root', 'lateral root start', 'lateral root tip')
+    lateral_points = []
+    visited = set()
+    queue = [lateral_tip]
+
+    while queue:
+        node = queue.pop(0)
+        if node in visited:
+            continue
+        visited.add(node)
+        if arbor.nodes[node]['label'] in lateral_labels:
+            lateral_points.append(node)
+            for neighbor in arbor.neighbors(node):
+                if neighbor not in visited and arbor.nodes[neighbor]['label'] in lateral_labels:
+                    queue.append(neighbor)
+
+    return lateral_points
+
+
+def collect_lateral_root_segments(arbor, lateral_tip):
+    """
+    Return list of (x0, y0, x1, y1) segments along the lateral root path
+    from tip back to the main root insertion point.
+
+    lateral_tip is a node ID; path entries are node IDs, so coordinates
+    come from each node's 'coords' attribute.
+    """
+    segments = []
+    path = collect_lateral_root_points(arbor, lateral_tip)
+    for i in range(len(path) - 1):
+        x0, y0 = arbor.nodes[path[i]]['coords']
+        x1, y1 = arbor.nodes[path[i + 1]]['coords']
+        segments.append((x0, y0, x1, y1))
+    return segments
+
+def collect_lateral_root_points_initial(arbor, lateral_tip):
+    """
     BFS from lateral_tip through 'lateral root' and 'lateral root tip' nodes
     in the observed arbor graph.
 
@@ -659,6 +708,22 @@ def collect_lateral_root_segments(arbor, lateral_tip):
     """
     Return list of (x0, y0, x1, y1) segments along the lateral root path
     from tip back to the main root insertion point.
+
+    lateral_tip is a node ID; path entries are node IDs, so coordinates
+    come from each node's 'coords' attribute.
+    """
+    segments = []
+    path = collect_lateral_root_points(arbor, lateral_tip)
+    for i in range(len(path) - 1):
+        x0, y0 = arbor.nodes[path[i]]['coords']
+        x1, y1 = arbor.nodes[path[i + 1]]['coords']
+        segments.append((x0, y0, x1, y1))
+    return segments
+
+def collect_lateral_root_segments_initial(arbor, lateral_tip):
+    """
+    Return list of (x0, y0, x1, y1) segments along the lateral root path
+    from tip back to the main root insertion point.
     """
     segments = []
     path = collect_lateral_root_points(arbor, lateral_tip)  # existing BFS
@@ -668,8 +733,62 @@ def collect_lateral_root_segments(arbor, lateral_tip):
         segments.append((x0, y0, x1, y1))
     return segments
 
+def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip, n_subsample=100):
+    """
+    Compute total orthogonal distance and total squared orthogonal distance
+    between the fitted parabola and the lateral root path.
 
-def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip,
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        ID-based arbor graph from read_arbor_full.
+    main_root_pt : tuple
+        (x, y) branch point on the main root — an interpolated point along a
+        segment, not necessarily an actual node.
+    lateral_tip : node ID
+        The lateral root tip's node ID in `arbor` (e.g. arbor_best_cost's
+        appended 9th result element), not a raw coordinate — read_arbor_full
+        can have multiple distinct nodes sharing the same (x, y).
+
+    Sub-discretizes each lateral root segment into n_subsample points
+    so that lightly-traced lateral roots are treated consistently with
+    densely-traced ones.
+    """
+    px, py = main_root_pt
+    tip_x, tip_y = arbor.nodes[lateral_tip]['coords']
+
+    b, c = calc_coeff(gravity, px, py, tip_x, tip_y)
+    x_start, x_end = min(px, tip_x), max(px, tip_x)
+
+    segments = collect_lateral_root_segments(arbor, lateral_tip)
+
+    if not segments:
+        return 0.0, 0.0
+
+    all_xs = []
+    all_ys = []
+    for x0, y0, x1, y1 in segments:
+        ts = np.linspace(0, 1, n_subsample, endpoint=False)
+        all_xs.append(x0 + ts * (x1 - x0))
+        all_ys.append(y0 + ts * (y1 - y0))
+
+    all_xs.append(np.array([segments[-1][2]]))
+    all_ys.append(np.array([segments[-1][3]]))
+
+    obs_x = np.concatenate(all_xs)
+    obs_y = np.concatenate(all_ys)
+
+    xs = np.linspace(x_start, x_end, 1000)
+    ys = gravity * xs**2 + b * xs + c
+
+    dx = obs_x[:, np.newaxis] - xs[np.newaxis, :]
+    dy = obs_y[:, np.newaxis] - ys[np.newaxis, :]
+    dists = np.sqrt(dx**2 + dy**2).min(axis=1)
+
+    return dists.sum(), (dists**2).sum()
+
+
+def calculate_orthogonal_errors_initial(gravity, arbor, main_root_pt, lateral_tip,
                                  n_subsample=100):
     """
     Compute total orthogonal distance and total squared orthogonal distance
