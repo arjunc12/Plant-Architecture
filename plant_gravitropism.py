@@ -556,7 +556,9 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     Parameters
     ----------
     arbor : networkx.Graph
-        Already-loaded observed arbor graph.
+        Already-loaded observed arbor graph, in the ID-based format produced
+        by read_arbor_full (nodes are integer IDs with a 'coords' attribute,
+        rather than being the (x, y) points themselves).
     G : float
         Gravity parameter.
     alpha : float
@@ -564,10 +566,23 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
 
     Returns
     -------
-    list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y), ...]
+    list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y, tip_node), ...]
+        tip_node (the appended 9th element) is the lateral root tip's node ID
+        in `arbor`. It's carried along so callers like
+        calculate_orthogonal_errors can look the node back up directly
+        instead of searching for it by coordinate — read_arbor_full allows
+        distinct nodes to share the same (x, y), which is exactly why it
+        moved away from coordinate-keyed nodes in the first place.
     """
-    segments = get_main_root_segments(arbor)
-    base_dist = compute_main_root_base_distances(arbor)
+    segments = get_main_root_segments(arbor)               # (node_id, node_id) pairs
+    base_dist = compute_main_root_base_distances(arbor)     # {node_id: dist}
+
+    # optimize_tip / find_best_cost_* work in raw (x, y) coordinates,
+    # so translate the ID-keyed pieces once, up front.
+    base_dist_coords = {
+        arbor.nodes[node]['coords']: dist
+        for node, dist in base_dist.items()
+    }
 
     lat_tips = [
         node for node in arbor.nodes()
@@ -577,11 +592,17 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     final = []
     for tip in lat_tips:
         valid_segments = get_insertion_segment(arbor, tip, segments)
-        result = optimize_tip(tip, valid_segments, base_dist, alpha, G, cost_spec=cost_spec)
+        valid_segments_coords = [
+            (arbor.nodes[u]['coords'], arbor.nodes[v]['coords'])
+            for u, v in valid_segments
+        ]
+        tip_coords = arbor.nodes[tip]['coords']
+
+        result = optimize_tip(tip_coords, valid_segments_coords, base_dist_coords, alpha, G, cost_spec=cost_spec)
         if result is not None:
-            final.append(result)
+            final.append(result + (tip,))
         else:
-            print(f"Warning: No valid results for lateral tip at {tip}")
+            print(f"Warning: No valid results for lateral tip at {tip_coords}")
 
     return final
 
