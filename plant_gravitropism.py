@@ -506,15 +506,55 @@ def get_closest_and_valid_segments(lat_tips, segments):
 # Core optimization
 # -------------------------
 
-def optimize_tip(arbor, tip_id, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
+def optimize_tip(arbor, tip_id, segments, base_dist, alpha, G,
+                 cost_spec=pf.HOMOGENEOUS):
+    """
+    Find the lowest-cost branch point for one lateral-root tip.
+
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        ID-based graph; each node stores its position in ``["coords"]``.
+    tip_id : int
+        Node ID of the lateral-root tip.
+    segments : list[tuple[int, int]]
+        Candidate main-root segments as (start_node_id, end_node_id).
+    base_dist : dict[int, float]
+        Main-root distance from the base, keyed by node ID.
+    """
     p, q = arbor.nodes[tip_id]["coords"]
+    results = []
 
     for start_id, end_id in segments:
         x0, y0 = arbor.nodes[start_id]["coords"]
         x1, y1 = arbor.nodes[end_id]["coords"]
+
+        # Identity-based lookup: duplicate coordinates cannot overwrite
+        # or ambiguously select a main-root distance.
         seg_base_dist = base_dist[start_id]
 
-        # existing find_best_cost_* call, unchanged
+        if is_between(x0, p, x1) or OPTIMIZATION_METHOD == "brute_force":
+            result = find_best_cost_brute_force(
+                alpha, G, seg_base_dist,
+                x0, y0, x1, y1, p, q,
+                cost_spec=cost_spec,
+            )
+        elif OPTIMIZATION_METHOD == "brent":
+            result = find_best_cost_brent(
+                alpha, G, seg_base_dist,
+                x0, y0, x1, y1, p, q,
+                cost_spec=cost_spec,
+            )
+        else:
+            result = find_best_cost_analytical(
+                alpha, G, seg_base_dist,
+                x0, y0, x1, y1, p, q,
+                cost_spec=cost_spec,
+            )
+
+        results.append(result)
+
+    return min(results)
 
 def optimize_tip_ID_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     p, q = tip
