@@ -286,10 +286,11 @@ def create_graphs(arbor, G, alpha):
     """
     return pg.arbor_best_cost(arbor, G, alpha)
 
-def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_insertion_points=True, show_lateral_nodes=True, paper=False, save_fname=None):
+def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_insertion_points=True, show_lateral_nodes=True, paper=False, save_fname=None, flip=False):
     """Render an ID-based Arbor graph and report its optimization metrics."""
     
-    arbor_name = arbor.graph.get("arbor name", "toy arbor")
+    arbor_name = arbor.graph.get("arbor name", "arbor") + ".csv"
+    print("This is arbor_name --> ", arbor_name)
     results = create_graphs(arbor, G, alpha)
 
     #wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
@@ -342,6 +343,9 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
     if show_optimized:
         for trace in get_opt_to_pq_drawings(G, results, color="blue"):
             fig.add_trace(trace)
+
+    if flip:
+        fig.update_yaxes(autorange="reversed")
     
     fig.update_layout(
         title=f"Arbor: {arbor_name}   |   G={G}, alpha={alpha}",
