@@ -290,8 +290,8 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
     """Render an ID-based Arbor graph and report its optimization metrics."""
     
     arbor_name = arbor.graph.get("arbor name", "arbor") + ".csv"
-    print("This is arbor_name --> ", arbor_name)
     results = create_graphs(arbor, G, alpha)
+    a_range = "reversed" # Determines if the graph gets flipped
 
     #wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
     wiring, delay, total_orthogonal, total_sq_orthogonal = pg.evaluate_parameters(
@@ -345,13 +345,13 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
             fig.add_trace(trace)
 
     if flip:
-        fig.update_yaxes(autorange="reversed")
+        a_range = flip
     
     fig.update_layout(
         title=f"Arbor: {arbor_name}   |   G={G}, alpha={alpha}",
         annotations=[dict(text="", xref="paper", yref="paper", x=0.5, y=-0.1,
                           showarrow=False, font=dict(size=14))],
-        xaxis_title="X", yaxis_title="Y", yaxis_autorange="reversed",
+        xaxis_title="X", yaxis_title="Y", yaxis_autorange=a_range,
         width=850, height=700, margin=dict(t=80, b=80),
     )
     if paper:
