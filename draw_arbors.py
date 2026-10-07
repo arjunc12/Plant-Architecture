@@ -1,7 +1,14 @@
-"""Draw Arbor reconstructions whose graph nodes are unique numeric IDs.
+"""
+draw_arbors_AM.py
+
+Draw Arbor reconstructions whose graph nodes are unique numeric IDs.
 
 Geometry is always read from ``arbor.nodes[node_id]["coords"]``. This keeps
 separate graph nodes separate even when they occupy the same coordinates.
+
+Note: This is the corrected version of the draw arbors pipeline that mitigates
+        generating graphs with disconnected lateral roots by using the new 
+        ID-based differentiation system. 
 """
 
 import numpy as np
@@ -277,16 +284,19 @@ def create_graphs(arbor, G, alpha):
     """
     Generates the optimized results for given G and alpha.
     """
-    results = pg.arbor_best_cost(arbor, G, alpha)
+    return pg.arbor_best_cost(arbor, G, alpha)
 
-def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_insertion_points=True, show_lateral_nodes=True, paper=False, save_fname=None):
+def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_insertion_points=True, show_lateral_nodes=True, paper=False, save_fname=None, flip=False):
     """Render an ID-based Arbor graph and report its optimization metrics."""
     
-    arbor_name = arbor.graph.get("arbor name", "toy arbor")
-    #results = create_graphs(arbor, G, alpha)
+    arbor_name = arbor.graph.get("arbor name", "arbor") + ".csv"
+    results = create_graphs(arbor, G, alpha)
+    a_range = "reversed" # Determines if the graph gets flipped
 
-    wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
-        arbor, G, alpha
+    #wiring, delay, total_orthogonal, total_sq_orthogonal = evaluate_parameters_draw(
+    wiring, delay, total_orthogonal, total_sq_orthogonal = pg.evaluate_parameters(
+        #arbor, G, alpha
+        arbor_name, G, alpha
     )
 
     print(f"\n→ G = {G}, alpha = {alpha}")
@@ -330,15 +340,18 @@ def plot_arbors(arbor, G, alpha, show_observed=True, show_optimized=True, show_i
             )
         )
 
-    #if show_optimized:
-    #    for trace in get_opt_to_pq_drawings(G, results, color="blue"):
-    #        fig.add_trace(trace)
+    if show_optimized:
+        for trace in get_opt_to_pq_drawings(G, results, color="blue"):
+            fig.add_trace(trace)
+
+    if flip:
+        a_range = flip
     
     fig.update_layout(
         title=f"Arbor: {arbor_name}   |   G={G}, alpha={alpha}",
         annotations=[dict(text="", xref="paper", yref="paper", x=0.5, y=-0.1,
                           showarrow=False, font=dict(size=14))],
-        xaxis_title="X", yaxis_title="Y", yaxis_autorange="reversed",
+        xaxis_title="X", yaxis_title="Y", yaxis_autorange=a_range,
         width=850, height=700, margin=dict(t=80, b=80),
     )
     if paper:

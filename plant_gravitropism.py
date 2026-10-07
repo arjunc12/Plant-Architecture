@@ -507,7 +507,57 @@ def get_closest_and_valid_segments(lat_tips, segments):
 # Core optimization
 # -------------------------
 
-def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
+def optimize_tip(arbor, tip_id, segments, base_dist, alpha, G,
+                 cost_spec=pf.HOMOGENEOUS):
+    """
+    Find the lowest-cost branch point for one lateral-root tip.
+
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        ID-based graph; each node stores its position in ``["coords"]``.
+    tip_id : int
+        Node ID of the lateral-root tip.
+    segments : list[tuple[int, int]]
+        Candidate main-root segments as (start_node_id, end_node_id).
+    base_dist : dict[int, float]
+        Main-root distance from the base, keyed by node ID.
+    """
+    p, q = arbor.nodes[tip_id]["coords"]
+    results = []
+
+    for start_id, end_id in segments:
+        x0, y0 = arbor.nodes[start_id]["coords"]
+        x1, y1 = arbor.nodes[end_id]["coords"]
+
+        # Identity-based lookup: duplicate coordinates cannot overwrite
+        # or ambiguously select a main-root distance.
+        seg_base_dist = base_dist[start_id]
+
+        if is_between(x0, p, x1) or OPTIMIZATION_METHOD == "brute_force":
+            result = find_best_cost_brute_force(
+                alpha, G, seg_base_dist,
+                x0, y0, x1, y1, p, q,
+                cost_spec=cost_spec,
+            )
+        elif OPTIMIZATION_METHOD == "brent":
+            result = find_best_cost_brent(
+                alpha, G, seg_base_dist,
+                x0, y0, x1, y1, p, q,
+                cost_spec=cost_spec,
+            )
+        else:
+            result = find_best_cost_analytical(
+                alpha, G, seg_base_dist,
+                x0, y0, x1, y1, p, q,
+                cost_spec=cost_spec,
+            )
+
+        results.append(result)
+
+    return min(results)
+
+def optimize_tip_ID_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     p, q = tip
     results = []
 
@@ -529,7 +579,127 @@ def optimize_tip(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
     return best
 
 
+def optimize_tip_initial(tip, segments, base_dist, alpha, G, cost_spec=pf.HOMOGENEOUS):
+    p, q = tip
+    results = []
+
+    for seg in segments:
+        x0, y0 = seg[0]
+        x1, y1 = seg[1]
+        seg_base_dist = base_dist[(x0, y0)]
+
+        if is_between(x0, p, x1) or OPTIMIZATION_METHOD == 'brute_force':
+            result = find_best_cost_brute_force(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
+        elif OPTIMIZATION_METHOD == 'brent':
+            result = find_best_cost_brent(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
+        else:
+            result = find_best_cost_analytical(alpha, G, seg_base_dist, x0, y0, x1, y1, p, q, cost_spec=cost_spec)
+
+        results.append(result)
+
+    best = min(results)
+    return best
+
 def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
+    """
+    Find the optimal main-root branch point for every lateral-root tip.
+
+    The graph is ID-based throughout: graph traversal, segment selection,
+    and base-distance lookup all use node IDs. Coordinates are retrieved
+    inside optimize_tip only for geometric calculations.
+    """
+    segments = get_main_root_segments(arbor)  # [(start_id, end_id), ...]
+    base_dist = compute_main_root_base_distances(arbor)  # {node_id: distance}
+
+    lateral_tips = [
+        node_id
+        for node_id in arbor.nodes()
+        if arbor.nodes[node_id]["label"] == "lateral root tip"
+    ]
+
+    final = []
+    for tip_id in lateral_tips:
+        valid_segments = get_insertion_segment(arbor, tip_id, segments)
+
+        result = optimize_tip(
+            arbor,
+            tip_id,
+            valid_segments,
+            base_dist,
+            alpha,
+            G,
+            cost_spec=cost_spec,
+        )
+
+        if result is not None:
+            # Preserve the tip ID for later ID-based graph lookups.
+            # result still contains geometric output coordinates from the optimizer.
+            final.append(result + (tip_id,))
+        else:
+            tip_coords = arbor.nodes[tip_id]["coords"]
+            print(f"Warning: No valid results for lateral tip at {tip_coords}")
+
+    return final
+
+def arbor_best_cost_ID_initial(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
+    """
+    For each lateral root tip in the arbor, find the optimal branch point
+    on the main root under the given (G, alpha) parameters.
+
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        Already-loaded observed arbor graph, in the ID-based format produced
+        by read_arbor_full (nodes are integer IDs with a 'coords' attribute,
+        rather than being the (x, y) points themselves).
+    G : float
+        Gravity parameter.
+    alpha : float
+        Weighting parameter.
+
+    Returns
+    -------
+    list of tuples : [(cost, wiring, delay, best_t, best_x, best_y, tip_x, tip_y, tip_node), ...]
+        tip_node (the appended 9th element) is the lateral root tip's node ID
+        in `arbor`. It's carried along so callers like
+        calculate_orthogonal_errors can look the node back up directly
+        instead of searching for it by coordinate — read_arbor_full allows
+        distinct nodes to share the same (x, y), which is exactly why it
+        moved away from coordinate-keyed nodes in the first place.
+    """
+    segments = get_main_root_segments(arbor)               # (node_id, node_id) pairs
+    base_dist = compute_main_root_base_distances(arbor)     # {node_id: dist}
+
+    # optimize_tip / find_best_cost_* work in raw (x, y) coordinates,
+    # so translate the ID-keyed pieces once, up front.
+    base_dist_coords = {
+        arbor.nodes[node]['coords']: dist
+        for node, dist in base_dist.items()
+    }
+
+    lat_tips = [
+        node for node in arbor.nodes()
+        if arbor.nodes[node]['label'] == 'lateral root tip'
+    ]
+
+    final = []
+    for tip in lat_tips:
+        valid_segments = get_insertion_segment(arbor, tip, segments)
+        valid_segments_coords = [
+            (arbor.nodes[u]['coords'], arbor.nodes[v]['coords'])
+            for u, v in valid_segments
+        ]
+        tip_coords = arbor.nodes[tip]['coords']
+
+        result = optimize_tip(tip_coords, valid_segments_coords, base_dist_coords, alpha, G, cost_spec=cost_spec)
+        if result is not None:
+            final.append(result + (tip,))
+        else:
+            print(f"Warning: No valid results for lateral tip at {tip_coords}")
+
+    return final
+
+def arbor_best_cost_initial(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     For each lateral root tip in the arbor, find the optimal branch point
     on the main root under the given (G, alpha) parameters.
@@ -576,6 +746,39 @@ def arbor_best_cost(arbor, G, alpha, cost_spec=pf.HOMOGENEOUS):
 
 def collect_lateral_root_points(arbor, lateral_tip):
     """
+    BFS from lateral_tip through 'lateral root', 'lateral root start', and
+    'lateral root tip' nodes in the ID-based arbor graph.
+
+    'lateral root start' has to be included: read_arbor_full labels the
+    first point of a lateral root that way (instead of 'lateral root'), so
+    without it the segment closest to the main root gets silently dropped.
+
+    Returns
+    -------
+    list of node IDs belonging to this lateral root, ordered from tip back
+    toward (but not including) the main root.
+    """
+    lateral_labels = ('lateral root', 'lateral root start', 'lateral root tip')
+    lateral_points = []
+    visited = set()
+    queue = [lateral_tip]
+
+    while queue:
+        node = queue.pop(0)
+        if node in visited:
+            continue
+        visited.add(node)
+        if arbor.nodes[node]['label'] in lateral_labels:
+            lateral_points.append(node)
+            for neighbor in arbor.neighbors(node):
+                if neighbor not in visited and arbor.nodes[neighbor]['label'] in lateral_labels:
+                    queue.append(neighbor)
+
+    return lateral_points
+
+
+def collect_lateral_root_points_initial(arbor, lateral_tip):
+    """
     BFS from lateral_tip through 'lateral root' and 'lateral root tip' nodes
     in the observed arbor graph.
 
@@ -606,6 +809,22 @@ def collect_lateral_root_segments(arbor, lateral_tip):
     """
     Return list of (x0, y0, x1, y1) segments along the lateral root path
     from tip back to the main root insertion point.
+
+    lateral_tip is a node ID; path entries are node IDs, so coordinates
+    come from each node's 'coords' attribute.
+    """
+    segments = []
+    path = collect_lateral_root_points(arbor, lateral_tip)
+    for i in range(len(path) - 1):
+        x0, y0 = arbor.nodes[path[i]]['coords']
+        x1, y1 = arbor.nodes[path[i + 1]]['coords']
+        segments.append((x0, y0, x1, y1))
+    return segments
+
+def collect_lateral_root_segments_initial(arbor, lateral_tip):
+    """
+    Return list of (x0, y0, x1, y1) segments along the lateral root path
+    from tip back to the main root insertion point.
     """
     segments = []
     path = collect_lateral_root_points(arbor, lateral_tip)  # existing BFS
@@ -615,8 +834,62 @@ def collect_lateral_root_segments(arbor, lateral_tip):
         segments.append((x0, y0, x1, y1))
     return segments
 
+def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip, n_subsample=100):
+    """
+    Compute total orthogonal distance and total squared orthogonal distance
+    between the fitted parabola and the lateral root path.
 
-def calculate_orthogonal_errors(gravity, arbor, main_root_pt, lateral_tip,
+    Parameters
+    ----------
+    arbor : networkx.Graph
+        ID-based arbor graph from read_arbor_full.
+    main_root_pt : tuple
+        (x, y) branch point on the main root — an interpolated point along a
+        segment, not necessarily an actual node.
+    lateral_tip : node ID
+        The lateral root tip's node ID in `arbor` (e.g. arbor_best_cost's
+        appended 9th result element), not a raw coordinate — read_arbor_full
+        can have multiple distinct nodes sharing the same (x, y).
+
+    Sub-discretizes each lateral root segment into n_subsample points
+    so that lightly-traced lateral roots are treated consistently with
+    densely-traced ones.
+    """
+    px, py = main_root_pt
+    tip_x, tip_y = arbor.nodes[lateral_tip]['coords']
+
+    b, c = calc_coeff(gravity, px, py, tip_x, tip_y)
+    x_start, x_end = min(px, tip_x), max(px, tip_x)
+
+    segments = collect_lateral_root_segments(arbor, lateral_tip)
+
+    if not segments:
+        return 0.0, 0.0
+
+    all_xs = []
+    all_ys = []
+    for x0, y0, x1, y1 in segments:
+        ts = np.linspace(0, 1, n_subsample, endpoint=False)
+        all_xs.append(x0 + ts * (x1 - x0))
+        all_ys.append(y0 + ts * (y1 - y0))
+
+    all_xs.append(np.array([segments[-1][2]]))
+    all_ys.append(np.array([segments[-1][3]]))
+
+    obs_x = np.concatenate(all_xs)
+    obs_y = np.concatenate(all_ys)
+
+    xs = np.linspace(x_start, x_end, 1000)
+    ys = gravity * xs**2 + b * xs + c
+
+    dx = obs_x[:, np.newaxis] - xs[np.newaxis, :]
+    dy = obs_y[:, np.newaxis] - ys[np.newaxis, :]
+    dists = np.sqrt(dx**2 + dy**2).min(axis=1)
+
+    return dists.sum(), (dists**2).sum()
+
+
+def calculate_orthogonal_errors_initial(gravity, arbor, main_root_pt, lateral_tip,
                                  n_subsample=100):
     """
     Compute total orthogonal distance and total squared orthogonal distance
@@ -695,6 +968,32 @@ def attach_main_root_cache(arbor):
     return arbor
 
 def evaluate_parameters(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
+    arbor = rar.read_arbor_full(arbor_fname)
+
+    results = arbor_best_cost(arbor, G, alpha, cost_spec=cost_spec)
+
+    wiring = 0
+    delay = 0
+    total_orthogonal = 0
+    total_sq_orthogonal = 0
+
+    for result in results:
+        wiring += result[1]
+        delay += result[2]
+
+        main_root_pt = (result[4], result[5])
+        lateral_tip = result[8]   # node ID, appended by arbor_best_cost
+
+        orth, sq_orth = calculate_orthogonal_errors(G, arbor, main_root_pt, lateral_tip)
+        total_orthogonal += orth
+        total_sq_orthogonal += sq_orth
+
+    wiring += main_root_length(arbor)
+
+    return wiring, delay, total_orthogonal, total_sq_orthogonal
+
+
+def evaluate_parameters_initial(arbor_fname, G, alpha, cost_spec=pf.HOMOGENEOUS):
     """
     Evaluate a single (G, alpha) combination for a given arbor.
 
@@ -1027,7 +1326,9 @@ def process_arbor(arbor, fname, params, skip, verbose=False,
             # Only print G/alpha progress if verbose
             if verbose:
                 print(f"Processing {arbor}: method={method_name}, G={g}, alpha={alpha}")
-            wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha, cost_spec=cost_spec)
+            #wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(arbor, g, alpha, cost_spec=cost_spec)
+            wiring, delay, orthogonal, sq_orthogonal = evaluate_parameters(fname, g, alpha, cost_spec=cost_spec)
+            
             append_result(fname, method_name, g, alpha, wiring, delay, orthogonal, sq_orthogonal)
 
 
