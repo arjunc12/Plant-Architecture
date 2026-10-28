@@ -30,7 +30,7 @@ class Arbor():
             return wc ** 2
 
 
-    def calculate_conduction_delay(self, computation_method):
+    def calculate_conduction_delay(self, homogeneous):
         """Calculate conduction delay using this arbor's graph."""
         '''
             homogeneous - if true, homogeneous computation method will be used. otherwise, wiring cost
@@ -63,6 +63,7 @@ class Arbor():
                 if to_root < 0:
                     print(f"###### \nWARNING: negative to_root={to_root:.6f} at tip {curr}, "
                             f"dist_root = {dist_root[curr]}, curve = {curve:}\n########")
+                if 
                 delay += cost_spec.delay_transform(curve, to_root)
             
             for curr_neighbor in G.neighbors(curr):
