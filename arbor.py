@@ -1,24 +1,91 @@
 import networkx as nx
 import numpy as np
+import pareto_functions as pf
+import read_arbor_reconstruction as rar
 
 
-class Arbor:
+class Arbor():
     """Class representing an arbor and its graph."""
     wc = 0
     cd = 0
 
-    def __init__(self, name=None):
+    def __init__(self, filename):
         """ Initialize a new arbor instance. """
-        self.name = name
-        self.graph = nx.Graph()
+        self.filename = filename
+        self.G = rar.read_arbor_full(filename)
 
-    def calculate_wiring_cost(self):
+    def calculate_wiring_cost(self, homogeneous):
+        '''
+        homogeneous - if true, homogeneous computation method will be used. otherwise, wiring cost
+                        will be calculated using the heterogeneous computation method. 
+        '''
         """Calculate wiring cost using this arbor's graph."""
         wc = 0
+        for u, v in G.edges():
+            wc += G[u][v]['length']
 
-    def calculate_conduction_delay(self):
+        if (homogeneous == True):
+            return wc 
+        else:
+            return wc ** 2
+
+
+    def calculate_conduction_delay(self, computation_method):
         """Calculate conduction delay using this arbor's graph."""
+        '''
+            homogeneous - if true, homogeneous computation method will be used. otherwise, wiring cost
+                                will be calculated using the heterogeneous computation method. 
+        '''
         cd = 0
+
+
+        dist_root = {} # to store distances from each node to the main root
+        queue = []
+        visited = set()
+        main_root = G.graph.get('main root base', G.graph.get('main root')) # aka an ID of 0 (first node in CSV always has this ID)
+        queue.append(main_root)
+        dist_root[main_root] = 0
+        delay = 0
+
+        while len(queue) > 0:
+            curr = queue.pop(0)
+    
+            assert curr not in visited # making sure we haven't visited this node yet
+            visited.add(curr)
+    
+            if G.nodes[curr]['label'] == 'lateral root tip':
+                curve, lat_main_root_point = lateral_root_path_length(G, curr)
+                # to_root = dist_root[curr] - curve
+                to_root = path_length(G, 0, lat_main_root_point)
+                
+                # making sure to_root isn't negative
+                assert to_root >= 0, f"[Error] Negative to_root = {to_root} at tip {G.nodes[curr]['coords']}, \ndist_root = {dist_root[curr]}, curve = {curve}"
+                if to_root < 0:
+                    print(f"###### \nWARNING: negative to_root={to_root:.6f} at tip {curr}, "
+                            f"dist_root = {dist_root[curr]}, curve = {curve:}\n########")
+                delay += cost_spec.delay_transform(curve, to_root)
+            
+            for curr_neighbor in G.neighbors(curr):
+                if curr_neighbor not in visited:
+                    queue.append(curr_neighbor)
+                    dist_root[curr_neighbor] = dist_root[curr] + G[curr][curr_neighbor]['length']
+        
+        assert len(visited) == G.number_of_nodes(), "Not all nodes were visited"
+        return delay
+
+    def cd_homogeneous():
+        '''
+        Helper method for calculate_conduction_delay, takes care of homogeneous cases.
+        '''
+        
+
+    
+    def cd_heterogeneous():
+        '''
+        Helper method for calculate_conduction_delay, takes care of heterogeneous cases.
+        '''
+
+
 
     def arbor_object_gen:
         """ Processes an arbor CSV file and generate the arbor object"""
@@ -40,7 +107,7 @@ class Arbor:
     def get_cd(arbor):
         return cd
 
-    # Retrieval methods for 
+    # Retrieval methods for graph characteristics
     '''
     - path_length
     - lateral_root_path_length
